@@ -4,9 +4,11 @@ import {
   feed,
   loadPet,
   moodLine,
+  petDefaultName,
   renamePet,
   restPet,
   trainPet,
+  type PetSpecies,
   type PetState,
 } from "./pet";
 import "./style.css";
@@ -71,6 +73,11 @@ const UI = {
   actionRest: "\u4f11\u606f",
   trainBlocked: "\u9ad4\u529b\u4e0d\u8db3\uff0c\u5148\u4f11\u606f\u5427",
   cancelWait: "\u53d6\u6d88",
+  surrenderLeave: "\u6295\u964d\uff0f\u96e2\u958b",
+  confirmForfeit:
+    "\u78ba\u5b9a\u8981\u6295\u964d\u4e26\u7d50\u675f\u5c0d\u6230\u55ce\uff1f",
+  youSurrendered: "\u4f60\u5df2\u6295\u964d",
+  foeSurrenderYouWin: "\u5c0d\u65b9\u6295\u964d\uff0c\u4f60\u8d0f\u4e86\uff01",
 };
 
 const socketServerUrl = (import.meta.env.VITE_SOCKET_URL || "").replace(/\/$/, "");
@@ -348,10 +355,9 @@ function renderBattle(root: HTMLElement) {
   phase = "battle";
   stopTick();
 
-  const youLabel = role === "host" ? "\u96f7\u866b\u7378" : "\u6676\u683c\u7378";
-  const foeLabel = role === "host" ? "\u6676\u683c\u7378" : "\u96f7\u866b\u7378";
-  const youEmoji = role === "host" ? "\u26a1" : "\ud83d\udc8e";
-  const foeEmoji = role === "host" ? "\ud83d\udc8e" : "\u26a1";
+  const myPet = loadPet();
+  const foeSpecies: PetSpecies = myPet.species === "volt" ? "crystal" : "volt";
+  const battleSpriteSrc = `${import.meta.env.BASE_URL}pets/pet-pixel-original-1.png`;
 
   root.replaceChildren(
     el(`
@@ -363,13 +369,13 @@ function renderBattle(root: HTMLElement) {
         </div>
         <div class="battle-arena">
           <div class="monster">
-            <div class="emoji">${youEmoji}</div>
-            <div class="name">${youLabel} \u00b7 \u6211\u65b9</div>
+            <img class="pet-sprite battle-pet" id="battle-you-sprite" alt="" width="72" height="72" decoding="async" />
+            <div class="name" id="battle-you-label"></div>
             <div class="hp-wrap"><div class="hp-fill" id="hp-you" style="width:100%"></div></div>
           </div>
           <div class="monster">
-            <div class="emoji">${foeEmoji}</div>
-            <div class="name">${foeLabel} \u00b7 \u5c0d\u624b</div>
+            <img class="pet-sprite battle-pet" id="battle-foe-sprite" alt="" width="72" height="72" decoding="async" />
+            <div class="name" id="battle-foe-label"></div>
             <div class="hp-wrap"><div class="hp-fill foe" id="hp-foe" style="width:100%"></div></div>
           </div>
         </div>
@@ -379,12 +385,24 @@ function renderBattle(root: HTMLElement) {
           <button type="button" class="move-btn" data-move="guard">${UI.guard}</button>
           <button type="button" class="move-btn" data-move="charge">${UI.charge}</button>
         </div>
+        <div class="row battle-forfeit-row">
+          <button type="button" class="btn btn-secondary" id="btn-forfeit">${UI.surrenderLeave}</button>
+        </div>
         <p class="toast hidden" id="lock-hint"></p>
         <div class="log" id="battle-log"></div>
       </div>
     </div>
   `),
   );
+
+  const youSp = $("#battle-you-sprite", root) as HTMLImageElement;
+  const foeSp = $("#battle-foe-sprite", root) as HTMLImageElement;
+  youSp.src = battleSpriteSrc;
+  foeSp.src = battleSpriteSrc;
+  youSp.classList.toggle("pet-sprite--alt", myPet.species === "crystal");
+  foeSp.classList.toggle("pet-sprite--alt", foeSpecies === "crystal");
+  $("#battle-you-label", root).textContent = `${myPet.nickname} \u00b7 \u6211\u65b9`;
+  $("#battle-foe-label", root).textContent = `${petDefaultName(foeSpecies)} \u00b7 \u5c0d\u624b`;
 
   const s = ensureSocket();
   s.removeAllListeners("battle_state");
@@ -460,8 +478,18 @@ function renderBattle(root: HTMLElement) {
     if (r.auto) appendLog(`\u00bb ${UI.autoPick}`);
   };
 
-  const onBattleEnd = (r: { winner: string; you: string }) => {
+  const onBattleEnd = (r: {
+    winner: string;
+    you: string;
+    forfeitBy?: "host" | "guest" | null;
+  }) => {
     stopTick();
+    const fb = r.forfeitBy;
+    if (fb === "host" || fb === "guest") {
+      if (fb === r.you) showEndModal(root, UI.youSurrendered);
+      else showEndModal(root, UI.foeSurrenderYouWin);
+      return;
+    }
     const iWon =
       (r.winner === "host" && r.you === "host") ||
       (r.winner === "guest" && r.you === "guest");
@@ -491,6 +519,11 @@ function renderBattle(root: HTMLElement) {
       s.emit("choose_move", { move });
       b.classList.add("selected");
     });
+  });
+
+  $("#btn-forfeit", root).addEventListener("click", () => {
+    if (!window.confirm(UI.confirmForfeit)) return;
+    s.emit("forfeit");
   });
 
   tickTimer = window.setInterval(() => {

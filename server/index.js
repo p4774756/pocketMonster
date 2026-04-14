@@ -231,11 +231,13 @@ function applyMoves(code, fromTimeout = false) {
       winner,
       you: "host",
       hp: { ...b.hp },
+      forfeitBy: null,
     });
     io.to(r.guestId).emit("battle_end", {
       winner,
       you: "guest",
       hp: { ...b.hp },
+      forfeitBy: null,
     });
     cleanupRoom(code);
     return;
@@ -331,6 +333,32 @@ io.on("connection", (socket) => {
     if (b.pending.host && b.pending.guest) {
       applyMoves(link.roomCode, false);
     }
+  });
+
+  socket.on("forfeit", () => {
+    const link = socketRoom.get(socket.id);
+    if (!link) return;
+    const r = rooms.get(link.roomCode);
+    if (!r?.battle || !r.guestId) return;
+    const winner = link.role === "host" ? "guest" : "host";
+    const forfeiter = link.role;
+    if (r.battle.timer) {
+      clearTimeout(r.battle.timer);
+      r.battle.timer = null;
+    }
+    io.to(r.hostId).emit("battle_end", {
+      winner,
+      you: "host",
+      hp: { ...r.battle.hp },
+      forfeitBy: forfeiter,
+    });
+    io.to(r.guestId).emit("battle_end", {
+      winner,
+      you: "guest",
+      hp: { ...r.battle.hp },
+      forfeitBy: forfeiter,
+    });
+    cleanupRoom(link.roomCode);
   });
 
   socket.on("disconnect", () => {

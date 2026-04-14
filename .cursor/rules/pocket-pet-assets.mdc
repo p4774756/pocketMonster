@@ -1,0 +1,12 @@
+---
+description: Image/asset workflow for pocketPet (generate without asking each time)
+alwaysApply: true
+---
+
+# Images and game assets
+
+- When implementing UI, care mode, battle, or any feature that needs sprites, icons, or pixel art, **use image generation directly** and save under `public/pets/` or the right `public/` subfolder. **Do not ask permission for every asset** unless the user has opted out.
+- Keep designs **original**; do not copy commercial IP (e.g. Digimon, Pokemon) or official art.
+- Prefer **true alpha PNG**. If generating with AI, ask for **flat magenta `#FF00FF` studio** (no black letterbox) then strip it with a small chroma script before shipping. **Never** bake in checkerboard / gray-white grid “transparency preview” pixels. In prompts forbid: checkerboard, transparency grid, placeholder grid.
+- Idle art is **per growth stage**: `public/pets/pet-idle-s0.png` … `pet-idle-s4.png` (see `idleSpriteForStage` in `src/pet.ts`). Action poses stay in `PET_SPRITES` in `src/main.ts`.
+- After adding files, if blobs are very large (~1MB+), suggest or apply compression (e.g. Squoosh).

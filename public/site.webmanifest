@@ -1,0 +1,8 @@
+{
+  "name": "Pocket \u96fb\u5b50\u5bf5\u7269",
+  "short_name": "PocketPet",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f0f4fb",
+  "theme_color": "#f0f4fb"
+}

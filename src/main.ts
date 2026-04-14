@@ -2,12 +2,20 @@ import { io, Socket } from "socket.io-client";
 import {
   cleanPet,
   feed,
+  formatVirtAgeDays,
+  growthLabel,
+  growthSpriteScale,
+  growthStage,
+  idleSpriteForStage,
   loadPet,
+  memorialLine,
   moodLine,
   petDefaultName,
   renamePet,
+  resetNewPet,
   restPet,
   trainPet,
+  treatPet,
   type PetSpecies,
   type PetState,
 } from "./pet";
@@ -16,6 +24,27 @@ import "./style.css";
 type Move = "strike" | "guard" | "charge";
 
 const ROUND_MS = 12_000;
+
+/** Action poses (shared across ages). Idle uses `idleSpriteForStage` per growth tier. */
+const PET_SPRITES = {
+  eat: "pet-eat.png",
+  train: "pet-train.png",
+  rest: "pet-rest.png",
+  clean: "pet-clean.png",
+} as const;
+
+function petAssetUrl(file: string) {
+  return `${import.meta.env.BASE_URL}pets/${file}`;
+}
+
+/** DOM uses numeric ids; with @types/node merged, `setTimeout` may be typed as `NodeJS.Timeout`. */
+function domSetTimeout(fn: () => void, ms: number): number {
+  return window.setTimeout(fn, ms) as unknown as number;
+}
+
+function domSetInterval(fn: () => void, ms: number): number {
+  return window.setInterval(fn, ms) as unknown as number;
+}
 
 const el = (html: string) => {
   const t = document.createElement("template");
@@ -29,8 +58,17 @@ function $(sel: string, root: Document | HTMLElement = document) {
   return n as HTMLElement;
 }
 
+let nextCareFlash: string | null = null;
+function flashCare(msg: string) {
+  nextCareFlash = msg;
+}
+function consumeCareFlash(): string | null {
+  const m = nextCareFlash;
+  nextCareFlash = null;
+  return m;
+}
+
 const UI = {
-  title: "Pocket \u9023\u7dda\u5c0d\u6230",
   tagline:
     "\u985e\u4f3c\u5be6\u9ad4\u6a5f\u63a5\u9ede\uff0c\u533f\u540d\u958b\u623f\u5c0d\u6230",
   createHost: "\u958b\u623f\uff08\u4e3b\u6a5f\uff09",
@@ -52,16 +90,18 @@ const UI = {
   win: "\u4f60\u8d0f\u4e86\uff01",
   lose: "\u4f60\u8f38\u4e86\u2026",
   draw: "\u5e73\u624b\uff01",
-  again: "\u56de\u5230\u9996\u9801",
+  again: "\u56de\u5230\u6211\u7684\u5925\u4f34",
+  endModalHint:
+    "\u7e7c\u7e8c\u990a\u6210\u6216\u518d\u958b\u4e00\u623f\u5c0d\u6230\u3002",
   peerLeft: "\u5c0d\u65b9\u5df2\u65b7\u7dda",
   errGeneric: "\u9023\u7dda\u5931\u6557\uff0c\u8acb\u91cd\u8a66",
   needBackend:
     "\u5c0d\u6230\u9700\u8981\u5f8c\u7aef\uff1a\u8acb\u8a2d\u5b9a VITE_SOCKET_URL \u5f8c\u91cd\u65b0\u6253\u5305\uff0c\u6216\u53c3\u8003 deploy \u8aaa\u660e\u3002",
   hubSubtitle:
-    "\u990a\u6210\u8207\u9023\u7dda\u5c0d\u6230\uff08\u990a\u6210\u8cc7\u6599\u50c5\u5b58\u5728\u6b64\u88dd\u7f6e\uff09",
-  myPet: "\u6211\u7684\u5925\u4f34",
+    "\u533f\u540d\u958b\u623f\u3001\u8f38\u5165\u623f\u9593\u78bc\u5373\u53ef\u5c0d\u6230\uff08\u990a\u6210\u8cc7\u6599\u5728\u4e0a\u4e00\u9801\uff09",
   battleSection: "\u9023\u7dda\u5c0d\u6230",
-  backHome: "\u56de\u9996\u9801",
+  openBattle: "\u9023\u7dda\u5c0d\u6230",
+  backToPet: "\u56de\u5230\u6211\u7684\u5925\u4f34",
   statHunger: "\u98fd\u98df",
   statHappy: "\u5fc3\u60c5",
   statClean: "\u6e05\u6f54",
@@ -72,6 +112,16 @@ const UI = {
   actionTrain: "\u8a13\u7df4",
   actionRest: "\u4f11\u606f",
   trainBlocked: "\u9ad4\u529b\u4e0d\u8db3\uff0c\u5148\u4f11\u606f\u5427",
+  trainBlockedIll:
+    "\u751f\u75c5\u6642\u66f4\u7d2f\uff0c\u9ad4\u529b\u8981\u66f4\u9ad8\u624d\u80fd\u8a13\u7df4",
+  treat: "\u770b\u91ab\u751f\uff08\u6cbb\u7652\uff09",
+  memorialTitle: "\u5925\u4f34\u96e2\u958b\u4e86",
+  memorialSub: "\u8b1d\u8b1d\u4f60\u9019\u6bb5\u6642\u9593\u7684\u966a\u4f34\u3002",
+  memorialDays: (n: number) =>
+    `\u5171\u5ea6\u904e\u4e86\u7d04 ${n} \u500b\u865b\u64ec\u65e5\u3002`,
+  newPet: "\u8fce\u63a5\u65b0\u5925\u4f34",
+  deadPetBattleBlocked:
+    "\u5925\u4f34\u5df2\u96e2\u958b\uff0c\u7121\u6cd5\u9023\u7dda\u5c0d\u6230\u3002\u8acb\u5148\u5728\u7d00\u5ff5\u9801\u9762\u8fce\u63a5\u65b0\u751f\u547d\u3002",
   cancelWait: "\u53d6\u6d88",
   surrenderLeave: "\u6295\u964d\uff0f\u96e2\u958b",
   confirmForfeit:
@@ -90,7 +140,10 @@ let phase: "lobby" | "waiting" | "battle" | "end" = "lobby";
 
 function ensureSocket(): Socket {
   if (socket?.connected) return socket;
-  const opts = { transports: ["websocket", "polling"] as const, path: "/socket.io" };
+  const opts = {
+    transports: ["websocket", "polling"] as string[],
+    path: "/socket.io",
+  };
   socket = io(
     socketServerUrl.length > 0 ? socketServerUrl : undefined,
     opts,
@@ -113,21 +166,68 @@ function cancelWaitingAndReturn(root: HTMLElement) {
     s.disconnect();
   }
   socket = null;
-  renderLobby(root);
+  renderCare(root);
+}
+
+function renderMemorial(
+  root: HTMLElement,
+  state: PetState,
+  hint: string | null = null,
+) {
+  const days = Math.max(0, Math.floor(state.virtAge));
+  const hintBlock =
+    hint && hint.length > 0
+      ? `<p class="memorial-hint">${escapeHtml(hint)}</p>`
+      : "";
+  root.replaceChildren(
+    el(`
+    <div class="shell care-shell memorial-shell">
+      <div class="screen-bezel memorial-bezel">
+        <h2 class="memorial-title">${UI.memorialTitle}</h2>
+        <p class="memorial-name">\u300c${escapeHtml(state.nickname)}\u300d</p>
+        <p class="memorial-cause">${escapeHtml(memorialLine(state.deathCause))}</p>
+        <p class="memorial-days">${UI.memorialDays(days)}</p>
+        ${hintBlock}
+        <p class="memorial-sub">${UI.memorialSub}</p>
+        <button type="button" class="btn btn-primary memorial-btn" id="btn-new-pet">${UI.newPet}</button>
+      </div>
+    </div>
+  `),
+  );
+  $("#btn-new-pet", root).addEventListener("click", () => {
+    resetNewPet(state.species);
+    renderCare(root);
+  });
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function renderCare(root: HTMLElement) {
+  const hint = consumeCareFlash();
   let state: PetState = loadPet();
+  if (!state.alive) {
+    renderMemorial(root, state, hint);
+    return;
+  }
 
   root.replaceChildren(
     el(`
     <div class="shell care-shell">
-      <button type="button" class="btn btn-secondary care-back" id="btn-care-back">${UI.backHome}</button>
+      <div class="row care-top-actions">
+        <button type="button" class="btn btn-primary" id="btn-open-battle">${UI.openBattle}</button>
+      </div>
       <div class="screen-bezel care-bezel">
-        <div class="pet-stage">
+        <div class="pet-stage" id="pet-stage">
           <img class="pet-sprite" id="pet-sprite" alt="" width="96" height="96" decoding="async" />
           <input class="pet-nick field" id="pet-nick" maxlength="12" autocomplete="off" />
         </div>
+        <p class="pet-age-line" id="pet-age-line"></p>
         <p class="pet-mood" id="pet-mood"></p>
         <div class="care-stats">
           <div class="care-stat">
@@ -156,6 +256,7 @@ function renderCare(root: HTMLElement) {
             <span class="care-stat-val" id="val-power">0</span>
           </div>
         </div>
+        <button type="button" class="move-btn care-treat hidden" id="btn-treat" data-care="treat">${UI.treat}</button>
         <div class="care-actions">
           <button type="button" class="move-btn" data-care="feed">${UI.actionFeed}</button>
           <button type="button" class="move-btn" data-care="clean">${UI.actionClean}</button>
@@ -170,15 +271,48 @@ function renderCare(root: HTMLElement) {
 
   const nickEl = $("#pet-nick", root) as HTMLInputElement;
   const moodEl = $("#pet-mood", root);
+  const ageLineEl = $("#pet-age-line", root);
+  const stageEl = $("#pet-stage", root);
+  const treatBtn = $("#btn-treat", root);
   const spriteEl = $("#pet-sprite", root) as HTMLImageElement;
   const toastEl = $("#care-toast", root);
-  const spriteSrc = `${import.meta.env.BASE_URL}pets/pet-pixel-original-1.png`;
+  let reactionTimer: number | null = null;
+
+  if (hint) {
+    toastEl.textContent = hint;
+    toastEl.classList.remove("hidden");
+  }
+
+  const syncSpriteSpecies = () => {
+    spriteEl.classList.toggle("pet-sprite--alt", state.species === "crystal");
+  };
+
+  const showCareIdleSprite = () => {
+    const st = growthStage(state.virtAge);
+    spriteEl.src = petAssetUrl(idleSpriteForStage(st));
+    syncSpriteSpecies();
+  };
+
+  const flashCareSprite = (pose: "eat" | "train" | "rest" | "clean") => {
+    if (reactionTimer != null) window.clearTimeout(reactionTimer);
+    spriteEl.src = petAssetUrl(PET_SPRITES[pose]);
+    syncSpriteSpecies();
+    reactionTimer = domSetTimeout(() => {
+      showCareIdleSprite();
+      reactionTimer = null;
+    }, 1700);
+  };
 
   const paint = () => {
     nickEl.value = state.nickname;
     moodEl.textContent = moodLine(state);
-    spriteEl.src = spriteSrc;
-    spriteEl.classList.toggle("pet-sprite--alt", state.species === "crystal");
+    const st = growthStage(state.virtAge);
+    ageLineEl.textContent = `${formatVirtAgeDays(state.virtAge)} \u00b7 ${growthLabel(st)}`;
+    stageEl.classList.toggle("pet-stage--senior", st === 4);
+    const sc = growthSpriteScale(st);
+    spriteEl.style.transform = `scale(${sc})`;
+    syncSpriteSpecies();
+    treatBtn.classList.toggle("hidden", !state.ill);
     const setBar = (key: keyof PetState, barId: string, valId: string) => {
       const v = Math.round(Number(state[key]) || 0);
       ($(`#${barId}`, root) as HTMLElement).style.width = `${clampPct(v)}%`;
@@ -200,30 +334,65 @@ function renderCare(root: HTMLElement) {
   nickEl.addEventListener("change", onNickCommit);
   nickEl.addEventListener("blur", onNickCommit);
 
-  $("#btn-care-back", root).addEventListener("click", () => renderLobby(root));
+  $("#btn-open-battle", root).addEventListener("click", () => {
+    if (reactionTimer != null) window.clearTimeout(reactionTimer);
+    renderLobby(root);
+  });
 
   root.querySelectorAll("[data-care]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const act = (btn as HTMLElement).dataset.care;
       toastEl.classList.add("hidden");
-      if (act === "feed") state = feed(state);
-      else if (act === "clean") state = cleanPet(state);
-      else if (act === "train") {
-        if (state.energy < 18) {
-          toastEl.textContent = UI.trainBlocked;
+      if (act === "feed") {
+        state = feed(state);
+        paint();
+        flashCareSprite("eat");
+        return;
+      }
+      if (act === "clean") {
+        state = cleanPet(state);
+        paint();
+        flashCareSprite("clean");
+        return;
+      }
+      if (act === "train") {
+        const need = state.ill ? 24 : 18;
+        if (state.energy < need) {
+          toastEl.textContent = state.ill ? UI.trainBlockedIll : UI.trainBlocked;
           toastEl.classList.remove("hidden");
-        } else {
-          state = trainPet(state);
+          paint();
+          return;
         }
-      } else if (act === "rest") state = restPet(state);
+        state = trainPet(state);
+        paint();
+        flashCareSprite("train");
+        return;
+      }
+      if (act === "treat") {
+        state = treatPet(state);
+        paint();
+        return;
+      }
+      if (act === "rest") {
+        state = restPet(state);
+        paint();
+        flashCareSprite("rest");
+        return;
+      }
       paint();
     });
   });
 
+  showCareIdleSprite();
   paint();
 }
 
 function renderLobby(root: HTMLElement) {
+  if (!loadPet().alive) {
+    flashCare(UI.deadPetBattleBlocked);
+    renderCare(root);
+    return;
+  }
   phase = "lobby";
   roomCode = null;
   role = null;
@@ -231,14 +400,12 @@ function renderLobby(root: HTMLElement) {
   root.replaceChildren(
     el(`
  <div class="shell">
-      <div class="status-pill"><span class="dot on"></span> LOCAL + ONLINE</div>
-      <h1>${UI.title}</h1>
+      <div class="status-pill"><span class="dot on"></span> ONLINE</div>
+      <h1>${UI.battleSection}</h1>
       <p class="tagline">${UI.hubSubtitle}</p>
       <div class="row" style="margin-bottom:14px">
-        <button type="button" class="btn btn-primary" id="btn-care">${UI.myPet}</button>
+        <button type="button" class="btn btn-secondary" id="btn-back-pet">${UI.backToPet}</button>
       </div>
-      <p class="care-section-label">${UI.battleSection}</p>
-      <p class="tagline" style="margin-top:4px">${UI.tagline}</p>
       <p class="toast ${import.meta.env.PROD && !socketServerUrl ? "" : "hidden"}" id="backend-hint" style="margin-bottom:10px">${UI.needBackend}</p>
       <div class="row" style="margin-bottom:12px">
         <button type="button" class="btn btn-primary" id="btn-host">${UI.createHost}</button>
@@ -252,7 +419,7 @@ function renderLobby(root: HTMLElement) {
   `),
   );
 
-  $("#btn-care", root).addEventListener("click", () => renderCare(root));
+  $("#btn-back-pet", root).addEventListener("click", () => renderCare(root));
 
   const toast = $("#lobby-toast", root);
   $("#btn-host", root).addEventListener("click", () => {
@@ -340,7 +507,7 @@ function renderWaiting(root: HTMLElement, code: string, isHost: boolean) {
     const t = $("#wait-toast", root);
     t.textContent = UI.peerLeft;
     t.classList.remove("hidden");
-    window.setTimeout(() => renderLobby(root), 1200);
+    window.setTimeout(() => renderCare(root), 1200);
   };
 
   s.on("linked", goBattle);
@@ -356,8 +523,14 @@ function renderBattle(root: HTMLElement) {
   stopTick();
 
   const myPet = loadPet();
+  if (!myPet.alive) {
+    flashCare(UI.deadPetBattleBlocked);
+    renderCare(root);
+    return;
+  }
   const foeSpecies: PetSpecies = myPet.species === "volt" ? "crystal" : "volt";
-  const battleSpriteSrc = `${import.meta.env.BASE_URL}pets/pet-pixel-original-1.png`;
+  const battleSt = growthStage(myPet.virtAge);
+  const battleSpriteSrc = petAssetUrl(idleSpriteForStage(battleSt));
 
   root.replaceChildren(
     el(`
@@ -526,7 +699,7 @@ function renderBattle(root: HTMLElement) {
     s.emit("forfeit");
   });
 
-  tickTimer = window.setInterval(() => {
+  tickTimer = domSetInterval(() => {
     const left = Math.max(0, deadlineTs - Date.now());
     timerEl.textContent = `${(left / 1000).toFixed(1)}s`;
   }, 100);
@@ -537,7 +710,7 @@ function showEndModal(root: HTMLElement, title: string) {
     <div class="modal-overlay" id="end-modal">
       <div class="modal">
         <h2>${title}</h2>
-        <p>\u518d\u958b\u4e00\u623f\u5373\u53ef\u7e7c\u7e8c\u5c0d\u6230</p>
+        <p>${UI.endModalHint}</p>
         <button type="button" class="btn btn-primary" id="btn-home">${UI.again}</button>
       </div>
     </div>
@@ -547,7 +720,7 @@ function showEndModal(root: HTMLElement, title: string) {
     overlay.remove();
     socket?.disconnect();
     socket = null;
-    renderLobby(root);
+    renderCare(root);
   });
 }
 
@@ -555,8 +728,8 @@ function boot() {
   const root = $("#app");
   const params = new URLSearchParams(location.search);
   const preJoin = params.get("join")?.toUpperCase().trim();
-  renderLobby(root);
   if (preJoin && preJoin.length >= 4) {
+    renderLobby(root);
     window.setTimeout(() => {
       const input = document.getElementById("room-input") as HTMLInputElement | null;
       if (input) input.value = preJoin;
@@ -575,6 +748,8 @@ function boot() {
         renderWaiting(root, preJoin, false);
       });
     }, 200);
+  } else {
+    renderCare(root);
   }
 }
 

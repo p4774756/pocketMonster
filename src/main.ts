@@ -4,7 +4,6 @@ import {
   feed,
   loadPet,
   moodLine,
-  petEmoji,
   renamePet,
   restPet,
   trainPet,
@@ -38,7 +37,7 @@ const UI = {
   waitConnect: "\u7b49\u5f85\u5c0d\u65b9\u63a5\u4e0a\u9023\u7dda\u2026",
   syncing: "\u9023\u7dda\u540c\u6b65\u4e2d\u2026",
   roomCodeLabel: "\u623f\u9593\u78bc",
-  copyLink: "\u8907\u88fd\u9023\u7d50",
+  copyRoomCode: "\u8907\u88fd\u623f\u9593\u78bc",
   copied: "\u5df2\u8907\u88fd",
   linked: "\u9023\u7dda\u6210\u529f\uff01",
   round: (n: number) => `\u7b2c ${n} \u56de\u5408`,
@@ -71,6 +70,7 @@ const UI = {
   actionTrain: "\u8a13\u7df4",
   actionRest: "\u4f11\u606f",
   trainBlocked: "\u9ad4\u529b\u4e0d\u8db3\uff0c\u5148\u4f11\u606f\u5427",
+  cancelWait: "\u53d6\u6d88",
 };
 
 const socketServerUrl = (import.meta.env.VITE_SOCKET_URL || "").replace(/\/$/, "");
@@ -98,6 +98,17 @@ function stopTick() {
   }
 }
 
+function cancelWaitingAndReturn(root: HTMLElement) {
+  const s = socket;
+  if (s) {
+    s.removeAllListeners("linked");
+    s.removeAllListeners("peer_left");
+    s.disconnect();
+  }
+  socket = null;
+  renderLobby(root);
+}
+
 function renderCare(root: HTMLElement) {
   let state: PetState = loadPet();
 
@@ -107,7 +118,7 @@ function renderCare(root: HTMLElement) {
       <button type="button" class="btn btn-secondary care-back" id="btn-care-back">${UI.backHome}</button>
       <div class="screen-bezel care-bezel">
         <div class="pet-stage">
-          <div class="emoji pet-emoji-lg" id="pet-emoji"></div>
+          <img class="pet-sprite" id="pet-sprite" alt="" width="96" height="96" decoding="async" />
           <input class="pet-nick field" id="pet-nick" maxlength="12" autocomplete="off" />
         </div>
         <p class="pet-mood" id="pet-mood"></p>
@@ -152,13 +163,15 @@ function renderCare(root: HTMLElement) {
 
   const nickEl = $("#pet-nick", root) as HTMLInputElement;
   const moodEl = $("#pet-mood", root);
-  const emojiEl = $("#pet-emoji", root);
+  const spriteEl = $("#pet-sprite", root) as HTMLImageElement;
   const toastEl = $("#care-toast", root);
+  const spriteSrc = `${import.meta.env.BASE_URL}pets/pet-pixel-original-1.png`;
 
   const paint = () => {
     nickEl.value = state.nickname;
     moodEl.textContent = moodLine(state);
-    emojiEl.textContent = petEmoji(state.species);
+    spriteEl.src = spriteSrc;
+    spriteEl.classList.toggle("pet-sprite--alt", state.species === "crystal");
     const setBar = (key: keyof PetState, barId: string, valId: string) => {
       const v = Math.round(Number(state[key]) || 0);
       ($(`#${barId}`, root) as HTMLElement).style.width = `${clampPct(v)}%`;
@@ -274,7 +287,6 @@ function renderLobby(root: HTMLElement) {
 
 function renderWaiting(root: HTMLElement, code: string, isHost: boolean) {
   phase = "waiting";
-  const shareUrl = `${location.origin}${location.pathname}?join=${encodeURIComponent(code)}`;
   root.replaceChildren(
     el(`
     <div class="shell">
@@ -286,9 +298,12 @@ function renderWaiting(root: HTMLElement, code: string, isHost: boolean) {
       </div>
       ${
         isHost
-          ? `<button type="button" class="btn btn-secondary" id="btn-copy">${UI.copyLink}</button>`
+          ? `<button type="button" class="btn btn-secondary" id="btn-copy">${UI.copyRoomCode}</button>`
           : ""
       }
+      <div class="row" style="margin-top:14px">
+        <button type="button" class="btn btn-secondary" id="btn-wait-cancel">${UI.cancelWait}</button>
+      </div>
       <p class="toast hidden" id="wait-toast"></p>
     </div>
   `),
@@ -297,10 +312,10 @@ function renderWaiting(root: HTMLElement, code: string, isHost: boolean) {
   if (isHost) {
     $("#btn-copy", root).addEventListener("click", async () => {
       try {
-        await navigator.clipboard.writeText(shareUrl);
+        await navigator.clipboard.writeText(code);
         $("#btn-copy", root).textContent = UI.copied;
- window.setTimeout(() => {
-          ($("#btn-copy", root) as HTMLButtonElement).textContent = UI.copyLink;
+        window.setTimeout(() => {
+          ($("#btn-copy", root) as HTMLButtonElement).textContent = UI.copyRoomCode;
         }, 2000);
       } catch {
         /* ignore */
@@ -323,6 +338,10 @@ function renderWaiting(root: HTMLElement, code: string, isHost: boolean) {
 
   s.on("linked", goBattle);
   s.on("peer_left", onPeerLeft);
+
+  $("#btn-wait-cancel", root).addEventListener("click", () => {
+    cancelWaitingAndReturn(root);
+  });
 }
 
 function renderBattle(root: HTMLElement) {

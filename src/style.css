@@ -365,10 +365,18 @@ footer.note {
   margin-bottom: 8px;
 }
 
-.pet-emoji-lg {
-  font-size: 3.25rem;
-  line-height: 1.2;
-  margin-bottom: 8px;
+.pet-sprite {
+  display: block;
+  margin: 0 auto 8px;
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.pet-sprite--alt {
+  filter: hue-rotate(195deg) saturate(1.15) brightness(1.05);
 }
 
 .pet-nick {

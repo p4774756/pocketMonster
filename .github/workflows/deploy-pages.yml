@@ -24,6 +24,16 @@ jobs:
 
       - run: npm ci
 
+      - name: Verify secret is injected
+        env:
+          VITE_SOCKET_URL: ${{ secrets.SOCKET_SERVER_URL }}
+        run: |
+          if [ -z "$VITE_SOCKET_URL" ]; then
+            echo "SOCKET_SERVER_URL is EMPTY"
+            exit 1
+          fi
+          echo "SOCKET_SERVER_URL detected"
+
       - name: Build static site
         env:
           VITE_SOCKET_URL: ${{ secrets.SOCKET_SERVER_URL }}

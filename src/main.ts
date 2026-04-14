@@ -1,4 +1,15 @@
 import { io, Socket } from "socket.io-client";
+import {
+  cleanPet,
+  feed,
+  loadPet,
+  moodLine,
+  petEmoji,
+  renamePet,
+  restPet,
+  trainPet,
+  type PetState,
+} from "./pet";
 import "./style.css";
 
 type Move = "strike" | "guard" | "charge";
@@ -45,6 +56,21 @@ const UI = {
   errGeneric: "\u9023\u7dda\u5931\u6557\uff0c\u8acb\u91cd\u8a66",
   needBackend:
     "\u5c0d\u6230\u9700\u8981\u5f8c\u7aef\uff1a\u8acb\u8a2d\u5b9a VITE_SOCKET_URL \u5f8c\u91cd\u65b0\u6253\u5305\uff0c\u6216\u53c3\u8003 deploy \u8aaa\u660e\u3002",
+  hubSubtitle:
+    "\u990a\u6210\u8207\u9023\u7dda\u5c0d\u6230\uff08\u990a\u6210\u8cc7\u6599\u50c5\u5b58\u5728\u6b64\u88dd\u7f6e\uff09",
+  myPet: "\u6211\u7684\u5925\u4f34",
+  battleSection: "\u9023\u7dda\u5c0d\u6230",
+  backHome: "\u56de\u9996\u9801",
+  statHunger: "\u98fd\u98df",
+  statHappy: "\u5fc3\u60c5",
+  statClean: "\u6e05\u6f54",
+  statEnergy: "\u9ad4\u529b",
+  statPower: "\u8a13\u7df4",
+  actionFeed: "\u9935\u98df",
+  actionClean: "\u6e05\u7406",
+  actionTrain: "\u8a13\u7df4",
+  actionRest: "\u4f11\u606f",
+  trainBlocked: "\u9ad4\u529b\u4e0d\u8db3\uff0c\u5148\u4f11\u606f\u5427",
 };
 
 const socketServerUrl = (import.meta.env.VITE_SOCKET_URL || "").replace(/\/$/, "");
@@ -72,6 +98,111 @@ function stopTick() {
   }
 }
 
+function renderCare(root: HTMLElement) {
+  let state: PetState = loadPet();
+
+  root.replaceChildren(
+    el(`
+    <div class="shell care-shell">
+      <button type="button" class="btn btn-secondary care-back" id="btn-care-back">${UI.backHome}</button>
+      <div class="screen-bezel care-bezel">
+        <div class="pet-stage">
+          <div class="emoji pet-emoji-lg" id="pet-emoji"></div>
+          <input class="pet-nick field" id="pet-nick" maxlength="12" autocomplete="off" />
+        </div>
+        <p class="pet-mood" id="pet-mood"></p>
+        <div class="care-stats">
+          <div class="care-stat">
+            <span class="care-stat-label">${UI.statHunger}</span>
+            <div class="hp-wrap care-bar"><div class="hp-fill care-hunger" id="bar-hunger" style="width:0%"></div></div>
+            <span class="care-stat-val" id="val-hunger">0</span>
+          </div>
+          <div class="care-stat">
+            <span class="care-stat-label">${UI.statHappy}</span>
+            <div class="hp-wrap care-bar"><div class="hp-fill care-happy" id="bar-happy" style="width:0%"></div></div>
+            <span class="care-stat-val" id="val-happy">0</span>
+          </div>
+          <div class="care-stat">
+            <span class="care-stat-label">${UI.statClean}</span>
+            <div class="hp-wrap care-bar"><div class="hp-fill care-clean" id="bar-clean" style="width:0%"></div></div>
+            <span class="care-stat-val" id="val-clean">0</span>
+          </div>
+          <div class="care-stat">
+            <span class="care-stat-label">${UI.statEnergy}</span>
+            <div class="hp-wrap care-bar"><div class="hp-fill care-energy" id="bar-energy" style="width:0%"></div></div>
+            <span class="care-stat-val" id="val-energy">0</span>
+          </div>
+          <div class="care-stat">
+            <span class="care-stat-label">${UI.statPower}</span>
+            <div class="hp-wrap care-bar"><div class="hp-fill care-power" id="bar-power" style="width:0%"></div></div>
+            <span class="care-stat-val" id="val-power">0</span>
+          </div>
+        </div>
+        <div class="care-actions">
+          <button type="button" class="move-btn" data-care="feed">${UI.actionFeed}</button>
+          <button type="button" class="move-btn" data-care="clean">${UI.actionClean}</button>
+          <button type="button" class="move-btn" data-care="train">${UI.actionTrain}</button>
+          <button type="button" class="move-btn" data-care="rest">${UI.actionRest}</button>
+        </div>
+        <p class="toast care-hint hidden" id="care-toast"></p>
+      </div>
+    </div>
+  `),
+  );
+
+  const nickEl = $("#pet-nick", root) as HTMLInputElement;
+  const moodEl = $("#pet-mood", root);
+  const emojiEl = $("#pet-emoji", root);
+  const toastEl = $("#care-toast", root);
+
+  const paint = () => {
+    nickEl.value = state.nickname;
+    moodEl.textContent = moodLine(state);
+    emojiEl.textContent = petEmoji(state.species);
+    const setBar = (key: keyof PetState, barId: string, valId: string) => {
+      const v = Math.round(Number(state[key]) || 0);
+      ($(`#${barId}`, root) as HTMLElement).style.width = `${clampPct(v)}%`;
+      $(`#${valId}`, root).textContent = String(v);
+    };
+    setBar("hunger", "bar-hunger", "val-hunger");
+    setBar("happy", "bar-happy", "val-happy");
+    setBar("clean", "bar-clean", "val-clean");
+    setBar("energy", "bar-energy", "val-energy");
+    setBar("power", "bar-power", "val-power");
+  };
+
+  const clampPct = (n: number) => Math.min(100, Math.max(0, n));
+
+  const onNickCommit = () => {
+    state = renamePet(state, nickEl.value);
+    paint();
+  };
+  nickEl.addEventListener("change", onNickCommit);
+  nickEl.addEventListener("blur", onNickCommit);
+
+  $("#btn-care-back", root).addEventListener("click", () => renderLobby(root));
+
+  root.querySelectorAll("[data-care]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const act = (btn as HTMLElement).dataset.care;
+      toastEl.classList.add("hidden");
+      if (act === "feed") state = feed(state);
+      else if (act === "clean") state = cleanPet(state);
+      else if (act === "train") {
+        if (state.energy < 18) {
+          toastEl.textContent = UI.trainBlocked;
+          toastEl.classList.remove("hidden");
+        } else {
+          state = trainPet(state);
+        }
+      } else if (act === "rest") state = restPet(state);
+      paint();
+    });
+  });
+
+  paint();
+}
+
 function renderLobby(root: HTMLElement) {
   phase = "lobby";
   roomCode = null;
@@ -80,9 +211,14 @@ function renderLobby(root: HTMLElement) {
   root.replaceChildren(
     el(`
  <div class="shell">
-      <div class="status-pill"><span class="dot on"></span> ONLINE</div>
+      <div class="status-pill"><span class="dot on"></span> LOCAL + ONLINE</div>
       <h1>${UI.title}</h1>
-      <p class="tagline">${UI.tagline}</p>
+      <p class="tagline">${UI.hubSubtitle}</p>
+      <div class="row" style="margin-bottom:14px">
+        <button type="button" class="btn btn-primary" id="btn-care">${UI.myPet}</button>
+      </div>
+      <p class="care-section-label">${UI.battleSection}</p>
+      <p class="tagline" style="margin-top:4px">${UI.tagline}</p>
       <p class="toast ${import.meta.env.PROD && !socketServerUrl ? "" : "hidden"}" id="backend-hint" style="margin-bottom:10px">${UI.needBackend}</p>
       <div class="row" style="margin-bottom:12px">
         <button type="button" class="btn btn-primary" id="btn-host">${UI.createHost}</button>
@@ -95,6 +231,8 @@ function renderLobby(root: HTMLElement) {
     </div>
   `),
   );
+
+  $("#btn-care", root).addEventListener("click", () => renderCare(root));
 
   const toast = $("#lobby-toast", root);
   $("#btn-host", root).addEventListener("click", () => {

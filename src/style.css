@@ -332,3 +332,117 @@ footer.note {
   background: linear-gradient(180deg, #c0c0c0, #6a6a6a);
   border-radius: 2px;
 }
+
+.care-section-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 2px;
+}
+
+.care-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.care-back {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  min-width: auto;
+  padding: 10px 16px;
+  font-size: 0.85rem;
+}
+
+.care-bezel {
+  min-height: 360px;
+}
+
+.pet-stage {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.pet-emoji-lg {
+  font-size: 3.25rem;
+  line-height: 1.2;
+  margin-bottom: 8px;
+}
+
+.pet-nick {
+  letter-spacing: 0.08em;
+  font-size: 0.95rem !important;
+  padding: 10px 12px !important;
+}
+
+.pet-mood {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #c4c4d0;
+  margin: 0 0 14px;
+  min-height: 2.6em;
+}
+
+.care-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.care-stat {
+  display: grid;
+  grid-template-columns: 52px 1fr 36px;
+  align-items: center;
+  gap: 8px;
+}
+
+.care-stat-label {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.care-bar {
+  margin-top: 0;
+}
+
+.care-stat-val {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-align: right;
+}
+
+.care-hunger {
+  background: linear-gradient(90deg, #e8a04a, #c9782a);
+}
+
+.care-happy {
+  background: linear-gradient(90deg, #6bc2f0, #3d8ec9);
+}
+
+.care-clean {
+  background: linear-gradient(90deg, #9de0a8, #4caf6a);
+}
+
+.care-energy {
+  background: linear-gradient(90deg, #c9b3ff, #8b6fd4);
+}
+
+.care-power {
+  background: linear-gradient(90deg, #f06b6b, var(--accent));
+}
+
+.care-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.care-hint {
+  margin-top: 10px;
+  margin-bottom: 0;
+  text-align: center;
+}

@@ -1,0 +1,10 @@
+# Render.com: New Web Service from this repo, or use Blueprint.
+# After deploy, set GitHub repo secret SOCKET_SERVER_URL to this service URL (https://....onrender.com)
+services:
+  - type: web
+    name: pocketmonster-api
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: SERVE_STATIC=0 NODE_ENV=production node server/index.js
+    healthCheckPath: /health

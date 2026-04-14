@@ -1,0 +1,24 @@
+{
+  "name": "pocket-pet-battle",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "node server/index.js",
+    "dev:client": "vite --port 5173 --host",
+    "build": "vite build",
+    "start": "NODE_ENV=production node server/index.js",
+    "start:api": "SERVE_STATIC=0 NODE_ENV=production node server/index.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.3"
+  }
+}

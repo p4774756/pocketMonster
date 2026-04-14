@@ -385,8 +385,8 @@ footer.note {
 }
 
 .care-top-actions .btn {
-  flex: 1;
-  min-width: 100%;
+  flex: 1 1 140px;
+  min-width: 0;
 }
 
 .care-back {

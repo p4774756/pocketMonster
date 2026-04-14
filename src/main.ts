@@ -102,6 +102,9 @@ const UI = {
   battleSection: "\u9023\u7dda\u5c0d\u6230",
   openBattle: "\u9023\u7dda\u5c0d\u6230",
   backToPet: "\u56de\u5230\u6211\u7684\u5925\u4f34",
+  restartFromEgg: "\u5f9e\u86cb\u91cd\u65b0\u990a",
+  confirmRestartFromEgg:
+    "\u78ba\u5b9a\u8981\u5f9e\u86cb\u91cd\u65b0\u958b\u59cb\uff1f\u73fe\u6709\u990a\u6210\u9032\u5ea6\u6703\u5168\u90e8\u6e05\u9664\u4e14\u7121\u6cd5\u9084\u539f\u3002",
   statHunger: "\u98fd\u98df",
   statHappy: "\u5fc3\u60c5",
   statClean: "\u6e05\u6f54",
@@ -221,6 +224,7 @@ function renderCare(root: HTMLElement) {
     <div class="shell care-shell">
       <div class="row care-top-actions">
         <button type="button" class="btn btn-primary" id="btn-open-battle">${UI.openBattle}</button>
+        <button type="button" class="btn btn-secondary" id="btn-restart-egg">${UI.restartFromEgg}</button>
       </div>
       <div class="screen-bezel care-bezel">
         <div class="pet-stage" id="pet-stage">
@@ -337,6 +341,16 @@ function renderCare(root: HTMLElement) {
   $("#btn-open-battle", root).addEventListener("click", () => {
     if (reactionTimer != null) window.clearTimeout(reactionTimer);
     renderLobby(root);
+  });
+
+  $("#btn-restart-egg", root).addEventListener("click", () => {
+    if (!window.confirm(UI.confirmRestartFromEgg)) return;
+    if (reactionTimer != null) {
+      window.clearTimeout(reactionTimer);
+      reactionTimer = null;
+    }
+    resetNewPet(state.species);
+    renderCare(root);
   });
 
   root.querySelectorAll("[data-care]").forEach((btn) => {

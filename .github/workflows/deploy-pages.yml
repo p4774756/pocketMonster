@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-deploy:
+  build:
     runs-on: ubuntu-latest
     env:
       # Until third-party actions ship Node 24 builds, opt JS actions off deprecated Node 20.

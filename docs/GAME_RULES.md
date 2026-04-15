@@ -2,7 +2,7 @@
 
 給玩家與維護者：養成與連線對戰的規則摘要。**實作以程式為準**；常數定義在 `src/pet.ts`、`src/main.ts`、`server/index.js`。
 
-**維護注意**：本檔由 `src/gameRulesContent.ts` 以 `?raw` 匯入，遊戲內「遊戲說明」彈窗與此檔同步。**凡修改本檔或與規則相關的程式行為**，請一併檢查並更新下方「改規則時要同步的文件」一節所列項目（避免文件與實作脫節）。
+**維護注意**：本檔由 `src/gameRulesContent.ts` 以 `?raw` 匯入；遊戲內「遊戲說明」彈窗由 **`getGameRulesPlayerHtml()`**（同檔）以 **`marked`** 轉成易讀版面，**僅節錄「一、養成」與「二、對戰」**（不含第三節以後的維護者內容）。**凡修改本檔或與規則相關的程式行為**，請一併檢查並更新下方「改規則時要同步的文件」一節所列項目（避免文件與實作脫節）。
 
 ---
 
@@ -137,7 +137,7 @@
 | 寵物 PNG 批次壓縮 | `scripts/optimize-pet-pngs.mjs`（`npm run optimize:pets`） |
 | 對戰結算、房間、計時 | `server/index.js` |
 | 專案架構給 agent | `AGENTS.md` |
-| 遊戲內規則彈窗內容 | `src/gameRulesContent.ts`（僅 re-export 本檔，**改規則請編輯本 MD**） |
+| 遊戲內規則彈窗內容 | `src/gameRulesContent.ts`（`?raw` 本檔 + `getGameRulesPlayerHtml` 節錄並轉 HTML；**改規則請編輯本 MD**） |
 
 ---
 

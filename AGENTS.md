@@ -2,7 +2,7 @@
 
 本文件給之後的 coding agent 用：說明架構、如何跑起來、哪裡改什麼、部署與資產規範。
 
-**遊戲規則（養成 + 對戰）** 的完整說明寫在 **`docs/GAME_RULES.md`**（遊戲內說明彈窗同檔來源）；改平衡或寫給玩家說明時請以該檔與程式為準。**改 `GAME_RULES.md` 或規則相關程式時**，請依該檔 **§五** 同步更新 Socket 協定／`deploy.env.example`／`IMPROVEMENT_BACKLOG.md` 等（見 `.cursor/rules/pocket-pet-game-rules-sync.mdc`）。
+**遊戲規則（養成 + 對戰）** 的完整說明寫在 **`docs/GAME_RULES.md`**；遊戲內「遊戲說明」彈窗由 `src/gameRulesContent.ts` 的 **`getGameRulesPlayerHtml()`**（`marked`）自同檔節錄第一、二節並排版，非原始 Markdown。改平衡或寫給玩家說明時請以該檔與程式為準。**改 `GAME_RULES.md` 或規則相關程式時**，請依該檔 **§五** 同步更新 Socket 協定／`deploy.env.example`／`IMPROVEMENT_BACKLOG.md` 等（見 `.cursor/rules/pocket-pet-game-rules-sync.mdc`）。
 
 ## 專案是什麼
 

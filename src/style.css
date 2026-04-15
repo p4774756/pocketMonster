@@ -853,7 +853,7 @@ h1 {
 }
 
 .modal--rules {
-  max-width: min(420px, 94vw);
+  max-width: min(480px, 94vw);
   width: 100%;
   text-align: left;
   padding: 20px 18px 18px;
@@ -865,7 +865,7 @@ h1 {
 }
 
 .rules-modal-scroll {
-  max-height: min(62vh, 420px);
+  max-height: min(62vh, 460px);
   overflow: auto;
   margin: 0 0 16px;
   padding: 12px 14px;
@@ -875,14 +875,117 @@ h1 {
   -webkit-overflow-scrolling: touch;
 }
 
-.rules-modal-pre {
+.rules-modal-body {
   margin: 0;
   font-family: var(--font-sans);
-  font-size: 0.78rem;
-  line-height: 1.55;
-  white-space: pre-wrap;
-  word-break: break-word;
+  font-size: 0.84rem;
+  line-height: 1.6;
   color: var(--text-soft);
+  word-break: break-word;
+}
+
+.rules-modal-body .rules-lead {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.18);
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.rules-modal-body h3 {
+  margin: 20px 0 10px;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+
+.rules-modal-body h3:first-of-type {
+  margin-top: 0;
+}
+
+.rules-modal-body h4 {
+  margin: 14px 0 8px;
+  font-size: 0.92rem;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.rules-modal-body p {
+  margin: 0 0 10px;
+  color: var(--text-soft);
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.rules-modal-body ul,
+.rules-modal-body ol {
+  margin: 0 0 12px;
+  padding-left: 1.35em;
+}
+
+.rules-modal-body li {
+  margin: 0 0 6px;
+}
+
+.rules-modal-body li:last-child {
+  margin-bottom: 0;
+}
+
+.rules-modal-body hr {
+  margin: 18px 0;
+  border: none;
+  border-top: 1px solid var(--edge);
+}
+
+.rules-modal-body code {
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+  padding: 0.12em 0.35em;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text);
+}
+
+.rules-modal-body .table-wrap {
+  margin: 0 0 14px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--edge);
+}
+
+.rules-modal-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.rules-modal-body th,
+.rules-modal-body td {
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--edge);
+}
+
+.rules-modal-body th {
+  font-weight: 650;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.rules-modal-body tr:last-child td {
+  border-bottom: none;
+}
+
+.rules-modal-body strong {
+  font-weight: 650;
+  color: var(--text);
 }
 
 .modal--rules .btn {
@@ -1578,8 +1681,38 @@ html[data-theme="retro"] .rules-modal-scroll {
   border-color: rgba(52, 211, 153, 0.28);
 }
 
-html[data-theme="retro"] .rules-modal-pre {
-  color: #a7f3d0;
+html[data-theme="retro"] .rules-modal-body {
+  color: #86efac;
+}
+
+html[data-theme="retro"] .rules-modal-body .rules-lead {
+  background: rgba(52, 211, 153, 0.12);
+  border-color: rgba(52, 211, 153, 0.35);
+  color: #ecfdf5;
+}
+
+html[data-theme="retro"] .rules-modal-body h3,
+html[data-theme="retro"] .rules-modal-body h4 {
+  color: #ecfdf5;
+}
+
+html[data-theme="retro"] .rules-modal-body p,
+html[data-theme="retro"] .rules-modal-body li {
+  color: #86efac;
+}
+
+html[data-theme="retro"] .rules-modal-body th {
+  background: rgba(6, 78, 59, 0.45);
+  color: #d1fae5;
+}
+
+html[data-theme="retro"] .rules-modal-body code {
+  background: rgba(6, 78, 59, 0.45);
+  color: #6ee7b7;
+}
+
+html[data-theme="retro"] .rules-modal-body strong {
+  color: #ecfdf5;
 }
 
 html[data-theme="retro"] .shell {
@@ -1845,8 +1978,17 @@ html[data-theme="minimal"] .rules-modal-scroll {
   background: #fff;
 }
 
-html[data-theme="minimal"] .rules-modal-pre {
+html[data-theme="minimal"] .rules-modal-body {
   color: #0a0a0a;
+}
+
+html[data-theme="minimal"] .rules-modal-body .rules-lead {
+  background: #f5f5f5;
+  border-color: #0a0a0a;
+}
+
+html[data-theme="minimal"] .rules-modal-body th {
+  background: #eee;
 }
 
 html[data-theme="minimal"] .shell {

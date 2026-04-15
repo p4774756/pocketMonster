@@ -30,7 +30,7 @@ import {
 } from "./pet";
 import "./fonts.css";
 import "./style.css";
-import { GAME_RULES_MARKDOWN } from "./gameRulesContent";
+import { getGameRulesPlayerHtml } from "./gameRulesContent";
 import { mountThemeBar } from "./theme";
 
 type Move = "strike" | "guard" | "charge";
@@ -1662,16 +1662,16 @@ function showGameRulesModal(): void {
   const overlay = el(`
     <div class="modal-overlay rules-modal-overlay" id="rules-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="rules-modal-title">
       <div class="modal modal--rules">
-        <h2 id="rules-modal-title">\u904a\u6232\u898f\u5247\u8aaa\u660e</h2>
+        <h2 id="rules-modal-title">\u904a\u6232\u8aaa\u660e</h2>
         <div class="rules-modal-scroll">
-          <pre class="rules-modal-pre"></pre>
+          <div class="rules-modal-body"></div>
         </div>
         <button type="button" class="btn btn-primary" id="btn-rules-close">\u95dc\u9589</button>
       </div>
     </div>
   `);
-  ($(".rules-modal-pre", overlay) as HTMLPreElement).textContent =
-    GAME_RULES_MARKDOWN;
+  ($(".rules-modal-body", overlay) as HTMLDivElement).innerHTML =
+    getGameRulesPlayerHtml();
 
   const close = () => {
     overlay.remove();

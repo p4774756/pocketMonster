@@ -12,12 +12,22 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Noto+Sans+TC:wght@500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,500&family=JetBrains+Mono:wght@500;700&family=Noto+Sans+TC:wght@500;700&display=swap"
       rel="stylesheet"
     />
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app" class="app-root">
+      <header class="theme-bar" aria-label="介面風格">
+        <span class="theme-bar-label">風格</span>
+        <select id="theme-select" class="theme-select" aria-label="切換介面風格">
+          <option value="soft">柔和漸層</option>
+          <option value="retro">復古液晶</option>
+          <option value="minimal">極簡黑白</option>
+        </select>
+      </header>
+      <main id="view-root" class="view-root"></main>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

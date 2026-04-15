@@ -1,4 +1,4 @@
-export type PetSpecies = "volt" | "crystal";
+export type PetSpecies = "volt" | "crystal" | "chicken" | "cat";
 
 export type DeathCause = "old" | "neglect" | "illness";
 
@@ -11,6 +11,8 @@ export interface PetState {
   energy: number;
   power: number;
   lastTs: number;
+  /** Until true, the pet is an egg (sprite + softer decay, no battle). */
+  hatched: boolean;
   /** Virtual days lived (float); advances with real time. */
   virtAge: number;
   ill: boolean;
@@ -36,6 +38,9 @@ const STARVE_DEATH_HOURS = 44;
 /** Virtual age beyond which extra illness-death checks apply. */
 const FRAIL_AGE = 52;
 
+/** Virtual days of warmth / time before the sprite leaves the egg. */
+export const EGG_HATCH_VIRT = 0.32;
+
 const DEFAULT: PetState = {
   species: "volt",
   nickname: "\u96f7\u866b\u7378",
@@ -45,6 +50,7 @@ const DEFAULT: PetState = {
   energy: 88,
   power: 12,
   lastTs: Date.now(),
+  hatched: true,
   virtAge: 22,
   ill: false,
   illDays: 0,
@@ -54,6 +60,37 @@ const DEFAULT: PetState = {
 
 function clamp(n: number, lo: number, hi: number) {
   return Math.min(hi, Math.max(lo, n));
+}
+
+function parseSpecies(raw: unknown): PetSpecies {
+  if (raw === "volt" || raw === "crystal" || raw === "chicken" || raw === "cat") {
+    return raw;
+  }
+  return "volt";
+}
+
+const ALL_SPECIES: PetSpecies[] = ["volt", "crystal", "chicken", "cat"];
+
+/** PvP 對手：隨機挑一種與己方不同的物種。 */
+export function randomFoeSpecies(yours: PetSpecies): PetSpecies {
+  const pool = ALL_SPECIES.filter((s) => s !== yours);
+  return pool[Math.floor(Math.random() * pool.length)]!;
+}
+
+export type CarePose = "eat" | "train" | "rest" | "clean";
+
+export function carePoseFile(species: PetSpecies, pose: CarePose): string {
+  const suf =
+    pose === "eat"
+      ? "eat"
+      : pose === "train"
+        ? "train"
+        : pose === "rest"
+          ? "rest"
+          : "clean";
+  if (species === "cat") return `cat-${suf}.png`;
+  if (species === "chicken") return `chicken-${suf}.png`;
+  return `pet-${suf}.png`;
 }
 
 function mergeDefaults(raw: Partial<PetState>): PetState {
@@ -68,8 +105,10 @@ function mergeDefaults(raw: Partial<PetState>): PetState {
         ? 22
         : DEFAULT.virtAge;
   const alive = raw.alive === false ? false : true;
+  /** Legacy saves omit `hatched`; treat as already born. */
+  const hatched = raw.hatched === false ? false : true;
   return {
-    species: raw.species === "crystal" ? "crystal" : "volt",
+    species: parseSpecies(raw.species),
     nickname:
       typeof raw.nickname === "string" && raw.nickname.trim().length > 0
         ? raw.nickname.trim().slice(0, 12)
@@ -80,6 +119,7 @@ function mergeDefaults(raw: Partial<PetState>): PetState {
     energy: clamp(Number(raw.energy) || DEFAULT.energy, 0, 100),
     power: clamp(Number(raw.power) || DEFAULT.power, 0, 100),
     lastTs: Number(raw.lastTs) || Date.now(),
+    hatched,
     virtAge,
     ill: alive && Boolean(raw.ill),
     illDays: alive ? clamp(Number(raw.illDays) || 0, 0, 999) : 0,
@@ -130,8 +170,35 @@ export function growthSpriteScale(stage: 0 | 1 | 2 | 3 | 4): number {
  * Idle art per stage (`public/pets/pet-idle-s0.png` … `s4`).
  * Replace files with your own pixel art; placeholders ship as copies of the base idle.
  */
-export function idleSpriteForStage(stage: 0 | 1 | 2 | 3 | 4): string {
+export function idleSpriteForSpeciesStage(
+  species: PetSpecies,
+  stage: 0 | 1 | 2 | 3 | 4,
+): string {
+  if (species === "cat") return `cat-idle-s${stage}.png`;
+  if (species === "chicken") return `chicken-idle-s${stage}.png`;
   return `pet-idle-s${stage}.png`;
+}
+
+/** 舊版怪獸 idle（僅 volt 檔名）；請優先使用 `idleSpriteForSpeciesStage`。 */
+export function idleSpriteForStage(stage: 0 | 1 | 2 | 3 | 4): string {
+  return idleSpriteForSpeciesStage("volt", stage);
+}
+
+export function eggSpriteForSpecies(species: PetSpecies): string {
+  if (species === "crystal") return "pet-egg-crystal.png";
+  if (species === "chicken") return "pet-egg-chicken.png";
+  return "pet-egg-volt.png";
+}
+
+/** Idle image on the care screen (egg until hatched). */
+export function careIdleSpriteFile(p: PetState): string {
+  if (p.alive && !p.hatched) return eggSpriteForSpecies(p.species);
+  return idleSpriteForSpeciesStage(p.species, growthStage(p.virtAge));
+}
+
+export function growthLabelForPet(p: PetState): string {
+  if (p.alive && !p.hatched) return "\u536f\u5316\u4e2d";
+  return growthLabel(growthStage(p.virtAge));
 }
 
 export function growthLabel(stage: 0 | 1 | 2 | 3 | 4): string {
@@ -148,6 +215,12 @@ export function growthLabel(stage: 0 | 1 | 2 | 3 | 4): string {
 export function formatVirtAgeDays(virtAge: number): string {
   const d = Math.floor(virtAge);
   return `\u7b2c ${d} \u865b\u64ec\u65e5`;
+}
+
+function tryHatchEgg(p: PetState): PetState {
+  if (p.hatched || !p.alive) return p;
+  if (p.virtAge >= EGG_HATCH_VIRT) return { ...p, hatched: true, ill: false, illDays: 0 };
+  return p;
 }
 
 function applyLifecycleAndDecay(p: PetState): PetState {
@@ -167,36 +240,43 @@ function applyLifecycleAndDecay(p: PetState): PetState {
     clean,
     energy,
   } = p;
+  const egg = p.alive && !p.hatched;
   const dAge = hours / HOURS_PER_VIRT_DAY;
   virtAge += dAge;
 
   const illMul = ill ? 1.38 : 1;
-  hunger = clamp(hunger - hours * 7 * illMul, 0, 100);
-  clean = clamp(clean - hours * 4 * illMul, 0, 100);
-  const hungryPenalty = hunger < 38 ? hours * 6 * illMul : hours * 2.5 * illMul;
+  const eggDecay = egg ? 0.42 : 1;
+  const decay = illMul * eggDecay;
+  hunger = clamp(hunger - hours * 7 * decay, 0, 100);
+  clean = clamp(clean - hours * 4 * decay, 0, 100);
+  const hungryPenalty = hunger < 38 ? hours * 6 * decay : hours * 2.5 * decay;
   happy = clamp(happy - hungryPenalty, 0, 100);
-  energy = clamp(energy - hours * 1.85 * illMul, 0, 100);
+  energy = clamp(energy - hours * 1.85 * decay, 0, 100);
 
-  if (!ill && hunger < 34 && clean < 38 && happy < 48) {
+  if (!ill && !egg && hunger < 34 && clean < 38 && happy < 48) {
     const stress = Math.min(1, hours / 8);
     if (Math.random() < stress * 0.22) {
       ill = true;
     }
   }
 
-  if (ill) {
+  if (egg) {
+    ill = false;
+    illDays = 0;
+    starveHours = 0;
+  } else if (ill) {
     illDays += dAge;
   } else {
     illDays = 0;
   }
 
-  if (hunger < STARVE_HUNGER) {
+  if (!egg && hunger < STARVE_HUNGER) {
     starveHours += hours;
-  } else {
+  } else if (!egg) {
     starveHours = Math.max(0, starveHours - hours * 0.35);
   }
 
-  const live: PetState = {
+  let live: PetState = {
     ...p,
     virtAge,
     ill,
@@ -208,21 +288,25 @@ function applyLifecycleAndDecay(p: PetState): PetState {
     energy,
     lastTs: now,
   };
-
-  if (virtAge >= OLD_AGE_DEATH) {
-    return savePet(finalizeDeath(live, "old", now, virtAge));
+  live = tryHatchEgg(live);
+  if (!live.hatched) {
+    return savePet(live);
   }
-  if (starveHours >= STARVE_DEATH_HOURS) {
-    return savePet(finalizeDeath(live, "neglect", now, virtAge));
+
+  if (live.virtAge >= OLD_AGE_DEATH) {
+    return savePet(finalizeDeath(live, "old", now, live.virtAge));
+  }
+  if (live.starveHours >= STARVE_DEATH_HOURS) {
+    return savePet(finalizeDeath(live, "neglect", now, live.virtAge));
   }
   if (
-    ill &&
-    virtAge >= FRAIL_AGE &&
-    illDays > 9 &&
-    hunger < 24 &&
+    live.ill &&
+    live.virtAge >= FRAIL_AGE &&
+    live.illDays > 9 &&
+    live.hunger < 24 &&
     Math.random() < dAge * 0.12
   ) {
-    return savePet(finalizeDeath(live, "illness", now, virtAge));
+    return savePet(finalizeDeath(live, "illness", now, live.virtAge));
   }
 
   return savePet(live);
@@ -247,8 +331,7 @@ export function loadPet(): PetState {
       }
     }
     if (!raw) {
-      const p = { ...DEFAULT, virtAge: 0, lastTs: Date.now() };
-      return savePet(p);
+      return savePet(newAdoptionPetState());
     }
     const parsed = JSON.parse(raw) as Partial<PetState>;
     let p = mergeDefaults(parsed);
@@ -256,8 +339,7 @@ export function loadPet(): PetState {
     p = applyOfflineDecay(p);
     return p;
   } catch {
-    const p = { ...DEFAULT, virtAge: 0, lastTs: Date.now() };
-    return savePet(p);
+    return savePet(newAdoptionPetState());
   }
 }
 
@@ -268,15 +350,52 @@ export function savePet(p: PetState): PetState {
 }
 
 export function petEmoji(species: PetSpecies): string {
-  return species === "crystal" ? "\ud83d\udc8e" : "\u26a1";
+  if (species === "crystal") return "\ud83d\udc8e";
+  if (species === "chicken") return "\ud83d\udc24";
+  if (species === "cat") return "\ud83d\udc31";
+  return "\u26a1";
 }
 
 export function petDefaultName(species: PetSpecies): string {
-  return species === "crystal" ? "\u6676\u683c\u7378" : "\u96f7\u866b\u7378";
+  if (species === "crystal") return "\u6676\u683c\u7378";
+  if (species === "chicken") return "\u5c0f\u96de";
+  if (species === "cat") return "\u5c0f\u8c93";
+  return "\u96f7\u866b\u7378";
+}
+
+/** 新認養抽選：貓＝直接小貓；其餘先孵蛋，破殼後為該物種。 */
+export function rollAdoptionProfile(): { species: PetSpecies; hatched: boolean } {
+  const u = Math.random();
+  if (u < 0.22) return { species: "cat", hatched: true };
+  if (u < 0.47) return { species: "chicken", hatched: false };
+  if (u < 0.735) return { species: "volt", hatched: false };
+  return { species: "crystal", hatched: false };
+}
+
+export function newAdoptionPetState(): PetState {
+  const { species, hatched } = rollAdoptionProfile();
+  return {
+    species,
+    nickname: petDefaultName(species),
+    hunger: 88,
+    happy: 82,
+    clean: 90,
+    energy: 92,
+    power: hatched ? 5 : 4,
+    lastTs: Date.now(),
+    hatched,
+    virtAge: 0,
+    ill: false,
+    illDays: 0,
+    starveHours: 0,
+    alive: true,
+  };
 }
 
 export function moodLine(p: PetState): string {
   if (!p.alive) return "";
+  if (!p.hatched)
+    return "\u8f15\u8f15\u52d5\u4e86\u4e00\u4e0b\u2026\u9084\u5728\u86cb\u88e1\uff0c\u591a\u966a\u6211\u3001\u9935\u9ede\u6eab\u6696\u5427\u3002";
   if (p.ill) return "\u597d\u4e0d\u8212\u670d\u2026\u5e36\u6211\u770b\u91ab\u751f\u597d\u55ce\uff1f";
   const avg = (p.hunger + p.happy + p.clean + p.energy) / 4;
   const stage = growthStage(p.virtAge);
@@ -296,25 +415,34 @@ export function moodLine(p: PetState): string {
 export function feed(p: PetState): PetState {
   if (!p.alive) return p;
   const bonus = p.ill ? 4 : 6;
-  return saveAndReturn({
+  let next: PetState = {
     ...p,
     hunger: clamp(p.hunger + 28, 0, 100),
     happy: clamp(p.happy + bonus, 0, 100),
     clean: clamp(p.clean - 4, 0, 100),
-  });
+  };
+  if (!next.hatched) {
+    next = { ...next, virtAge: clamp(next.virtAge + 0.11, 0, 999) };
+  }
+  return saveAndReturn(tryHatchEgg(next));
 }
 
 export function cleanPet(p: PetState): PetState {
   if (!p.alive) return p;
-  return saveAndReturn({
+  let next: PetState = {
     ...p,
     clean: clamp(p.clean + 35, 0, 100),
     happy: clamp(p.happy + 8, 0, 100),
-  });
+  };
+  if (!next.hatched) {
+    next = { ...next, virtAge: clamp(next.virtAge + 0.045, 0, 999) };
+  }
+  return saveAndReturn(tryHatchEgg(next));
 }
 
 export function trainPet(p: PetState): PetState {
   if (!p.alive) return p;
+  if (!p.hatched) return { ...p };
   const need = p.ill ? 24 : 18;
   if (p.energy < need) return { ...p };
   return saveAndReturn({
@@ -330,12 +458,16 @@ export function trainPet(p: PetState): PetState {
 export function restPet(p: PetState): PetState {
   if (!p.alive) return p;
   const gain = p.ill ? 22 : 32;
-  return saveAndReturn({
+  let next: PetState = {
     ...p,
     energy: clamp(p.energy + gain, 0, 100),
     happy: clamp(p.happy + 4, 0, 100),
     hunger: clamp(p.hunger - 8, 0, 100),
-  });
+  };
+  if (!next.hatched) {
+    next = { ...next, virtAge: clamp(next.virtAge + 0.04, 0, 999) };
+  }
+  return saveAndReturn(tryHatchEgg(next));
 }
 
 /** Vet visit: clears illness and lifts mood. */
@@ -351,24 +483,9 @@ export function treatPet(p: PetState): PetState {
   });
 }
 
-/** New egg after memorial (species kept for continuity). */
-export function resetNewPet(species: PetSpecies): PetState {
-  const p: PetState = {
-    species,
-    nickname: petDefaultName(species),
-    hunger: 76,
-    happy: 80,
-    clean: 82,
-    energy: 88,
-    power: 6,
-    lastTs: Date.now(),
-    virtAge: 0,
-    ill: false,
-    illDays: 0,
-    starveHours: 0,
-    alive: true,
-  };
-  return savePet(p);
+/** 重新認養：隨機物種（貓直接入欄，其餘從蛋開始）。 */
+export function resetNewPet(): PetState {
+  return savePet(newAdoptionPetState());
 }
 
 function saveAndReturn(p: PetState): PetState {

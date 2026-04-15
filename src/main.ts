@@ -1,37 +1,34 @@
 import { io, Socket } from "socket.io-client";
 import {
+  careIdleSpriteFile,
+  carePoseFile,
   cleanPet,
   feed,
   formatVirtAgeDays,
-  growthLabel,
+  growthLabelForPet,
   growthSpriteScale,
   growthStage,
-  idleSpriteForStage,
+  idleSpriteForSpeciesStage,
   loadPet,
   memorialLine,
   moodLine,
   petDefaultName,
+  randomFoeSpecies,
   renamePet,
   resetNewPet,
   restPet,
   trainPet,
   treatPet,
+  type CarePose,
   type PetSpecies,
   type PetState,
 } from "./pet";
 import "./style.css";
+import { mountThemeBar } from "./theme";
 
 type Move = "strike" | "guard" | "charge";
 
 const ROUND_MS = 12_000;
-
-/** Action poses (shared across ages). Idle uses `idleSpriteForStage` per growth tier. */
-const PET_SPRITES = {
-  eat: "pet-eat.png",
-  train: "pet-train.png",
-  rest: "pet-rest.png",
-  clean: "pet-clean.png",
-} as const;
 
 function petAssetUrl(file: string) {
   return `${import.meta.env.BASE_URL}pets/${file}`;
@@ -102,9 +99,9 @@ const UI = {
   battleSection: "\u9023\u7dda\u5c0d\u6230",
   openBattle: "\u9023\u7dda\u5c0d\u6230",
   backToPet: "\u56de\u5230\u6211\u7684\u5925\u4f34",
-  restartFromEgg: "\u5f9e\u86cb\u91cd\u65b0\u990a",
-  confirmRestartFromEgg:
-    "\u78ba\u5b9a\u8981\u5f9e\u86cb\u91cd\u65b0\u958b\u59cb\uff1f\u73fe\u6709\u990a\u6210\u9032\u5ea6\u6703\u5168\u90e8\u6e05\u9664\u4e14\u7121\u6cd5\u9084\u539f\u3002",
+  restartAdopt: "\u91cd\u65b0\u8a8d\u990a",
+  confirmRestartAdopt:
+    "\u78ba\u5b9a\u8981\u91cd\u65b0\u8a8d\u990a\uff1f\u73fe\u6709\u990a\u6210\u9032\u5ea6\u6703\u5168\u90e8\u6e05\u9664\u4e14\u7121\u6cd5\u9084\u539f\u3002\u65b0\u5925\u4f34\u53ef\u80fd\u662f\u8c93\u3001\u96de\uff0c\u6216\u5f9e\u86cb\u536f\u5316\u7684\u5947\u7378\u3002",
   statHunger: "\u98fd\u98df",
   statHappy: "\u5fc3\u60c5",
   statClean: "\u6e05\u6f54",
@@ -125,6 +122,11 @@ const UI = {
   newPet: "\u8fce\u63a5\u65b0\u5925\u4f34",
   deadPetBattleBlocked:
     "\u5925\u4f34\u5df2\u96e2\u958b\uff0c\u7121\u6cd5\u9023\u7dda\u5c0d\u6230\u3002\u8acb\u5148\u5728\u7d00\u5ff5\u9801\u9762\u8fce\u63a5\u65b0\u751f\u547d\u3002",
+  eggBattleBlocked:
+    "\u9084\u5728\u86cb\u88e1\uff0c\u7b49\u536f\u5316\u5f8c\u518d\u9023\u7dda\u5c0d\u6230\u5427\u3002",
+  eggTrainBlocked:
+    "\u9084\u6c92\u536f\u5316\uff0c\u5148\u5225\u8a13\u7df4\u56c9\u3002",
+  justHatched: "\u7834\u6bbc\u4e86\uff01\u4f86\u6253\u500b\u62db\u547c\u5427\uff5e",
   cancelWait: "\u53d6\u6d88",
   surrenderLeave: "\u6295\u964d\uff0f\u96e2\u958b",
   confirmForfeit:
@@ -198,7 +200,7 @@ function renderMemorial(
   `),
   );
   $("#btn-new-pet", root).addEventListener("click", () => {
-    resetNewPet(state.species);
+    resetNewPet();
     renderCare(root);
   });
 }
@@ -221,10 +223,10 @@ function renderCare(root: HTMLElement) {
 
   root.replaceChildren(
     el(`
-    <div class="shell care-shell">
+    <div class="shell care-shell shell--care">
       <div class="row care-top-actions">
         <button type="button" class="btn btn-primary" id="btn-open-battle">${UI.openBattle}</button>
-        <button type="button" class="btn btn-secondary" id="btn-restart-egg">${UI.restartFromEgg}</button>
+        <button type="button" class="btn btn-secondary" id="btn-restart-adopt">${UI.restartAdopt}</button>
       </div>
       <div class="screen-bezel care-bezel">
         <div class="pet-stage" id="pet-stage">
@@ -292,14 +294,17 @@ function renderCare(root: HTMLElement) {
   };
 
   const showCareIdleSprite = () => {
-    const st = growthStage(state.virtAge);
-    spriteEl.src = petAssetUrl(idleSpriteForStage(st));
+    spriteEl.src = petAssetUrl(careIdleSpriteFile(state));
     syncSpriteSpecies();
   };
 
-  const flashCareSprite = (pose: "eat" | "train" | "rest" | "clean") => {
+  const flashCareSprite = (pose: CarePose) => {
+    if (!state.hatched) {
+      showCareIdleSprite();
+      return;
+    }
     if (reactionTimer != null) window.clearTimeout(reactionTimer);
-    spriteEl.src = petAssetUrl(PET_SPRITES[pose]);
+    spriteEl.src = petAssetUrl(carePoseFile(state.species, pose));
     syncSpriteSpecies();
     reactionTimer = domSetTimeout(() => {
       showCareIdleSprite();
@@ -311,9 +316,11 @@ function renderCare(root: HTMLElement) {
     nickEl.value = state.nickname;
     moodEl.textContent = moodLine(state);
     const st = growthStage(state.virtAge);
-    ageLineEl.textContent = `${formatVirtAgeDays(state.virtAge)} \u00b7 ${growthLabel(st)}`;
-    stageEl.classList.toggle("pet-stage--senior", st === 4);
-    const sc = growthSpriteScale(st);
+    ageLineEl.textContent = `${formatVirtAgeDays(state.virtAge)} \u00b7 ${growthLabelForPet(state)}`;
+    stageEl.classList.toggle("pet-stage--senior", state.hatched && st === 4);
+    const sc = state.hatched
+      ? growthSpriteScale(st)
+      : growthSpriteScale(0) * 0.9;
     spriteEl.style.transform = `scale(${sc})`;
     syncSpriteSpecies();
     treatBtn.classList.toggle("hidden", !state.ill);
@@ -339,17 +346,22 @@ function renderCare(root: HTMLElement) {
   nickEl.addEventListener("blur", onNickCommit);
 
   $("#btn-open-battle", root).addEventListener("click", () => {
+    if (!state.hatched) {
+      flashCare(UI.eggBattleBlocked);
+      renderCare(root);
+      return;
+    }
     if (reactionTimer != null) window.clearTimeout(reactionTimer);
     renderLobby(root);
   });
 
-  $("#btn-restart-egg", root).addEventListener("click", () => {
-    if (!window.confirm(UI.confirmRestartFromEgg)) return;
+  $("#btn-restart-adopt", root).addEventListener("click", () => {
+    if (!window.confirm(UI.confirmRestartAdopt)) return;
     if (reactionTimer != null) {
       window.clearTimeout(reactionTimer);
       reactionTimer = null;
     }
-    resetNewPet(state.species);
+    resetNewPet();
     renderCare(root);
   });
 
@@ -358,18 +370,34 @@ function renderCare(root: HTMLElement) {
       const act = (btn as HTMLElement).dataset.care;
       toastEl.classList.add("hidden");
       if (act === "feed") {
+        const wasEgg = !state.hatched;
         state = feed(state);
         paint();
+        if (wasEgg && state.hatched) {
+          toastEl.textContent = UI.justHatched;
+          toastEl.classList.remove("hidden");
+        }
         flashCareSprite("eat");
         return;
       }
       if (act === "clean") {
+        const wasEgg = !state.hatched;
         state = cleanPet(state);
         paint();
+        if (wasEgg && state.hatched) {
+          toastEl.textContent = UI.justHatched;
+          toastEl.classList.remove("hidden");
+        }
         flashCareSprite("clean");
         return;
       }
       if (act === "train") {
+        if (!state.hatched) {
+          toastEl.textContent = UI.eggTrainBlocked;
+          toastEl.classList.remove("hidden");
+          paint();
+          return;
+        }
         const need = state.ill ? 24 : 18;
         if (state.energy < need) {
           toastEl.textContent = state.ill ? UI.trainBlockedIll : UI.trainBlocked;
@@ -388,8 +416,13 @@ function renderCare(root: HTMLElement) {
         return;
       }
       if (act === "rest") {
+        const wasEgg = !state.hatched;
         state = restPet(state);
         paint();
+        if (wasEgg && state.hatched) {
+          toastEl.textContent = UI.justHatched;
+          toastEl.classList.remove("hidden");
+        }
         flashCareSprite("rest");
         return;
       }
@@ -402,8 +435,14 @@ function renderCare(root: HTMLElement) {
 }
 
 function renderLobby(root: HTMLElement) {
-  if (!loadPet().alive) {
+  const pet = loadPet();
+  if (!pet.alive) {
     flashCare(UI.deadPetBattleBlocked);
+    renderCare(root);
+    return;
+  }
+  if (!pet.hatched) {
+    flashCare(UI.eggBattleBlocked);
     renderCare(root);
     return;
   }
@@ -413,19 +452,19 @@ function renderLobby(root: HTMLElement) {
   stopTick();
   root.replaceChildren(
     el(`
- <div class="shell">
+ <div class="shell shell--hub">
       <div class="status-pill"><span class="dot on"></span> ONLINE</div>
       <h1>${UI.battleSection}</h1>
       <p class="tagline">${UI.hubSubtitle}</p>
-      <div class="row" style="margin-bottom:14px">
+      <div class="row stack-gap">
         <button type="button" class="btn btn-secondary" id="btn-back-pet">${UI.backToPet}</button>
       </div>
-      <p class="toast ${import.meta.env.PROD && !socketServerUrl ? "" : "hidden"}" id="backend-hint" style="margin-bottom:10px">${UI.needBackend}</p>
-      <div class="row" style="margin-bottom:12px">
+      <p class="toast stack-gap-sm ${import.meta.env.PROD && !socketServerUrl ? "" : "hidden"}" id="backend-hint">${UI.needBackend}</p>
+      <div class="row stack-gap-md">
         <button type="button" class="btn btn-primary" id="btn-host">${UI.createHost}</button>
       </div>
       <input class="field" id="room-input" maxlength="8" autocomplete="off" placeholder="${UI.roomPlaceholder}" />
-      <div class="row" style="margin-top:12px">
+      <div class="row mt-gap">
         <button type="button" class="btn btn-secondary" id="btn-join">${UI.join}</button>
       </div>
       <p class="toast hidden" id="lobby-toast"></p>
@@ -477,19 +516,19 @@ function renderWaiting(root: HTMLElement, code: string, isHost: boolean) {
   phase = "waiting";
   root.replaceChildren(
     el(`
-    <div class="shell">
+    <div class="shell shell--wait">
       <h1>${isHost ? UI.waitConnect : UI.syncing}</h1>
       <p class="tagline">${UI.roomCodeLabel}</p>
       <div class="code-display">${code}</div>
       <div class="connect-visual" aria-hidden="true">
-        <span class="prong"></span><span style="opacity:.5">\u2694\ufe0f</span><span class="prong"></span>
+        <span class="prong"></span><span class="connect-visual-ico">\u2694\ufe0f</span><span class="prong"></span>
       </div>
       ${
         isHost
           ? `<button type="button" class="btn btn-secondary" id="btn-copy">${UI.copyRoomCode}</button>`
           : ""
       }
-      <div class="row" style="margin-top:14px">
+      <div class="row mt-gap-lg">
         <button type="button" class="btn btn-secondary" id="btn-wait-cancel">${UI.cancelWait}</button>
       </div>
       <p class="toast hidden" id="wait-toast"></p>
@@ -542,14 +581,24 @@ function renderBattle(root: HTMLElement) {
     renderCare(root);
     return;
   }
-  const foeSpecies: PetSpecies = myPet.species === "volt" ? "crystal" : "volt";
+  if (!myPet.hatched) {
+    flashCare(UI.eggBattleBlocked);
+    renderCare(root);
+    return;
+  }
+  const foeSpecies = randomFoeSpecies(myPet.species);
   const battleSt = growthStage(myPet.virtAge);
-  const battleSpriteSrc = petAssetUrl(idleSpriteForStage(battleSt));
+  const youSprite = petAssetUrl(
+    idleSpriteForSpeciesStage(myPet.species, battleSt),
+  );
+  const foeSprite = petAssetUrl(
+    idleSpriteForSpeciesStage(foeSpecies, battleSt),
+  );
 
   root.replaceChildren(
     el(`
-    <div class="shell">
-      <div class="screen-bezel">
+    <div class="shell shell--battle">
+      <div class="screen-bezel screen-bezel--battle">
         <div class="round-meta">
           <span id="round-label">${UI.round(1)}</span>
           <span class="timer" id="timer">--</span>
@@ -566,7 +615,7 @@ function renderBattle(root: HTMLElement) {
             <div class="hp-wrap"><div class="hp-fill foe" id="hp-foe" style="width:100%"></div></div>
           </div>
         </div>
-        <p style="font-size:0.8rem;color:var(--muted);margin:0 0 6px">${UI.chooseMove}</p>
+        <p class="battle-hint">${UI.chooseMove}</p>
         <div class="move-grid">
           <button type="button" class="move-btn" data-move="strike">${UI.strike}</button>
           <button type="button" class="move-btn" data-move="guard">${UI.guard}</button>
@@ -584,8 +633,8 @@ function renderBattle(root: HTMLElement) {
 
   const youSp = $("#battle-you-sprite", root) as HTMLImageElement;
   const foeSp = $("#battle-foe-sprite", root) as HTMLImageElement;
-  youSp.src = battleSpriteSrc;
-  foeSp.src = battleSpriteSrc;
+  youSp.src = youSprite;
+  foeSp.src = foeSprite;
   youSp.classList.toggle("pet-sprite--alt", myPet.species === "crystal");
   foeSp.classList.toggle("pet-sprite--alt", foeSpecies === "crystal");
   $("#battle-you-label", root).textContent = `${myPet.nickname} \u00b7 \u6211\u65b9`;
@@ -739,7 +788,8 @@ function showEndModal(root: HTMLElement, title: string) {
 }
 
 function boot() {
-  const root = $("#app");
+  mountThemeBar();
+  const root = $("#view-root");
   const params = new URLSearchParams(location.search);
   const preJoin = params.get("join")?.toUpperCase().trim();
   if (preJoin && preJoin.length >= 4) {

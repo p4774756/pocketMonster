@@ -153,5 +153,6 @@
 | **僅改數值或敘述**、協定不變 | 僅需本檔與程式一致；`AGENTS.md` 若無協定描述可不改 |
 | **`phase` 或照顧冷卻常數**（`src/main.ts`） | 本檔 **§1.6** 若影響玩家體感須同步一句 |
 | **對戰 MP、物種係數、`battle_state` / `round_result` 欄位** | 本檔 **第 2.5～2.7 節**、`AGENTS.md` Socket 協定 |
+| **發布版本號**（頂欄、`GET /version`） | 根目錄 **`package.json` 的 `version`**（與本檔或 `AGENTS.md`、`.cursor/rules` 實質同批更新時預設 **patch +1**）；遞增後以**中文**撰寫 `git commit` 並 `git push`（見 `AGENTS.md` 與 `.cursor/rules/pocket-pet-game-rules-sync.mdc`） |
 
 **單一來源**：玩家可讀的長篇規則以 **本檔** 為主；`AGENTS.md` 保持精簡索引與**協定／路徑**，避免在兩處複製大段重複規則文字。

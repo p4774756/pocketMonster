@@ -955,6 +955,149 @@ footer.note {
   margin: 0 0 2px;
 }
 
+/* ----- species dex (pokedex-style) ----- */
+.shell--dex.dex-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dex-actions {
+  margin-bottom: 0;
+}
+
+.dex-bezel {
+  padding: 16px 14px 20px;
+}
+
+.dex-heading {
+  font-size: 1.35rem;
+  font-weight: 800;
+  margin: 0 0 8px;
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+
+.dex-tagline {
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--muted);
+  margin: 0 0 18px;
+  text-align: center;
+}
+
+.dex-species-list {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.dex-species-block {
+  padding: 14px 12px 16px;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.dex-species-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dex-species-emoji {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.dex-species-intro {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+.dex-evolution-track {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px 6px;
+}
+
+.dex-stage-card {
+  flex: 0 0 auto;
+  text-align: center;
+  min-width: 72px;
+  max-width: 100px;
+}
+
+.dex-stage-card--egg .dex-sprite-wrap {
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 45%, rgba(255, 255, 255, 0.88), transparent 72%),
+    linear-gradient(165deg, rgba(254, 249, 231, 0.75) 0%, rgba(226, 232, 240, 0.55) 100%);
+}
+
+.dex-stage-card--senior .dex-sprite {
+  filter: saturate(0.9);
+}
+
+.dex-stage-card--senior .dex-sprite.pet-sprite--alt {
+  filter: hue-rotate(195deg) saturate(0.96) brightness(1.02);
+}
+
+.dex-sprite-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 88px;
+  margin-bottom: 6px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background:
+    radial-gradient(ellipse 80px 56px at 50% 40%, rgba(255, 255, 255, 0.92), transparent 70%),
+    linear-gradient(165deg, rgba(255, 255, 255, 0.5) 0%, rgba(241, 245, 249, 0.65) 100%);
+}
+
+.dex-sprite {
+  display: block;
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: pixelated;
+  transform-origin: center 70%;
+}
+
+.dex-sprite.pet-sprite--alt {
+  filter: hue-rotate(195deg) saturate(1.12) brightness(1.04);
+}
+
+.dex-stage-label {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+}
+
+.dex-arrow {
+  flex: 0 0 auto;
+  align-self: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--muted);
+  opacity: 0.55;
+  padding: 0 2px;
+  user-select: none;
+}
+
 .care-shell {
   display: flex;
   flex-direction: column;
@@ -968,6 +1111,20 @@ footer.note {
 .care-top-actions .btn {
   flex: 1 1 140px;
   min-width: 0;
+}
+
+.care-egg-battle-hint {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: #9a3412;
+  border-radius: var(--radius-md);
+  background: rgba(254, 215, 170, 0.45);
+  border: 1px solid rgba(251, 146, 60, 0.35);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.65);
 }
 
 .care-back {
@@ -1118,6 +1275,16 @@ footer.note {
   color: var(--muted);
   margin: 0 0 24px;
   line-height: 1.55;
+}
+
+.memorial-actions {
+  margin-top: 0;
+  justify-content: center;
+}
+
+.memorial-actions .btn {
+  flex: 1 1 140px;
+  min-width: 0;
 }
 
 .memorial-btn {
@@ -1315,6 +1482,40 @@ html[data-theme="retro"] .pet-stage {
   border-color: rgba(52, 211, 153, 0.25);
 }
 
+html[data-theme="retro"] .dex-heading {
+  color: #ecfdf5;
+}
+
+html[data-theme="retro"] .dex-tagline,
+html[data-theme="retro"] .dex-species-intro,
+html[data-theme="retro"] .dex-stage-label {
+  color: #86efac;
+}
+
+html[data-theme="retro"] .dex-species-block {
+  background: rgba(15, 31, 22, 0.85);
+  border-color: rgba(52, 211, 153, 0.22);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
+}
+
+html[data-theme="retro"] .dex-sprite-wrap {
+  background:
+    radial-gradient(ellipse 72px 48px at 50% 38%, rgba(52, 211, 153, 0.1), transparent 72%),
+    linear-gradient(165deg, #0f1f16 0%, #08120d 100%);
+  border-color: rgba(52, 211, 153, 0.2);
+}
+
+html[data-theme="retro"] .dex-stage-card--egg .dex-sprite-wrap {
+  background:
+    radial-gradient(ellipse 70% 58% at 50% 45%, rgba(52, 211, 153, 0.08), transparent 72%),
+    linear-gradient(165deg, #142820 0%, #0c1812 100%);
+}
+
+html[data-theme="retro"] .dex-arrow {
+  color: #6ee7b7;
+  opacity: 0.65;
+}
+
 html[data-theme="retro"] .pet-age-line,
 html[data-theme="retro"] .care-stat-label,
 html[data-theme="retro"] .monster .name,
@@ -1402,6 +1603,13 @@ html[data-theme="retro"] .care-hint {
   background: rgba(250, 204, 21, 0.12);
   border-color: rgba(250, 204, 21, 0.35);
   color: #fde68a;
+}
+
+html[data-theme="retro"] .care-egg-battle-hint {
+  color: #fcd34d;
+  background: rgba(250, 204, 21, 0.14);
+  border-color: rgba(250, 204, 21, 0.4);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
 }
 
 html[data-theme="retro"] .timer {
@@ -1543,6 +1751,29 @@ html[data-theme="minimal"] .pet-stage {
   box-shadow: none;
 }
 
+html[data-theme="minimal"] .dex-species-block {
+  background: #fff;
+  border: 2px solid #0a0a0a;
+  border-radius: 10px;
+  box-shadow: 2px 2px 0 #0a0a0a;
+}
+
+html[data-theme="minimal"] .dex-sprite-wrap {
+  background: #f5f5f5;
+  border: 2px solid #0a0a0a;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+html[data-theme="minimal"] .dex-stage-card--egg .dex-sprite-wrap {
+  background: #fafafa;
+}
+
+html[data-theme="minimal"] .dex-arrow {
+  color: #0a0a0a;
+  opacity: 0.45;
+}
+
 html[data-theme="minimal"] .monster {
   border-radius: 8px;
   background: #fff;
@@ -1665,6 +1896,13 @@ html[data-theme="minimal"] .care-hint {
   background: #fff;
   border: 2px solid #0a0a0a;
   color: #0a0a0a;
+}
+
+html[data-theme="minimal"] .care-egg-battle-hint {
+  color: #0a0a0a;
+  background: #fff8e6;
+  border: 2px solid #0a0a0a;
+  box-shadow: 3px 3px 0 #0a0a0a;
 }
 
 html[data-theme="minimal"] .memorial-hint {

@@ -11,7 +11,7 @@
 
 前端為 **Vite + TypeScript** 單頁應用；後端為 **Node（ESM）+ Express + socket.io** 的單檔伺服器。
 
-**版本號**：以根目錄 **`package.json` 的 `version`** 為單一來源；前端建置時由 Vite 注入 `__APP_VERSION__`（頂欄顯示），後端啟動日誌與 **`GET /version`** 亦讀取同檔。
+**版本號**：以根目錄 **`package.json` 的 `version`** 為單一來源；前端建置時由 Vite 注入 `__APP_VERSION__`（頂欄顯示），後端啟動日誌與 **`GET /version`** 亦讀取同檔。實質更新 **`GAME_RULES.md`**、**`AGENTS.md`** 或 **`.cursor/rules/*.mdc`** 時，須在同一批變更內遞增該欄位（預設 patch +1）；遞增後應以**中文 commit 訊息**完成 `git commit` 並 **`git push`**（見 **`.cursor/rules/pocket-pet-game-rules-sync.mdc`** 末段）。
 
 ## 目錄結構（精簡）
 

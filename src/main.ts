@@ -3,8 +3,10 @@ import {
   careIdleSpriteFile,
   carePoseFile,
   cleanPet,
+  eggSpriteForSpecies,
   feed,
   formatVirtAgeDays,
+  growthLabel,
   growthLabelForPet,
   growthSpriteScale,
   growthStage,
@@ -13,6 +15,8 @@ import {
   memorialLine,
   moodLine,
   renamePet,
+  petDefaultName,
+  petEmoji,
   resetNewPet,
   restPet,
   trainPet,
@@ -155,6 +159,20 @@ const UI = {
     "\u533f\u540d\u958b\u623f\u3001\u8f38\u5165\u623f\u9593\u78bc\u5373\u53ef\u5c0d\u6230\uff08\u990a\u6210\u8cc7\u6599\u5728\u4e0a\u4e00\u9801\uff09",
   battleSection: "\u9023\u7dda\u5c0d\u6230",
   openBattle: "\u9023\u7dda\u5c0d\u6230",
+  openSpeciesDex: "\u5925\u4f34\u5716\u9451",
+  dexTitle: "\u5925\u4f34\u5716\u9451",
+  dexSubtitle:
+    "\u5404\u7269\u7a2e\u6210\u9577\u968e\u6bb5\u5c55\u793a\uff08\u865b\u64ec\u65e5\u9f61\u5230\u9054\u5c0d\u61c9\u968e\u6bb5\u6642\u7684\u5916\u89c0\uff09\u3002\u7bad\u982d\u8868\u793a\u6642\u9593\u9032\u7a0b\u65b9\u5411\u3002",
+  dexEgg: "\u536f",
+  dexBackMemorial: "\u56de\u5230\u7d00\u5ff5\u9801",
+  dexBlurbVolt:
+    "\u5f9e\u96f7\u7d0b\u86cb\u7834\u6bbc\u5f8c\u70ba\u96f7\u7cfb\u5947\u7378\u3002",
+  dexBlurbCrystal:
+    "\u5f9e\u6676\u77f3\u86cb\u7834\u6bbc\u5f8c\u70ba\u6c34\u6676\u7cfb\u6676\u683c\u7378\u3002",
+  dexBlurbChicken:
+    "\u5f9e\u6696\u967d\u86cb\u7834\u6bbc\u5f8c\u70ba\u96de\u5bf6\u9020\u578b\u3002",
+  dexBlurbCat:
+    "\u8a8d\u990a\u6642\u5df2\u70ba\u5c0f\u8c93\uff0c\u7121\u86cb\u968e\u6bb5\u3002",
   backToPet: "\u56de\u5230\u6211\u7684\u5925\u4f34",
   restartAdopt: "\u91cd\u65b0\u8a8d\u990a",
   confirmRestartAdopt:
@@ -207,7 +225,7 @@ let tickTimer: number | null = null;
 let roomCode: string | null = null;
 let role: "host" | "guest" | null = null;
 /** 與目前畫面一致，供大廳即時清單等邏輯判斷。 */
-let phase: "care" | "memorial" | "lobby" | "waiting" | "battle" | "end" =
+let phase: "care" | "memorial" | "dex" | "lobby" | "waiting" | "battle" | "end" =
   "care";
 
 /** 大廳 create/join 逾時解鎖（模組級，避免舊 closure 計時器誤傷新一輪操作）。 */
@@ -365,11 +383,20 @@ function renderMemorial(
         <p class="memorial-days">${UI.memorialDays(days)}</p>
         ${hintBlock}
         <p class="memorial-sub">${UI.memorialSub}</p>
-        <button type="button" class="btn btn-primary memorial-btn" id="btn-new-pet">${UI.newPet}</button>
+        <div class="row memorial-actions">
+          <button type="button" class="btn btn-secondary" id="btn-memorial-dex">${UI.openSpeciesDex}</button>
+          <button type="button" class="btn btn-primary memorial-btn" id="btn-new-pet">${UI.newPet}</button>
+        </div>
       </div>
     </div>
   `),
   );
+  $("#btn-memorial-dex", root).addEventListener("click", () => {
+    renderSpeciesDex(root, {
+      backLabel: UI.dexBackMemorial,
+      onBack: () => renderMemorial(root, state, null),
+    });
+  });
   $("#btn-new-pet", root).addEventListener("click", () => {
     resetNewPet();
     renderCare(root);
@@ -382,6 +409,110 @@ function escapeHtml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+const DEX_SPECIES_ORDER: PetSpecies[] = ["volt", "crystal", "chicken", "cat"];
+
+function speciesDexIntroLine(species: PetSpecies): string {
+  switch (species) {
+    case "cat":
+      return UI.dexBlurbCat;
+    case "chicken":
+      return UI.dexBlurbChicken;
+    case "crystal":
+      return UI.dexBlurbCrystal;
+    default:
+      return UI.dexBlurbVolt;
+  }
+}
+
+function dexJoinWithArrows(parts: string[]): string {
+  return parts
+    .map((block, i) =>
+      i === 0
+        ? block
+        : `<span class="dex-arrow" aria-hidden="true">\u2192</span>${block}`,
+    )
+    .join("");
+}
+
+function dexStageCardHtml(species: PetSpecies, stage: 0 | 1 | 2 | 3 | 4): string {
+  const scale = growthSpriteScale(stage);
+  const file = idleSpriteForSpeciesStage(species, stage);
+  const alt = species === "crystal" ? " pet-sprite--alt" : "";
+  const senior = stage === 4 ? " dex-stage-card--senior" : "";
+  return `
+    <div class="dex-stage-card${senior}">
+      <div class="dex-sprite-wrap">
+        <img class="dex-sprite${alt}" alt="" width="96" height="96" decoding="async" src="${petAssetUrl(file)}" style="transform: scale(${scale});" />
+      </div>
+      <span class="dex-stage-label">${growthLabel(stage)}</span>
+    </div>
+  `;
+}
+
+function dexEggCardHtml(species: PetSpecies): string {
+  return `
+    <div class="dex-stage-card dex-stage-card--egg">
+      <div class="dex-sprite-wrap">
+        <img class="dex-sprite" alt="" width="96" height="96" decoding="async" src="${petAssetUrl(eggSpriteForSpecies(species))}" />
+      </div>
+      <span class="dex-stage-label">${UI.dexEgg}</span>
+    </div>
+  `;
+}
+
+function dexSpeciesBlockHtml(species: PetSpecies): string {
+  const emoji = petEmoji(species);
+  const name = petDefaultName(species);
+  const intro = speciesDexIntroLine(species);
+  const stages = ([0, 1, 2, 3, 4] as const).map((st) =>
+    dexStageCardHtml(species, st),
+  );
+  const trackInner =
+    species === "cat"
+      ? dexJoinWithArrows(stages)
+      : dexJoinWithArrows([dexEggCardHtml(species), ...stages]);
+  return `
+    <section class="dex-species-block" aria-label="${escapeHtml(name)}">
+      <h3 class="dex-species-title"><span class="dex-species-emoji">${emoji}</span> ${escapeHtml(name)}</h3>
+      <p class="dex-species-intro">${escapeHtml(intro)}</p>
+      <div class="dex-evolution-track">
+        ${trackInner}
+      </div>
+    </section>
+  `;
+}
+
+function renderSpeciesDex(
+  root: HTMLElement,
+  opts?: { backLabel?: string; onBack?: () => void },
+) {
+  battleFoeSnapshot = null;
+  detachOpenRoomsLiveListener();
+  clearLobbySocketGuardTimer();
+  stopTick();
+  phase = "dex";
+  const backLabel = opts?.backLabel ?? UI.backToPet;
+  const onBack = opts?.onBack ?? (() => renderCare(root));
+  const blocks = DEX_SPECIES_ORDER.map((sp) => dexSpeciesBlockHtml(sp)).join("");
+  root.replaceChildren(
+    el(`
+    <div class="shell shell--dex dex-shell">
+      <div class="row dex-actions">
+        <button type="button" class="btn btn-secondary care-back" id="btn-dex-back">${backLabel}</button>
+      </div>
+      <div class="screen-bezel dex-bezel">
+        <h2 class="dex-heading">${UI.dexTitle}</h2>
+        <p class="dex-tagline">${UI.dexSubtitle}</p>
+        <div class="dex-species-list">
+          ${blocks}
+        </div>
+      </div>
+    </div>
+  `),
+  );
+  $("#btn-dex-back", root).addEventListener("click", onBack);
 }
 
 function renderCare(root: HTMLElement) {
@@ -401,8 +532,10 @@ function renderCare(root: HTMLElement) {
     <div class="shell care-shell shell--care">
       <div class="row care-top-actions">
         <button type="button" class="btn btn-primary" id="btn-open-battle">${UI.openBattle}</button>
+        <button type="button" class="btn btn-secondary" id="btn-open-dex">${UI.openSpeciesDex}</button>
         <button type="button" class="btn btn-secondary" id="btn-restart-adopt">${UI.restartAdopt}</button>
       </div>
+      <p class="care-egg-battle-hint hidden" id="care-egg-battle-hint" role="status">${UI.eggBattleBlocked}</p>
       <div class="screen-bezel care-bezel">
         <div class="pet-stage" id="pet-stage">
           <img class="pet-sprite" id="pet-sprite" alt="" width="96" height="96" decoding="async" />
@@ -457,11 +590,16 @@ function renderCare(root: HTMLElement) {
   const treatBtn = $("#btn-treat", root);
   const spriteEl = $("#pet-sprite", root) as HTMLImageElement;
   const toastEl = $("#care-toast", root);
+  const eggBattleHintEl = $("#care-egg-battle-hint", root);
   let reactionTimer: number | null = null;
 
   if (hint) {
-    toastEl.textContent = hint;
-    toastEl.classList.remove("hidden");
+    if (hint === UI.eggBattleBlocked && !state.hatched) {
+      // 與頂部 #care-egg-battle-hint 同文，不再用底部 toast 重複
+    } else {
+      toastEl.textContent = hint;
+      toastEl.classList.remove("hidden");
+    }
   }
 
   const syncSpriteSpecies = () => {
@@ -499,6 +637,10 @@ function renderCare(root: HTMLElement) {
     spriteEl.style.transform = `scale(${sc})`;
     syncSpriteSpecies();
     treatBtn.classList.toggle("hidden", !state.ill);
+    eggBattleHintEl.classList.toggle("hidden", state.hatched);
+    const battleBtn = $("#btn-open-battle", root) as HTMLButtonElement;
+    if (state.hatched) battleBtn.removeAttribute("aria-describedby");
+    else battleBtn.setAttribute("aria-describedby", "care-egg-battle-hint");
     const setBar = (key: keyof PetState, barId: string, valId: string) => {
       const v = Math.round(Number(state[key]) || 0);
       ($(`#${barId}`, root) as HTMLElement).style.width = `${clampPct(v)}%`;
@@ -538,6 +680,10 @@ function renderCare(root: HTMLElement) {
     }
     resetNewPet();
     renderCare(root);
+  });
+
+  $("#btn-open-dex", root).addEventListener("click", () => {
+    renderSpeciesDex(root);
   });
 
   root.querySelectorAll("[data-care]").forEach((btn) => {

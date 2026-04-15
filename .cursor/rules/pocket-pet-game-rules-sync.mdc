@@ -10,3 +10,5 @@ alwaysApply: true
 - **Socket / API contract** (event names, payloads, ack shapes): keep **`AGENTS.md`** “Socket 協定” in sync with `server/index.js` and `src/main.ts`. If you only change narrative in `GAME_RULES.md` and the wire protocol is unchanged, `AGENTS.md` may not need edits.
 - **Env / deploy hints** that affect play: update **`deploy.env.example`** and **`AGENTS.md`** env table when adding or renaming `VITE_*` / server vars tied to gameplay or feedback.
 - **Backlog**: if a change resolves or reopens something described in **`docs/IMPROVEMENT_BACKLOG.md`**, update that file’s todo vs “已完成” sections.
+- **版本號**：凡實質更新 **`docs/GAME_RULES.md`**、**`AGENTS.md`**（玩法／部署／Socket 等維護者約定）、或本 repo 的 **`.cursor/rules/*.mdc`**（含 `alwaysApply` 規則）時，須在**同一批變更**內遞增根目錄 **`package.json` 的 `version`**（預設 **patch +1**，例如 `0.2.0` → `0.2.1`；較大語意化變更再考慮 minor／major）。版本為**單一來源**（見 `AGENTS.md`）；勿在程式內另寫死版本字串。
+- **Git（版號變更後）**：只要本批變更**已遞增** `package.json` 的 `version`，在確認 `git status` 僅含預期檔案後，應**直接**以**中文**撰寫說明並提交、推送：`git add -A`（或僅加入相關路徑）→ `git commit -m "中文訊息，簡述此版重點"` → `git push`。若環境無認證／無遠端／sandbox 禁止網路導致無法 push，則至少完成本地 **commit**，並向使用者說明需自行 push。

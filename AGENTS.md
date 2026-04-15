@@ -2,12 +2,16 @@
 
 本文件給之後的 coding agent 用：說明架構、如何跑起來、哪裡改什麼、部署與資產規範。
 
+**遊戲規則（養成 + 對戰）** 的完整說明寫在 **`docs/GAME_RULES.md`**，改平衡或寫給玩家說明時請以該檔與程式為準。
+
 ## 專案是什麼
 
 - **電子寵物養成**：狀態存在瀏覽器 `localStorage`（鍵名等見 `src/pet.ts`），含飢餓、心情、清潔、體力、訓練、虛擬日齡、生病與死亡等邏輯。
 - **匿名連線對戰**：兩人透過 **房間碼** 配對，**Socket.IO** 同步回合制戰鬥（出招、超時自動出招、投降、斷線處理）。
 
 前端為 **Vite + TypeScript** 單頁應用；後端為 **Node（ESM）+ Express + socket.io** 的單檔伺服器。
+
+**版本號**：以根目錄 **`package.json` 的 `version`** 為單一來源；前端建置時由 Vite 注入 `__APP_VERSION__`（頂欄顯示），後端啟動日誌與 **`GET /version`** 亦讀取同檔。
 
 ## 目錄結構（精簡）
 
@@ -18,6 +22,7 @@
 | `src/style.css` | 全域樣式。 |
 | `server/index.js` | HTTP + WebSocket：房間、戰鬥狀態機、傷害結算、TTL 清理。 |
 | `public/pets/` | 精靈圖等靜態資源（idle 依成長階段命名）。 |
+| `docs/GAME_RULES.md` | **遊戲規則**：養成、孵化、對戰出招與傷害、勝負條件（給玩家／維護者）。 |
 | `vite.config.ts` | 開發時把 `/socket.io` **proxy** 到 `localhost:3000`。 |
 | `render.yaml` | Render.com Web Service 範例（僅 API、不掛靜態）。 |
 | `.github/workflows/deploy-pages.yml` | GitHub Pages 靜態部署；建置需 `SOCKET_SERVER_URL` secret。 |
@@ -68,7 +73,7 @@ npm run dev
 - `round_result` — 雙方出招與敘述、HP
 - `battle_end` — 勝負或平手、可含 `forfeitBy`
 
-戰鬥規則常數（回合長度、最大回合、起始 HP 等）在 **`server/index.js` 頂部**；前端 UI 字串與部分倒數與 **`ROUND_MS`** 在 `src/main.ts` — 若改規則請兩邊對齊。
+戰鬥規則常數（回合長度、最大回合、起始 HP 等）在 **`server/index.js` 頂部**；前端 UI 字串與部分倒數與 **`ROUND_MS`** 在 `src/main.ts` — 若改規則請兩邊對齊，並更新 **`docs/GAME_RULES.md`**。
 
 ## 建置與生產跑法
 
@@ -89,7 +94,7 @@ npm run start:api   # SERVE_STATIC=0：只跑 API（給 Pages + 分離後端）
 - **畫面與對戰流程**：`src/main.ts`（體積大，可用搜尋 `renderCare`、`renderBattle`、`ensureSocket`）。
 - **對戰平衡與房間生命週期**：`server/index.js`。
 - **樣式**：`src/style.css`。
-- **新精靈／圖示**：遵守 `.cursor/rules/pocket-pet-assets.mdc`；idle：`pet-idle-s0.png` … `s4`；動作映射在 `src/main.ts` 的 `PET_SPRITES`。
+- **新精靈／圖示**：遵守 `.cursor/rules/pocket-pet-assets.mdc`；idle 見 `idleSpriteForSpeciesStage`（`src/pet.ts`）；照護姿勢檔名見 **`carePoseFile`**（`src/pet.ts`），由 `src/main.ts` 呼叫。
 
 ## 慣例與注意
 

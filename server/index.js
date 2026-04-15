@@ -3,11 +3,14 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import { existsSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
 const dist = join(root, "dist");
+const appVersion = JSON.parse(
+  readFileSync(join(root, "package.json"), "utf-8"),
+).version;
 const isProd = process.env.NODE_ENV === "production";
 const PORT = Number(process.env.PORT) || 3000;
 
@@ -30,6 +33,10 @@ const io = new Server(httpServer, {
 
 app.get("/health", (_req, res) => {
   res.type("text/plain").send("ok");
+});
+
+app.get("/version", (_req, res) => {
+  res.type("text/plain").send(String(appVersion));
 });
 
 if (serveStatic) {
@@ -380,7 +387,7 @@ io.on("connection", (socket) => {
 });
 
 httpServer.listen(PORT, () => {
-  console.log(`[pocket-pet] server http://localhost:${PORT}`);
+  console.log(`[pocket-pet] v${appVersion} http://localhost:${PORT}`);
 });
 
 if (serveStatic) {

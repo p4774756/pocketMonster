@@ -24,6 +24,7 @@ import {
   type PetState,
 } from "./pet";
 import "./style.css";
+import { GAME_RULES_MARKDOWN } from "./gameRulesContent";
 import { mountThemeBar } from "./theme";
 
 type Move = "strike" | "guard" | "charge";
@@ -787,8 +788,54 @@ function showEndModal(root: HTMLElement, title: string) {
   });
 }
 
+function mountGameRulesButton(): void {
+  const btn = document.getElementById("btn-game-rules");
+  if (!btn) return;
+  btn.addEventListener("click", () => showGameRulesModal());
+}
+
+function showGameRulesModal(): void {
+  if (document.getElementById("rules-modal-overlay")) return;
+  const overlay = el(`
+    <div class="modal-overlay rules-modal-overlay" id="rules-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="rules-modal-title">
+      <div class="modal modal--rules">
+        <h2 id="rules-modal-title">\u904a\u6232\u898f\u5247\u8aaa\u660e</h2>
+        <div class="rules-modal-scroll">
+          <pre class="rules-modal-pre"></pre>
+        </div>
+        <button type="button" class="btn btn-primary" id="btn-rules-close">\u95dc\u9589</button>
+      </div>
+    </div>
+  `);
+  ($(".rules-modal-pre", overlay) as HTMLPreElement).textContent =
+    GAME_RULES_MARKDOWN;
+
+  const close = () => {
+    overlay.remove();
+    document.removeEventListener("keydown", onKey);
+  };
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === "Escape") close();
+  };
+  document.addEventListener("keydown", onKey);
+
+  $("#btn-rules-close", overlay).addEventListener("click", close);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) close();
+  });
+
+  document.body.appendChild(overlay);
+}
+
+function mountAppVersionLabel(): void {
+  const el = document.getElementById("app-version");
+  if (el) el.textContent = `v${__APP_VERSION__}`;
+}
+
 function boot() {
+  mountAppVersionLabel();
   mountThemeBar();
+  mountGameRulesButton();
   const root = $("#view-root");
   const params = new URLSearchParams(location.search);
   const preJoin = params.get("join")?.toUpperCase().trim();

@@ -60,14 +60,14 @@ npm run dev
 
 **Client → Server**
 
-- `create_room(ack)` — `ack({ ok, roomCode })`
-- `join_room({ roomCode }, ack)` — `ack({ ok, error? })`
+- `create_room({ pet: { species, nickname, virtAge } }, ack)` — `ack({ ok, roomCode })`；舊版只傳 `ack` 仍相容（伺服器用預設外觀）。`pet` 供對手顯示精靈與暱稱。
+- `join_room({ roomCode, pet: { species, nickname, virtAge } }, ack)` — `ack({ ok, error? })`；建議一律帶 `pet`。
 - `choose_move({ move })` — `move`: `"strike" | "guard" | "charge"`
 - `forfeit` — 投降並結束對戰
 
 **Server → Client**
 
-- `linked` — 配對成功、帶 `role`
+- `linked` — 配對成功；payload 含 `role`、`roomCode`、**`foe`**（對手 `{ species, nickname, virtAge }`，供對戰畫面）。
 - `peer_joined` / `peer_left` — 對端狀態
 - `battle_state` — 回合、HP、deadline、phase、鎖定狀態等
 - `round_result` — 雙方出招與敘述、HP

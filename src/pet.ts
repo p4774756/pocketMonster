@@ -69,14 +69,6 @@ function parseSpecies(raw: unknown): PetSpecies {
   return "volt";
 }
 
-const ALL_SPECIES: PetSpecies[] = ["volt", "crystal", "chicken", "cat"];
-
-/** PvP 對手：隨機挑一種與己方不同的物種。 */
-export function randomFoeSpecies(yours: PetSpecies): PetSpecies {
-  const pool = ALL_SPECIES.filter((s) => s !== yours);
-  return pool[Math.floor(Math.random() * pool.length)]!;
-}
-
 export type CarePose = "eat" | "train" | "rest" | "clean";
 
 export function carePoseFile(species: PetSpecies, pose: CarePose): string {

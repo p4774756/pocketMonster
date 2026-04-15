@@ -21,6 +21,39 @@ const START_HP = 100;
 
 /** @typedef {'strike' | 'guard' | 'charge'} Move */
 
+/** @typedef {{ species: 'volt'|'crystal'|'chicken'|'cat', nickname: string, virtAge: number }} PetSnap */
+
+function defaultPetSnap() {
+  return {
+    species: /** @type {const} */ ("volt"),
+    nickname: "\u73a9\u5bb6",
+    virtAge: 18,
+  };
+}
+
+/** @param {unknown} raw */
+function parsePetSnap(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const o = /** @type {Record<string, unknown>} */ (raw);
+  const sp = o.species;
+  const species =
+    sp === "volt" || sp === "crystal" || sp === "chicken" || sp === "cat"
+      ? sp
+      : "volt";
+  const nick = String(o.nickname ?? "")
+    .trim()
+    .slice(0, 12);
+  const virtAge = Math.min(
+    999,
+    Math.max(0, Number(o.virtAge) || 0),
+  );
+  return {
+    species,
+    nickname: nick || "\u73a9\u5bb6",
+    virtAge,
+  };
+}
+
 const app = express();
 const httpServer = createServer(app);
 
@@ -269,21 +302,47 @@ function startBattle(code) {
     timer: null,
   };
   r.battle = battle;
-  io.to(r.hostId).emit("linked", { roomCode: code, role: "host" });
-  io.to(r.guestId).emit("linked", { roomCode: code, role: "guest" });
+  const hostPet = r.hostPet || defaultPetSnap();
+  const guestPet = r.guestPet || defaultPetSnap();
+  io.to(r.hostId).emit("linked", {
+    roomCode: code,
+    role: "host",
+    foe: guestPet,
+  });
+  io.to(r.guestId).emit("linked", {
+    roomCode: code,
+    role: "guest",
+    foe: hostPet,
+  });
   broadcastBattleState(code, battle, { phase: "choose" });
   scheduleRoundTimeout(code);
 }
 
 io.on("connection", (socket) => {
-  socket.on("create_room", (ack) => {
+  socket.on("create_room", (payload, ack) => {
+    let petPayload = payload;
+    let cb = ack;
+    if (typeof payload === "function") {
+      cb = payload;
+      petPayload = null;
+    }
     pruneStaleRooms();
     let code = makeRoomCode();
     while (rooms.has(code)) code = makeRoomCode();
-    rooms.set(code, { created: Date.now(), hostId: socket.id });
+    const hostPet =
+      parsePetSnap(
+        petPayload && typeof petPayload === "object"
+          ? /** @type {{ pet?: unknown }} */ (petPayload).pet
+          : null,
+      ) || defaultPetSnap();
+    rooms.set(code, {
+      created: Date.now(),
+      hostId: socket.id,
+      hostPet,
+    });
     socket.join(code);
     socketRoom.set(socket.id, { roomCode: code, role: "host" });
-    if (typeof ack === "function") ack({ ok: true, roomCode: code });
+    if (typeof cb === "function") cb({ ok: true, roomCode: code });
   });
 
   socket.on("join_room", (payload, ack) => {
@@ -308,6 +367,7 @@ io.on("connection", (socket) => {
       return;
     }
     r.guestId = socket.id;
+    r.guestPet = parsePetSnap(payload?.pet) || defaultPetSnap();
     socket.join(code);
     socketRoom.set(socket.id, { roomCode: code, role: "guest" });
     if (typeof ack === "function") ack({ ok: true, roomCode: code });
@@ -379,6 +439,7 @@ io.on("connection", (socket) => {
       cleanupRoom(link.roomCode);
     } else {
       r.guestId = undefined;
+      r.guestPet = undefined;
       if (r.battle?.timer) clearTimeout(r.battle.timer);
       r.battle = undefined;
       io.to(r.hostId).emit("peer_left");

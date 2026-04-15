@@ -12,8 +12,6 @@ import {
   loadPet,
   memorialLine,
   moodLine,
-  petDefaultName,
-  randomFoeSpecies,
   renamePet,
   resetNewPet,
   restPet,
@@ -144,6 +142,43 @@ let roomCode: string | null = null;
 let role: "host" | "guest" | null = null;
 let phase: "lobby" | "waiting" | "battle" | "end" = "lobby";
 
+/** `linked` 時由伺服器帶入，供對戰畫面顯示真實對手。 */
+type BattleFoeSnap = {
+  species: PetSpecies;
+  nickname: string;
+  virtAge: number;
+};
+let battleFoeSnapshot: BattleFoeSnap | null = null;
+
+function normalizeBattleFoe(raw: {
+  species?: string;
+  nickname?: string;
+  virtAge?: number;
+}): BattleFoeSnap {
+  const sp = raw.species;
+  const species: PetSpecies =
+    sp === "volt" || sp === "crystal" || sp === "chicken" || sp === "cat"
+      ? sp
+      : "volt";
+  const nickname =
+    typeof raw.nickname === "string" && raw.nickname.trim().length > 0
+      ? raw.nickname.trim().slice(0, 12)
+      : "\u5c0d\u624b";
+  const virtAge =
+    typeof raw.virtAge === "number" && !Number.isNaN(raw.virtAge)
+      ? Math.min(999, Math.max(0, raw.virtAge))
+      : 18;
+  return { species, nickname, virtAge };
+}
+
+function battlePetPayload(p: PetState) {
+  return {
+    species: p.species,
+    nickname: p.nickname,
+    virtAge: p.virtAge,
+  };
+}
+
 function ensureSocket(): Socket {
   if (socket?.connected) return socket;
   const opts = {
@@ -165,6 +200,7 @@ function stopTick() {
 }
 
 function cancelWaitingAndReturn(root: HTMLElement) {
+  battleFoeSnapshot = null;
   const s = socket;
   if (s) {
     s.removeAllListeners("linked");
@@ -215,6 +251,7 @@ function escapeHtml(s: string): string {
 }
 
 function renderCare(root: HTMLElement) {
+  battleFoeSnapshot = null;
   const hint = consumeCareFlash();
   let state: PetState = loadPet();
   if (!state.alive) {
@@ -436,6 +473,7 @@ function renderCare(root: HTMLElement) {
 }
 
 function renderLobby(root: HTMLElement) {
+  battleFoeSnapshot = null;
   const pet = loadPet();
   if (!pet.alive) {
     flashCare(UI.deadPetBattleBlocked);
@@ -479,16 +517,21 @@ function renderLobby(root: HTMLElement) {
   $("#btn-host", root).addEventListener("click", () => {
     toast.classList.add("hidden");
     const s = ensureSocket();
-    s.emit("create_room", (res: { ok: boolean; roomCode?: string }) => {
-      if (!res?.ok || !res.roomCode) {
-        toast.textContent = UI.errGeneric;
-        toast.classList.remove("hidden");
-        return;
-      }
-      roomCode = res.roomCode;
-      role = "host";
-      renderWaiting(root, res.roomCode, true);
-    });
+    const pet = loadPet();
+    s.emit(
+      "create_room",
+      { pet: battlePetPayload(pet) },
+      (res: { ok: boolean; roomCode?: string }) => {
+        if (!res?.ok || !res.roomCode) {
+          toast.textContent = UI.errGeneric;
+          toast.classList.remove("hidden");
+          return;
+        }
+        roomCode = res.roomCode;
+        role = "host";
+        renderWaiting(root, res.roomCode, true);
+      },
+    );
   });
 
   $("#btn-join", root).addEventListener("click", () => {
@@ -500,16 +543,21 @@ function renderLobby(root: HTMLElement) {
       return;
     }
     const s = ensureSocket();
-    s.emit("join_room", { roomCode: code }, (res: { ok: boolean; error?: string }) => {
-      if (!res?.ok) {
-        toast.textContent = res?.error || UI.errGeneric;
-        toast.classList.remove("hidden");
-        return;
-      }
-      roomCode = code;
-      role = "guest";
-      renderWaiting(root, code, false);
-    });
+    const pet = loadPet();
+    s.emit(
+      "join_room",
+      { roomCode: code, pet: battlePetPayload(pet) },
+      (res: { ok: boolean; error?: string }) => {
+        if (!res?.ok) {
+          toast.textContent = res?.error || UI.errGeneric;
+          toast.classList.remove("hidden");
+          return;
+        }
+        roomCode = code;
+        role = "guest";
+        renderWaiting(root, code, false);
+      },
+    );
   });
 }
 
@@ -554,7 +602,12 @@ function renderWaiting(root: HTMLElement, code: string, isHost: boolean) {
   const s = ensureSocket();
   s.removeAllListeners("linked");
   s.removeAllListeners("peer_left");
-  const goBattle = () => {
+  const goBattle = (payload: {
+    foe?: { species?: string; nickname?: string; virtAge?: number };
+  }) => {
+    if (payload?.foe) {
+      battleFoeSnapshot = normalizeBattleFoe(payload.foe);
+    }
     if (phase === "waiting") renderBattle(root);
   };
   const onPeerLeft = () => {
@@ -587,13 +640,17 @@ function renderBattle(root: HTMLElement) {
     renderCare(root);
     return;
   }
-  const foeSpecies = randomFoeSpecies(myPet.species);
-  const battleSt = growthStage(myPet.virtAge);
+  const foeSnap = battleFoeSnapshot
+    ? normalizeBattleFoe(battleFoeSnapshot)
+    : normalizeBattleFoe({});
+  battleFoeSnapshot = null;
+  const mySt = growthStage(myPet.virtAge);
+  const foeSt = growthStage(foeSnap.virtAge);
   const youSprite = petAssetUrl(
-    idleSpriteForSpeciesStage(myPet.species, battleSt),
+    idleSpriteForSpeciesStage(myPet.species, mySt),
   );
   const foeSprite = petAssetUrl(
-    idleSpriteForSpeciesStage(foeSpecies, battleSt),
+    idleSpriteForSpeciesStage(foeSnap.species, foeSt),
   );
 
   root.replaceChildren(
@@ -637,9 +694,9 @@ function renderBattle(root: HTMLElement) {
   youSp.src = youSprite;
   foeSp.src = foeSprite;
   youSp.classList.toggle("pet-sprite--alt", myPet.species === "crystal");
-  foeSp.classList.toggle("pet-sprite--alt", foeSpecies === "crystal");
+  foeSp.classList.toggle("pet-sprite--alt", foeSnap.species === "crystal");
   $("#battle-you-label", root).textContent = `${myPet.nickname} \u00b7 \u6211\u65b9`;
-  $("#battle-foe-label", root).textContent = `${petDefaultName(foeSpecies)} \u00b7 \u5c0d\u624b`;
+  $("#battle-foe-label", root).textContent = `${foeSnap.nickname} \u00b7 \u5c0d\u624b`;
 
   const s = ensureSocket();
   s.removeAllListeners("battle_state");
@@ -845,19 +902,24 @@ function boot() {
       const input = document.getElementById("room-input") as HTMLInputElement | null;
       if (input) input.value = preJoin;
       const s = ensureSocket();
-      s.emit("join_room", { roomCode: preJoin }, (res: { ok: boolean; error?: string }) => {
-        if (!res?.ok) {
-          const toast = document.getElementById("lobby-toast");
-          if (toast) {
-            toast.textContent = res?.error || UI.errGeneric;
-            toast.classList.remove("hidden");
+      const pet = loadPet();
+      s.emit(
+        "join_room",
+        { roomCode: preJoin, pet: battlePetPayload(pet) },
+        (res: { ok: boolean; error?: string }) => {
+          if (!res?.ok) {
+            const toast = document.getElementById("lobby-toast");
+            if (toast) {
+              toast.textContent = res?.error || UI.errGeneric;
+              toast.classList.remove("hidden");
+            }
+            return;
           }
-          return;
-        }
-        roomCode = preJoin;
-        role = "guest";
-        renderWaiting(root, preJoin, false);
-      });
+          roomCode = preJoin;
+          role = "guest";
+          renderWaiting(root, preJoin, false);
+        },
+      );
     }, 200);
   } else {
     renderCare(root);

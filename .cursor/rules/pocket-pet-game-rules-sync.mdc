@@ -1,0 +1,12 @@
+---
+description: Keep GAME_RULES.md and related docs in sync when rules or gameplay change
+alwaysApply: true
+---
+
+# Game rules and documentation sync
+
+- **`docs/GAME_RULES.md`** is the canonical player/maintainer rules text. It is imported into the app via **`src/gameRulesContent.ts`** (`?raw`). Edit the **Markdown file** for in-game “遊戲說明” content; do not duplicate the full rules inside `AGENTS.md`.
+- **Whenever you change `GAME_RULES.md` or change code that affects documented behavior** (battle constants, Socket events, lobby flow, care thresholds, etc.), update the related artifacts listed in **`docs/GAME_RULES.md` §五（改規則時要同步的文件）**.
+- **Socket / API contract** (event names, payloads, ack shapes): keep **`AGENTS.md`** “Socket 協定” in sync with `server/index.js` and `src/main.ts`. If you only change narrative in `GAME_RULES.md` and the wire protocol is unchanged, `AGENTS.md` may not need edits.
+- **Env / deploy hints** that affect play: update **`deploy.env.example`** and **`AGENTS.md`** env table when adding or renaming `VITE_*` / server vars tied to gameplay or feedback.
+- **Backlog**: if a change resolves or reopens something described in **`docs/IMPROVEMENT_BACKLOG.md`**, update that file’s todo vs “已完成” sections.

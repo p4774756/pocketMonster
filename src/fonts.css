@@ -1,0 +1,14 @@
+/**
+ * 自託管字型子集（經 Vite 打包），取代 Google Fonts 外連以降低首連延遲。
+ * 中文依賴系統字型（PingFang、微軟正黑體等）；DM Sans 負責拉丁與介面數字為主段落。
+ */
+@import "@fontsource/dm-sans/latin-500.css";
+@import "@fontsource/dm-sans/latin-600.css";
+@import "@fontsource/dm-sans/latin-700.css";
+@import "@fontsource/dm-sans/latin-500-italic.css";
+@import "@fontsource/dm-sans/latin-ext-500.css";
+@import "@fontsource/dm-sans/latin-ext-600.css";
+@import "@fontsource/dm-sans/latin-ext-700.css";
+@import "@fontsource/dm-sans/latin-ext-500-italic.css";
+@import "@fontsource/jetbrains-mono/latin-500.css";
+@import "@fontsource/jetbrains-mono/latin-700.css";

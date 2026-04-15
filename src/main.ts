@@ -21,6 +21,7 @@ import {
   type PetSpecies,
   type PetState,
 } from "./pet";
+import "./fonts.css";
 import "./style.css";
 import { GAME_RULES_MARKDOWN } from "./gameRulesContent";
 import { mountThemeBar } from "./theme";

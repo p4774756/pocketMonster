@@ -6,8 +6,8 @@
 
 ## 效能與載入
 
-- **寵物圖檔**：`public/pets/` 合計約 **30MB**，多張 PNG 單檔 **0.5～1.7MB**；畫面只顯示小圖仍會整張下載。建議用 Squoosh／oxipng 等壓縮、必要時降解析度，或評估 **WebP** + 建置流程。
-- **字型**：`index.html` 自 Google Fonts 載入多個字重；若極在意首屏，可改 **子集字型自託管** 或縮減字重。
+- （**已實作**）寵物圖：`npm run optimize:pets` 已納入流程；`public/pets` 已縮至約 **0.6MB** 量級（仍為 PNG）。若仍嫌大可再評估 **WebP** 與 `<picture>`。
+- （**已實作**）字型：移除 Google Fonts 外連；`src/fonts.css` 自託管 **DM Sans + JetBrains Mono 拉丁子集**；中文走系統字型。
 
 ---
 
@@ -45,3 +45,4 @@
 - 大廳／對戰防連點、URL 自動加入鎖定、休息滿體不扣飽食、照顧動作節奏。
 - 可加入房間清單、`list_open_rooms` 協定、**`open_rooms_changed` 即時更新**。
 - 頂欄意見回饋彈窗與 `VITE_FEEDBACK_*` 選填變數。
+- **首載**：寵物圖批次優化腳本、自託管字型子集（見 `GAME_RULES.md` §三、§四）。

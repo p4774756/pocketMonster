@@ -2,6 +2,8 @@
 
 給玩家與維護者：養成與連線對戰的規則摘要。**實作以程式為準**；常數定義在 `src/pet.ts`、`src/main.ts`、`server/index.js`。
 
+**維護注意**：本檔由 `src/gameRulesContent.ts` 以 `?raw` 匯入，遊戲內「遊戲說明」彈窗與此檔同步。**凡修改本檔或與規則相關的程式行為**，請一併檢查並更新下方「改規則時要同步的文件」一節所列項目（避免文件與實作脫節）。
+
 ---
 
 ## 一、電子寵物（養成）
@@ -101,6 +103,8 @@
 
 - **對戰數值與回合長度**：改 `server/index.js` 頂部常數，並確認 **`src/main.ts` 的 `ROUND_MS`** 與之一致。
 - **養成節奏、孵化、死亡**：改 `src/pet.ts` 對應常數與函式。
+- **首載／寵物圖體積**：更換或新增 `public/pets/*.png` 後，請執行 **`npm run optimize:pets`**（`scripts/optimize-pet-pngs.mjs`：最長邊上限 256、`nearest` 縮放 + PNG 壓縮），再提交縮過的檔案。
+- **字型**：介面不再外連 Google Fonts；**DM Sans**／**JetBrains Mono** 的 **拉丁子集** 由 `src/fonts.css`（`@fontsource/*`）經 Vite 打包；**中文**使用系統字型（如 PingFang TC、Microsoft JhengHei）。若需全站自託管中文 webfont，須另加子集與授權檢查。
 
 ---
 
@@ -110,5 +114,23 @@
 |------|------|
 | 養成狀態機、孵化、照護 | `src/pet.ts` |
 | 畫面與 Socket 客戶端 | `src/main.ts` |
+| 自託管字型子集 | `src/fonts.css`（`@fontsource/dm-sans`、`@fontsource/jetbrains-mono`） |
+| 寵物 PNG 批次壓縮 | `scripts/optimize-pet-pngs.mjs`（`npm run optimize:pets`） |
 | 對戰結算、房間、計時 | `server/index.js` |
 | 專案架構給 agent | `AGENTS.md` |
+| 遊戲內規則彈窗內容 | `src/gameRulesContent.ts`（僅 re-export 本檔，**改規則請編輯本 MD**） |
+
+---
+
+## 五、改規則時要同步的文件
+
+變更 **本檔 `GAME_RULES.md`** 或 **會影響玩家認知的程式**（對戰常數、Socket 事件、大廳流程、養成門檻等）時，請依影響範圍更新：
+
+| 變更類型 | 請同步檢查／更新 |
+|----------|------------------|
+| **Socket 事件名、payload、流程**（例：`linked`、`list_open_rooms`、`open_rooms_changed`） | `AGENTS.md` 的 **Socket 協定**（Client → Server / Server → Client） |
+| **建置／環境變數** 影響對戰或回饋 | `AGENTS.md` 環境變數表、`deploy.env.example` |
+| **關閉或落實** `docs/IMPROVEMENT_BACKLOG.md` 裡某條待辦 | 該 backlog 檔案（對照區與待辦區） |
+| **僅改數值或敘述**、協定不變 | 僅需本檔與程式一致；`AGENTS.md` 若無協定描述可不改 |
+
+**單一來源**：玩家可讀的長篇規則以 **本檔** 為主；`AGENTS.md` 保持精簡索引與**協定／路徑**，避免在兩處複製大段重複規則文字。

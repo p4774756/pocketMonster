@@ -31,7 +31,9 @@
   --shadow-md: 0 8px 28px rgba(15, 23, 42, 0.08);
   --shadow-lg: 0 16px 48px rgba(15, 23, 42, 0.1);
   --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.92);
-  --font-sans: "DM Sans", "Noto Sans TC", system-ui, -apple-system, sans-serif;
+  --font-sans:
+    "DM Sans", ui-sans-serif, "PingFang TC", "Heiti TC", "Microsoft JhengHei",
+    "Noto Sans CJK TC", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 

@@ -2,7 +2,7 @@
 
 本文件給之後的 coding agent 用：說明架構、如何跑起來、哪裡改什麼、部署與資產規範。
 
-**遊戲規則（養成 + 對戰）** 的完整說明寫在 **`docs/GAME_RULES.md`**，改平衡或寫給玩家說明時請以該檔與程式為準。
+**遊戲規則（養成 + 對戰）** 的完整說明寫在 **`docs/GAME_RULES.md`**（遊戲內說明彈窗同檔來源）；改平衡或寫給玩家說明時請以該檔與程式為準。**改 `GAME_RULES.md` 或規則相關程式時**，請依該檔 **§五** 同步更新 Socket 協定／`deploy.env.example`／`IMPROVEMENT_BACKLOG.md` 等（見 `.cursor/rules/pocket-pet-game-rules-sync.mdc`）。
 
 ## 專案是什麼
 
@@ -20,6 +20,8 @@
 | `src/main.ts` | 幾乎全部 UI：養成畫面、紀念頁、對戰大廳與戰鬥 UI；Socket 客戶端事件綁定。 |
 | `src/pet.ts` | 寵物狀態型別、`loadPet`/`save`、成長階段、各種照護 action、死亡條件。 |
 | `src/style.css` | 全域樣式。 |
+| `src/fonts.css` | 自託管字型（`@fontsource` 拉丁子集）；由 `main.ts` 早於 `style.css` 匯入。 |
+| `scripts/optimize-pet-pngs.mjs` | 縮小 `public/pets/*.png`：`npm run optimize:pets`（換圖後應重跑）。 |
 | `server/index.js` | HTTP + WebSocket：房間、戰鬥狀態機、傷害結算、TTL 清理。 |
 | `public/pets/` | 精靈圖等靜態資源（idle 依成長階段命名）。 |
 | `docs/GAME_RULES.md` | **遊戲規則**：養成、孵化、對戰出招與傷害、勝負條件（給玩家／維護者）。 |
@@ -32,6 +34,8 @@
 
 ```bash
 npm install
+# 若更換 public/pets 內 PNG，建議提交前執行：
+# npm run optimize:pets
 npm run dev
 ```
 
@@ -77,7 +81,7 @@ npm run dev
 - `round_result` — 雙方出招與敘述、HP
 - `battle_end` — 勝負或平手、可含 `forfeitBy`
 
-戰鬥規則常數（回合長度、最大回合、起始 HP 等）在 **`server/index.js` 頂部**；前端 UI 字串與部分倒數與 **`ROUND_MS`** 在 `src/main.ts` — 若改規則請兩邊對齊，並更新 **`docs/GAME_RULES.md`**。
+戰鬥規則常數（回合長度、最大回合、起始 HP 等）在 **`server/index.js` 頂部**；前端 UI 字串與部分倒數與 **`ROUND_MS`** 在 `src/main.ts`。**改程式常數或行為**時請與 **`docs/GAME_RULES.md`** 對齊；**改 `GAME_RULES.md` 且涉及 Socket／流程**時請同步本節 **Socket 協定** 與 **`GAME_RULES.md` §五** 所列檔案。
 
 ## 建置與生產跑法
 

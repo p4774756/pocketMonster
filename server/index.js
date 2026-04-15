@@ -18,17 +18,32 @@ const ROOM_TTL_MS = 30 * 60 * 1000;
 const ROUND_MS = 12_000;
 const MAX_ROUNDS = 12;
 const START_HP = 100;
+/** 蓄力本回合消耗的靈力（MP）。 */
+const MP_COST_CHARGE = 8;
+/** 架盾成功後回復的 MP（不超過上限）。 */
+const MP_GUARD_RECOVER = 6;
+/** 每回合結束後雙方自動回復的 MP。 */
+const MP_REGEN_PER_ROUND = 5;
 
 /** @typedef {'strike' | 'guard' | 'charge'} Move */
 
-/** @typedef {{ species: 'volt'|'crystal'|'chicken'|'cat', nickname: string, virtAge: number }} PetSnap */
+/** @typedef {{ species: 'volt'|'crystal'|'chicken'|'cat', nickname: string, virtAge: number, power: number }} PetSnap */
 
 function defaultPetSnap() {
   return {
     species: /** @type {const} */ ("volt"),
     nickname: "\u73a9\u5bb6",
     virtAge: 18,
+    power: 12,
   };
+}
+
+/** @param {unknown} raw */
+function parseRoomTitle(raw) {
+  if (raw == null || typeof raw !== "string") return "";
+  let s = raw.normalize("NFC").trim().slice(0, 24);
+  s = s.replace(/[\u0000-\u001f\u007f]/g, "");
+  return s;
 }
 
 /** @param {unknown} raw */
@@ -47,11 +62,40 @@ function parsePetSnap(raw) {
     999,
     Math.max(0, Number(o.virtAge) || 0),
   );
+  const powerNum = Number(o.power);
+  const power = Number.isFinite(powerNum)
+    ? Math.min(100, Math.max(0, Math.floor(powerNum)))
+    : 12;
   return {
     species,
     nickname: nick || "\u73a9\u5bb6",
     virtAge,
+    power,
   };
+}
+
+/** 養成 power（0～100）換算戰鬥 MP 上限：約 26～44。 */
+function mpMaxForPet(p) {
+  const pwr =
+    p && typeof p.power === "number" && !Number.isNaN(p.power) ? p.power : 12;
+  return Math.min(44, 26 + Math.min(18, Math.floor(pwr / 4)));
+}
+
+/** 攻擊方物種：加在斬擊／蓄力的基礎段數上（蓄力仍再乘 1.35）。 */
+function speciesAtkBonus(species) {
+  if (species === "volt") return 2;
+  if (species === "crystal") return 0;
+  if (species === "chicken") return 1;
+  if (species === "cat") return 1;
+  return 0;
+}
+
+/** 受傷方物種：乘在「已結算防禦係數後」的傷害上（仍至少 2）。 */
+function speciesDefMul(species) {
+  if (species === "crystal") return 0.92;
+  if (species === "cat") return 0.96;
+  if (species === "chicken") return 0.98;
+  return 1;
 }
 
 const app = express();
@@ -72,6 +116,23 @@ function notifyOpenRoomsChanged() {
     openRoomsNotifyTimer = null;
     io.emit("open_rooms_changed");
   }, 200);
+}
+
+/** `list_open_rooms`：每連線 1 秒內最多 10 次，防刷。 */
+const listOpenRoomsHits = new Map();
+
+/** @param {string} socketId @param {number} now */
+function allowListOpenRoomsHit(socketId, now) {
+  let arr = listOpenRoomsHits.get(socketId);
+  if (!arr) {
+    arr = [];
+    listOpenRoomsHits.set(socketId, arr);
+  }
+  const cutoff = now - 1000;
+  while (arr.length > 0 && arr[0] < cutoff) arr.shift();
+  if (arr.length >= 10) return false;
+  arr.push(now);
+  return true;
 }
 
 app.get("/health", (_req, res) => {
@@ -95,7 +156,7 @@ function makeRoomCode() {
   return s;
 }
 
-/** @type {Map<string, { created: number, hostId: string, guestId?: string, battle?: Battle }>} */
+/** @type {Map<string, { created: number, hostId: string, guestId?: string, battle?: Battle, roomTitle?: string }>} */
 const rooms = new Map();
 
 /** @type {Map<string, { roomCode: string, role: 'host' | 'guest' }>} */
@@ -107,6 +168,8 @@ const socketRoom = new Map();
  * @property {Record<string, number>} hp
  * @property {Record<string, number>} chargeBonus
  * @property {Record<string, Move | null>} pending
+ * @property {Record<string, number>} mp
+ * @property {Record<string, number>} mpMax
  * @property {number | null} deadline
  * @property {ReturnType<typeof setTimeout> | null} timer
  */
@@ -130,7 +193,14 @@ function pruneStaleRooms() {
 
 setInterval(pruneStaleRooms, 60_000);
 
-function resolveRound(moveHost, moveGuest, bonusHost, bonusGuest) {
+function resolveRound(
+  moveHost,
+  moveGuest,
+  bonusHost,
+  bonusGuest,
+  speciesHost,
+  speciesGuest,
+) {
   /** @type {{ hostLog: string, guestLog: string, dmgToHost: number, dmgToGuest: number }} */
   const out = {
     hostLog: "",
@@ -139,8 +209,10 @@ function resolveRound(moveHost, moveGuest, bonusHost, bonusGuest) {
     dmgToGuest: 0,
   };
 
-  const strikeBaseHost = 14 + bonusHost;
-  const strikeBaseGuest = 14 + bonusGuest;
+  const strikeBaseHost =
+    14 + bonusHost + speciesAtkBonus(/** @type {string} */ (speciesHost));
+  const strikeBaseGuest =
+    14 + bonusGuest + speciesAtkBonus(/** @type {string} */ (speciesGuest));
 
   const hostAttacks = moveHost === "strike" || moveHost === "charge";
   const guestAttacks = moveGuest === "strike" || moveGuest === "charge";
@@ -155,6 +227,12 @@ function resolveRound(moveHost, moveGuest, bonusHost, bonusGuest) {
     let raw = guestCharge ? Math.round(strikeBaseGuest * 1.35) : strikeBaseGuest;
     if (hostGuard) {
       raw = Math.max(2, Math.round(raw * 0.25));
+    }
+    raw = Math.max(
+      2,
+      Math.round(raw * speciesDefMul(/** @type {string} */ (speciesHost))),
+    );
+    if (hostGuard) {
       out.hostLog += `\u5c0d\u65b9\u653b\u64ca\u88ab\u9632\u4f4f\uff0c\u4ecd\u53d7\u5230 ${raw} \u9ede\u50b7\u5bb3\u3002`;
     } else {
       out.hostLog += `\u5c0d\u65b9\u653b\u64ca\u9020\u6210 ${raw} \u9ede\u50b7\u5bb3\u3002`;
@@ -168,6 +246,12 @@ function resolveRound(moveHost, moveGuest, bonusHost, bonusGuest) {
     let raw = hostCharge ? Math.round(strikeBaseHost * 1.35) : strikeBaseHost;
     if (guestGuard) {
       raw = Math.max(2, Math.round(raw * 0.25));
+    }
+    raw = Math.max(
+      2,
+      Math.round(raw * speciesDefMul(/** @type {string} */ (speciesGuest))),
+    );
+    if (guestGuard) {
       out.guestLog += `\u5c0d\u65b9\u653b\u64ca\u88ab\u9632\u4f4f\uff0c\u4ecd\u53d7\u5230 ${raw} \u9ede\u50b7\u5bb3\u3002`;
     } else {
       out.guestLog += `\u5c0d\u65b9\u653b\u64ca\u9020\u6210 ${raw} \u9ede\u50b7\u5bb3\u3002`;
@@ -189,6 +273,8 @@ function broadcastBattleState(code, battle, extra = {}) {
   const payloadBase = {
     round: battle.round,
     hp: { ...battle.hp },
+    mp: { ...battle.mp },
+    mpMax: { ...battle.mpMax },
     deadline: battle.deadline,
     ...extra,
   };
@@ -197,6 +283,10 @@ function broadcastBattleState(code, battle, extra = {}) {
     you: "host",
     yourHp: battle.hp.host,
     foeHp: battle.hp.guest,
+    yourMp: battle.mp.host,
+    yourMpMax: battle.mpMax.host,
+    foeMp: battle.mp.guest,
+    foeMpMax: battle.mpMax.guest,
   });
   if (r.guestId) {
     io.to(r.guestId).emit("battle_state", {
@@ -204,8 +294,19 @@ function broadcastBattleState(code, battle, extra = {}) {
       you: "guest",
       yourHp: battle.hp.guest,
       foeHp: battle.hp.host,
+      yourMp: battle.mp.guest,
+      yourMpMax: battle.mpMax.guest,
+      foeMp: battle.mp.host,
+      foeMpMax: battle.mpMax.host,
     });
   }
+}
+
+/** 超時隨機選招：MP 不足時不會選蓄力。 */
+function randomMove(mp) {
+  const opts = ["strike", "guard"];
+  if (mp >= MP_COST_CHARGE) opts.push("charge");
+  return opts[Math.floor(Math.random() * opts.length)];
 }
 
 function scheduleRoundTimeout(code) {
@@ -228,18 +329,55 @@ function applyMoves(code, fromTimeout = false) {
 
   let mh = b.pending.host;
   let mg = b.pending.guest;
-  if (!mh) mh = ["strike", "guard", "charge"][Math.floor(Math.random() * 3)];
-  if (!mg) mg = ["strike", "guard", "charge"][Math.floor(Math.random() * 3)];
+  if (!mh) mh = randomMove(b.mp.host);
+  if (!mg) mg = randomMove(b.mp.guest);
+  if (mh === "charge" && b.mp.host < MP_COST_CHARGE) mh = "strike";
+  if (mg === "charge" && b.mp.guest < MP_COST_CHARGE) mg = "strike";
 
+  if (mh === "charge") b.mp.host -= MP_COST_CHARGE;
+  if (mg === "charge") b.mp.guest -= MP_COST_CHARGE;
+
+  const hostPet = r.hostPet || defaultPetSnap();
+  const guestPet = r.guestPet || defaultPetSnap();
   const bonusH = b.chargeBonus.host;
   const bonusG = b.chargeBonus.guest;
-  const res = resolveRound(mh, mg, bonusH, bonusG);
+  const res = resolveRound(
+    mh,
+    mg,
+    bonusH,
+    bonusG,
+    hostPet.species,
+    guestPet.species,
+  );
 
   b.hp.host = Math.max(0, b.hp.host - res.dmgToHost);
   b.hp.guest = Math.max(0, b.hp.guest - res.dmgToGuest);
 
   b.chargeBonus.host = mh === "charge" ? 10 : 0;
   b.chargeBonus.guest = mg === "charge" ? 10 : 0;
+
+  if (mh === "guard") {
+    b.mp.host = Math.min(
+      b.mpMax.host,
+      b.mp.host + MP_GUARD_RECOVER,
+    );
+  }
+  if (mg === "guard") {
+    b.mp.guest = Math.min(
+      b.mpMax.guest,
+      b.mp.guest + MP_GUARD_RECOVER,
+    );
+  }
+  b.mp.host = Math.min(
+    b.mpMax.host,
+    b.mp.host + MP_REGEN_PER_ROUND,
+  );
+  b.mp.guest = Math.min(
+    b.mpMax.guest,
+    b.mp.guest + MP_REGEN_PER_ROUND,
+  );
+  b.mp.host = Math.max(0, b.mp.host);
+  b.mp.guest = Math.max(0, b.mp.guest);
 
   const auto = fromTimeout && (!b.pending.host || !b.pending.guest);
 
@@ -249,6 +387,8 @@ function applyMoves(code, fromTimeout = false) {
     yourLog: res.hostLog,
     foeLog: res.guestLog,
     hp: { ...b.hp },
+    mp: { ...b.mp },
+    mpMax: { ...b.mpMax },
     auto,
   });
   io.to(r.guestId).emit("round_result", {
@@ -257,6 +397,8 @@ function applyMoves(code, fromTimeout = false) {
     yourLog: res.guestLog,
     foeLog: res.hostLog,
     hp: { ...b.hp },
+    mp: { ...b.mp },
+    mpMax: { ...b.mpMax },
     auto,
   });
 
@@ -303,18 +445,22 @@ function applyMoves(code, fromTimeout = false) {
 function startBattle(code) {
   const r = rooms.get(code);
   if (!r?.guestId) return;
+  const hostPet = r.hostPet || defaultPetSnap();
+  const guestPet = r.guestPet || defaultPetSnap();
+  const mpMaxH = mpMaxForPet(hostPet);
+  const mpMaxG = mpMaxForPet(guestPet);
   /** @type {Battle} */
   const battle = {
     round: 1,
     hp: { host: START_HP, guest: START_HP },
     chargeBonus: { host: 0, guest: 0 },
     pending: { host: null, guest: null },
+    mp: { host: mpMaxH, guest: mpMaxG },
+    mpMax: { host: mpMaxH, guest: mpMaxG },
     deadline: Date.now() + ROUND_MS,
     timer: null,
   };
   r.battle = battle;
-  const hostPet = r.hostPet || defaultPetSnap();
-  const guestPet = r.guestPet || defaultPetSnap();
   io.to(r.hostId).emit("linked", {
     roomCode: code,
     role: "host",
@@ -346,14 +492,22 @@ io.on("connection", (socket) => {
           ? /** @type {{ pet?: unknown }} */ (petPayload).pet
           : null,
       ) || defaultPetSnap();
+    const roomTitle =
+      petPayload && typeof petPayload === "object"
+        ? parseRoomTitle(
+            /** @type {{ roomTitle?: unknown }} */ (petPayload).roomTitle,
+          )
+        : "";
     rooms.set(code, {
       created: Date.now(),
       hostId: socket.id,
       hostPet,
+      roomTitle,
     });
     socket.join(code);
     socketRoom.set(socket.id, { roomCode: code, role: "host" });
-    if (typeof cb === "function") cb({ ok: true, roomCode: code });
+    if (typeof cb === "function")
+      cb({ ok: true, roomCode: code, roomTitle });
     notifyOpenRoomsChanged();
   });
 
@@ -392,8 +546,13 @@ io.on("connection", (socket) => {
   socket.on("list_open_rooms", (payload, ack) => {
     let cb = ack;
     if (typeof payload === "function") cb = payload;
+    const now = Date.now();
+    if (!allowListOpenRoomsHit(socket.id, now)) {
+      if (typeof cb === "function") cb({ ok: false, error: "too_fast" });
+      return;
+    }
     pruneStaleRooms();
-    /** @type {{ roomCode: string, hostNickname: string, hostSpecies: string, created: number }[]} */
+    /** @type {{ roomCode: string, roomTitle: string, hostNickname: string, hostSpecies: string, created: number }[]} */
     const out = [];
     for (const [code, r] of rooms) {
       if (!r.hostId || r.guestId) continue;
@@ -401,6 +560,7 @@ io.on("connection", (socket) => {
       const pet = r.hostPet || defaultPetSnap();
       out.push({
         roomCode: code,
+        roomTitle: typeof r.roomTitle === "string" ? r.roomTitle : "",
         hostNickname: pet.nickname || "\u73a9\u5bb6",
         hostSpecies: pet.species,
         created: r.created,
@@ -465,6 +625,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
+    listOpenRoomsHits.delete(socket.id);
     const link = socketRoom.get(socket.id);
     socketRoom.delete(socket.id);
     if (!link) return;

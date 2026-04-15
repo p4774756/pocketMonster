@@ -66,19 +66,19 @@ npm run dev
 
 **Client → Server**
 
-- `create_room({ pet: { species, nickname, virtAge } }, ack)` — `ack({ ok, roomCode })`；舊版只傳 `ack` 仍相容（伺服器用預設外觀）。`pet` 供對手顯示精靈與暱稱。
-- `join_room({ roomCode, pet: { species, nickname, virtAge } }, ack)` — `ack({ ok, error? })`；建議一律帶 `pet`。
-- `list_open_rooms({}, ack)` — `ack({ ok, rooms })`；`rooms` 為最多 40 筆 `{ roomCode, hostNickname, hostSpecies, created }`（僅「房主已連線、尚無訪客」且排除呼叫端自己開的房）。
+- `create_room({ pet: { species, nickname, virtAge, power }, roomTitle? }, ack)` — `ack({ ok, roomCode, roomTitle })`；`roomTitle` 為伺服器裁切後的展示名（最多 24 字，可空字串）。舊版只傳 `ack` 仍相容。`pet` 供對手顯示與**對戰 MP 上限**（`power` 0～100，缺省伺服器以 12 計）。
+- `join_room({ roomCode, pet: { species, nickname, virtAge, power } }, ack)` — `ack({ ok, error? })`；建議一律帶 `pet`。
+- `list_open_rooms({}, ack)` — 成功：`ack({ ok: true, rooms })`；`rooms` 為最多 40 筆 `{ roomCode, roomTitle, hostNickname, hostSpecies, created }`（僅「房主已連線、尚無訪客」且排除呼叫端自己開的房）。**節流**：同一連線 **1 秒內超過 10 次** 回 `ack({ ok: false, error: "too_fast" })`。
 - `choose_move({ move })` — `move`: `"strike" | "guard" | "charge"`
 - `forfeit` — 投降並結束對戰
 
 **Server → Client**
 
-- `linked` — 配對成功；payload 含 `role`、`roomCode`、**`foe`**（對手 `{ species, nickname, virtAge }`，供對戰畫面）。
+- `linked` — 配對成功；payload 含 `role`、`roomCode`、**`foe`**（對手 `{ species, nickname, virtAge, power }`，供對戰畫面）。
 - `open_rooms_changed` — 無 payload；**可加入的公開房清單**有變（開房、有人加入、房關閉、訪客斷線回到等待等）時廣播；大廳可據此再呼叫 `list_open_rooms`（實作含約 200ms 防抖合併）。
 - `peer_joined` / `peer_left` — 對端狀態
-- `battle_state` — 回合、HP、deadline、phase、鎖定狀態等
-- `round_result` — 雙方出招與敘述、HP
+- `battle_state` — 回合、HP、**MP**（`mp` / `mpMax` 主客欄位、以及 **`yourMp` / `yourMpMax` / `foeMp` / `foeMpMax`** 視角欄位）、deadline、phase、鎖定狀態等
+- `round_result` — 雙方出招與敘述、HP、結算後的 **`mp` / `mpMax`**
 - `battle_end` — 勝負或平手、可含 `forfeitBy`
 
 戰鬥規則常數（回合長度、最大回合、起始 HP 等）在 **`server/index.js` 頂部**；前端 UI 字串與部分倒數與 **`ROUND_MS`** 在 `src/main.ts`。**改程式常數或行為**時請與 **`docs/GAME_RULES.md`** 對齊；**改 `GAME_RULES.md` 且涉及 Socket／流程**時請同步本節 **Socket 協定** 與 **`GAME_RULES.md` §五** 所列檔案。

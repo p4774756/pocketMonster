@@ -361,6 +361,57 @@ h1 {
   text-transform: none;
 }
 
+.room-title-label {
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 10px 0 6px;
+}
+
+.room-title-row {
+  align-items: stretch;
+  margin-bottom: 4px;
+}
+
+.room-title-row .room-title-field {
+  flex: 1;
+  min-width: 0;
+  letter-spacing: normal;
+  text-align: left;
+  text-transform: none;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  padding: 12px 14px;
+}
+
+.room-title-row .btn-room-title-random {
+  flex: 0 0 auto;
+  min-width: 52px;
+  padding: 10px 12px;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.open-room-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--indigo);
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-wait-custom-title {
+  margin: 0 0 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--indigo);
+  text-align: center;
+  line-height: 1.45;
+}
+
 /* ----- lobby: browse open rooms ----- */
 .open-rooms {
   margin-top: 18px;
@@ -558,6 +609,37 @@ h1 {
 
 .hp-fill.foe {
   background: linear-gradient(90deg, #fb7185, var(--accent));
+}
+
+.mp-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--muted-2);
+  margin-top: 8px;
+  text-align: left;
+  padding-left: 2px;
+}
+
+.mp-wrap {
+  height: 7px;
+  border-radius: var(--radius-pill);
+  background: rgba(99, 102, 241, 0.22);
+  margin-top: 4px;
+  overflow: hidden;
+  border: none;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.mp-fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, #818cf8, #6366f1);
+  transition: width 0.35s ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.mp-fill--foe {
+  background: linear-gradient(90deg, #a5b4fc, #4f46e5);
 }
 
 .round-meta {
@@ -1261,6 +1343,14 @@ html[data-theme="retro"] .hp-wrap {
   background: rgba(0, 0, 0, 0.35);
 }
 
+html[data-theme="retro"] .mp-wrap {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="retro"] .mp-label {
+  color: #5eead4;
+}
+
 html[data-theme="retro"] .log {
   background: rgba(0, 0, 0, 0.25);
   border-color: rgba(52, 211, 153, 0.2);
@@ -1487,6 +1577,19 @@ html[data-theme="minimal"] .hp-fill {
 }
 
 html[data-theme="minimal"] .hp-fill.foe {
+  background: #555 !important;
+}
+
+html[data-theme="minimal"] .mp-wrap {
+  background: #ddd;
+  border: 1px solid #0a0a0a;
+}
+
+html[data-theme="minimal"] .mp-fill {
+  background: #0a0a0a !important;
+}
+
+html[data-theme="minimal"] .mp-fill--foe {
   background: #555 !important;
 }
 

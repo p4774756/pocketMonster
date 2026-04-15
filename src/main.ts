@@ -29,10 +29,50 @@ import { mountThemeBar } from "./theme";
 type Move = "strike" | "guard" | "charge";
 
 const ROUND_MS = 12_000;
+/** 與 `server/index.js` 的 `MP_COST_CHARGE` 一致；蓄力消耗的靈力。 */
+const MP_COST_CHARGE = 8;
+
+/** 開房「隨機名稱」用；不含商業角色名，僅趣味詞組。 */
+const RANDOM_ROOM_TITLES = [
+  "\u661f\u5149\u5c0f\u7ad9",
+  "\u9031\u4e94\u591c\u6230",
+  "\u8edf\u7cd6\u5bf5\u7269\u5c40",
+  "\u8349\u8393\u5fc3\u60c5",
+  "\u96f7\u96f2\u8a66\u73a9\u5340",
+  "\u8c6c\u6392\u6392\u7df4\u7fd2\u5ba4",
+  "\u8c93\u8c93\u4f11\u606f\u5340",
+  "\u96de\u86cb\u6e6f\u5713\u684c",
+  "\u6c34\u679c\u6d17\u8863\u7cbe",
+  "\u591c\u9593\u5faa\u74b0\u8cfd",
+  "\u4e0b\u73ed\u5feb\u6a02\u6253",
+  "\u5496\u5561\u62c9\u9eb5\u9928",
+  "\u7a7a\u8abf\u5f37\u6b78\u968a",
+  "\u8def\u908a\u5c0f\u96f7\u9053",
+  "\u8d85\u8d8a\u7d19\u76d2\u6230",
+  "\u8c93\u8c93\u8e22\u8e22\u7403",
+  "\u5fae\u98a8\u4f11\u61a9\u7ad9",
+  "\u6ce1\u6ce1\u6d17\u6fa1\u65e5",
+  "\u7c73\u7c89\u5718\u5b50\u5c45",
+  "\u6a58\u8272\u5c0f\u6676\u9748",
+  "\u8edf\u68c9\u88ab\u5de5\u623f",
+  "\u5c0f\u6b65\u8dd1\u5065\u8eab\u623f",
+  "\u8ffd\u5149\u8005\u806f\u76df",
+  "\u5c0f\u5c0f\u5192\u96aa\u5bb6",
+];
+
+function pickRandomRoomTitle(): string {
+  return RANDOM_ROOM_TITLES[
+    Math.floor(Math.random() * RANDOM_ROOM_TITLES.length)
+  ]!;
+}
 
 /** 養成畫面：兩次照顧操作之間最短間隔，避免連點略過真實時間節奏。 */
-const CARE_ACTION_GAP_MS = 1100;
-let lastCareActionAt = 0;
+/** 餵食／清潔／訓練／看醫生：最短間隔（毫秒）。 */
+const CARE_GAP_QUICK_MS = 650;
+/** 休息：再次休息前較長間隔，避免連點略過「需要時間」的體感。 */
+const CARE_GAP_REST_MS = 2200;
+let lastCareQuickAt = 0;
+let lastCareRestAt = 0;
 
 function petAssetUrl(file: string) {
   return `${import.meta.env.BASE_URL}pets/${file}`;
@@ -80,8 +120,13 @@ const UI = {
   openRoomsEmpty: "\u76ee\u524d\u6c92\u6709\u53ef\u52a0\u5165\u7684\u623f\u9593",
   openRoomsLoading: "\u8b80\u53d6\u4e2d\u2026",
   openRoomsErr: "\u7121\u6cd5\u8b80\u53d6\u623f\u9593\u6e05\u55ae",
+  openRoomsRateLimited: "\u8acb\u7a0d\u5f8c\u518d\u5237\u65b0\u623f\u9593\u6e05\u55ae",
   openRoomsLiveHint:
     "\u6709\u4eba\u958b\u623f\u3001\u52a0\u5165\u6216\u96e2\u7dda\u6642\uff0c\u6e05\u55ae\u6703\u81ea\u52d5\u66f4\u65b0\uff08\u4e5f\u53ef\u624b\u52d5\u5237\u65b0\uff09\u3002",
+  roomTitleLabel: "\u623f\u9593\u540d\u7a31\uff08\u986f\u793a\u7528\uff0c\u9078\u586b\uff09",
+  roomTitlePlaceholder: "\u4f8b\uff1a\u9031\u4e94\u5c0f\u7d44",
+  roomTitleRandomAria: "\u96a8\u6a5f\u623f\u9593\u540d\u7a31",
+  roomDisplayNameLabel: "\u623f\u9593\u540d\u7a31",
   roomPlaceholder: "\u623f\u9593\u78bc",
   waitConnect: "\u7b49\u5f85\u5c0d\u65b9\u63a5\u4e0a\u9023\u7dda\u2026",
   syncing: "\u9023\u7dda\u540c\u6b65\u4e2d\u2026",
@@ -141,6 +186,8 @@ const UI = {
   justHatched: "\u7834\u6bbc\u4e86\uff01\u4f86\u6253\u500b\u62db\u547c\u5427\uff5e",
   careTooFast:
     "\u5148\u7a0d\u5f85\u4e00\u4e0b\u518d\u7167\u9867\u5427\uff08\u52d5\u4f5c\u592a\u5feb\u56c9\uff09\u3002",
+  restTooFast:
+    "\u4f11\u606f\u9593\u9694\u8f03\u9577\uff0c\u8acb\u7a0d\u5f8c\u518d\u8a66\u3002",
   restNotNeeded: "\u9ad4\u529b\u5df2\u6eff\uff0c\u4e0d\u7528\u518d\u4f11\u606f\u56c9\u3002",
   cancelWait: "\u53d6\u6d88",
   surrenderLeave: "\u6295\u964d\uff0f\u96e2\u958b",
@@ -148,6 +195,9 @@ const UI = {
     "\u78ba\u5b9a\u8981\u6295\u964d\u4e26\u7d50\u675f\u5c0d\u6230\u55ce\uff1f",
   youSurrendered: "\u4f60\u5df2\u6295\u964d",
   foeSurrenderYouWin: "\u5c0d\u65b9\u6295\u964d\uff0c\u4f60\u8d0f\u4e86\uff01",
+  battleMp: "\u9748\u529b",
+  chargeMpBlocked: (n: number) =>
+    `\u9748\u529b\u4e0d\u8db3\uff08\u9700 ${n} \u9ede\u624d\u53ef\u84c4\u529b\uff09`,
 };
 
 const socketServerUrl = (import.meta.env.VITE_SOCKET_URL || "").replace(/\/$/, "");
@@ -156,7 +206,9 @@ let socket: Socket | null = null;
 let tickTimer: number | null = null;
 let roomCode: string | null = null;
 let role: "host" | "guest" | null = null;
-let phase: "lobby" | "waiting" | "battle" | "end" = "lobby";
+/** 與目前畫面一致，供大廳即時清單等邏輯判斷。 */
+let phase: "care" | "memorial" | "lobby" | "waiting" | "battle" | "end" =
+  "care";
 
 /** 大廳 create/join 逾時解鎖（模組級，避免舊 closure 計時器誤傷新一輪操作）。 */
 let lobbySocketGuardTimer: number | null = null;
@@ -172,12 +224,20 @@ function unlockLobbyFormControlsSoft() {
   const host = document.getElementById("btn-host") as HTMLButtonElement | null;
   const join = document.getElementById("btn-join") as HTMLButtonElement | null;
   const inp = document.getElementById("room-input") as HTMLInputElement | null;
+  const titleInp = document.getElementById(
+    "room-title-input",
+  ) as HTMLInputElement | null;
+  const titleRand = document.getElementById(
+    "btn-room-title-random",
+  ) as HTMLButtonElement | null;
   const refreshOpen = document.getElementById(
     "btn-refresh-open-rooms",
   ) as HTMLButtonElement | null;
   if (host) host.disabled = false;
   if (join) join.disabled = false;
   if (inp) inp.disabled = false;
+  if (titleInp) titleInp.disabled = false;
+  if (titleRand) titleRand.disabled = false;
   if (refreshOpen) refreshOpen.disabled = false;
   document.querySelectorAll<HTMLButtonElement>(".open-room-join").forEach((b) => {
     b.disabled = false;
@@ -189,6 +249,7 @@ type BattleFoeSnap = {
   species: PetSpecies;
   nickname: string;
   virtAge: number;
+  power: number;
 };
 let battleFoeSnapshot: BattleFoeSnap | null = null;
 
@@ -196,6 +257,7 @@ function normalizeBattleFoe(raw: {
   species?: string;
   nickname?: string;
   virtAge?: number;
+  power?: number;
 }): BattleFoeSnap {
   const sp = raw.species;
   const species: PetSpecies =
@@ -210,7 +272,11 @@ function normalizeBattleFoe(raw: {
     typeof raw.virtAge === "number" && !Number.isNaN(raw.virtAge)
       ? Math.min(999, Math.max(0, raw.virtAge))
       : 18;
-  return { species, nickname, virtAge };
+  const pr = Number(raw.power);
+  const power = Number.isFinite(pr)
+    ? Math.min(100, Math.max(0, Math.floor(pr)))
+    : 12;
+  return { species, nickname, virtAge, power };
 }
 
 function battlePetPayload(p: PetState) {
@@ -218,6 +284,7 @@ function battlePetPayload(p: PetState) {
     species: p.species,
     nickname: p.nickname,
     virtAge: p.virtAge,
+    power: p.power,
   };
 }
 
@@ -282,6 +349,7 @@ function renderMemorial(
   state: PetState,
   hint: string | null = null,
 ) {
+  phase = "memorial";
   const days = Math.max(0, Math.floor(state.virtAge));
   const hintBlock =
     hint && hint.length > 0
@@ -327,6 +395,7 @@ function renderCare(root: HTMLElement) {
     return;
   }
 
+  phase = "care";
   root.replaceChildren(
     el(`
     <div class="shell care-shell shell--care">
@@ -475,7 +544,18 @@ function renderCare(root: HTMLElement) {
     btn.addEventListener("click", () => {
       const act = (btn as HTMLElement).dataset.care;
       const now = Date.now();
-      if (now - lastCareActionAt < CARE_ACTION_GAP_MS) {
+      if (act === "rest") {
+        if (now - lastCareRestAt < CARE_GAP_REST_MS) {
+          toastEl.textContent = UI.restTooFast;
+          toastEl.classList.remove("hidden");
+          return;
+        }
+        if (now - lastCareQuickAt < CARE_GAP_QUICK_MS) {
+          toastEl.textContent = UI.careTooFast;
+          toastEl.classList.remove("hidden");
+          return;
+        }
+      } else if (now - lastCareQuickAt < CARE_GAP_QUICK_MS) {
         toastEl.textContent = UI.careTooFast;
         toastEl.classList.remove("hidden");
         return;
@@ -484,7 +564,7 @@ function renderCare(root: HTMLElement) {
       if (act === "feed") {
         const wasEgg = !state.hatched;
         state = feed(state);
-        lastCareActionAt = Date.now();
+        lastCareQuickAt = Date.now();
         paint();
         if (wasEgg && state.hatched) {
           toastEl.textContent = UI.justHatched;
@@ -496,7 +576,7 @@ function renderCare(root: HTMLElement) {
       if (act === "clean") {
         const wasEgg = !state.hatched;
         state = cleanPet(state);
-        lastCareActionAt = Date.now();
+        lastCareQuickAt = Date.now();
         paint();
         if (wasEgg && state.hatched) {
           toastEl.textContent = UI.justHatched;
@@ -520,7 +600,7 @@ function renderCare(root: HTMLElement) {
           return;
         }
         state = trainPet(state);
-        lastCareActionAt = Date.now();
+        lastCareQuickAt = Date.now();
         paint();
         flashCareSprite("train");
         return;
@@ -528,7 +608,7 @@ function renderCare(root: HTMLElement) {
       if (act === "treat") {
         const prev = state;
         state = treatPet(state);
-        if (state !== prev) lastCareActionAt = Date.now();
+        if (state !== prev) lastCareQuickAt = Date.now();
         paint();
         return;
       }
@@ -548,7 +628,8 @@ function renderCare(root: HTMLElement) {
           paint();
           return;
         }
-        lastCareActionAt = Date.now();
+        lastCareQuickAt = Date.now();
+        lastCareRestAt = Date.now();
         paint();
         if (wasEgg && state.hatched) {
           toastEl.textContent = UI.justHatched;
@@ -596,6 +677,11 @@ function renderLobby(
         <button type="button" class="btn btn-secondary" id="btn-back-pet">${UI.backToPet}</button>
       </div>
       <p class="toast stack-gap-sm ${import.meta.env.PROD && !socketServerUrl ? "" : "hidden"}" id="backend-hint">${UI.needBackend}</p>
+      <label class="room-title-label" for="room-title-input">${UI.roomTitleLabel}</label>
+      <div class="row room-title-row">
+        <input class="field room-title-field" id="room-title-input" maxlength="24" autocomplete="off" placeholder="${UI.roomTitlePlaceholder}" />
+        <button type="button" class="btn btn-secondary btn--compact btn-room-title-random" id="btn-room-title-random" aria-label="${UI.roomTitleRandomAria}">\ud83c\udfb2</button>
+      </div>
       <div class="row stack-gap-md">
         <button type="button" class="btn btn-primary" id="btn-host">${UI.createHost}</button>
       </div>
@@ -628,9 +714,12 @@ function renderLobby(
   const openRoomsEmpty = $("#open-rooms-empty", root);
   const openRoomsStatus = $("#open-rooms-status", root);
   const btnRefreshOpenRooms = $("#btn-refresh-open-rooms", root) as HTMLButtonElement;
+  const roomTitleInput = $("#room-title-input", root) as HTMLInputElement;
+  const btnRoomTitleRandom = $("#btn-room-title-random", root) as HTMLButtonElement;
 
   type OpenRoomRow = {
     roomCode: string;
+    roomTitle?: string;
     hostNickname: string;
     hostSpecies: string;
     created: number;
@@ -640,6 +729,8 @@ function renderLobby(
     btnHost.disabled = busy;
     btnJoin.disabled = busy;
     roomInput.disabled = busy;
+    roomTitleInput.disabled = busy;
+    btnRoomTitleRandom.disabled = busy;
     btnRefreshOpenRooms.disabled = busy;
     openRoomsList.querySelectorAll<HTMLButtonElement>(".open-room-join").forEach((b) => {
       b.disabled = busy;
@@ -698,6 +789,13 @@ function renderLobby(
       wrap.className = "open-room-row";
       const meta = document.createElement("div");
       meta.className = "open-room-meta";
+      const titleStr = (row.roomTitle || "").trim();
+      if (titleStr) {
+        const titleEl = document.createElement("span");
+        titleEl.className = "open-room-title";
+        titleEl.textContent = titleStr;
+        meta.append(titleEl);
+      }
       const codeEl = document.createElement("span");
       codeEl.className = "open-room-code";
       codeEl.textContent = row.roomCode;
@@ -723,9 +821,12 @@ function renderLobby(
     s.emit(
       "list_open_rooms",
       {},
-      (res: { ok?: boolean; rooms?: OpenRoomRow[] }) => {
+      (res: { ok?: boolean; rooms?: OpenRoomRow[]; error?: string }) => {
         if (!res?.ok || !Array.isArray(res.rooms)) {
-          openRoomsStatus.textContent = UI.openRoomsErr;
+          openRoomsStatus.textContent =
+            res?.error === "too_fast"
+              ? UI.openRoomsRateLimited
+              : UI.openRoomsErr;
           paintOpenRooms([]);
           return;
         }
@@ -740,16 +841,22 @@ function renderLobby(
     fetchOpenRooms();
   });
 
+  btnRoomTitleRandom.addEventListener("click", () => {
+    if (btnRoomTitleRandom.disabled) return;
+    roomTitleInput.value = pickRandomRoomTitle();
+  });
+
   $("#btn-host", root).addEventListener("click", () => {
     if (btnHost.disabled || btnJoin.disabled) return;
     toast.classList.add("hidden");
     setLobbyBusy(true);
     const s = ensureSocket();
     const pet = loadPet();
+    const roomTitle = roomTitleInput.value.trim();
     s.emit(
       "create_room",
-      { pet: battlePetPayload(pet) },
-      (res: { ok: boolean; roomCode?: string }) => {
+      { pet: battlePetPayload(pet), roomTitle },
+      (res: { ok: boolean; roomCode?: string; roomTitle?: string }) => {
         clearLobbySocketGuardTimer();
         if (!res?.ok || !res.roomCode) {
           toast.textContent = UI.errGeneric;
@@ -759,7 +866,7 @@ function renderLobby(
         }
         roomCode = res.roomCode;
         role = "host";
-        renderWaiting(root, res.roomCode, true);
+        renderWaiting(root, res.roomCode, true, res.roomTitle || "");
       },
     );
   });
@@ -773,7 +880,12 @@ function renderLobby(
   attachOpenRoomsLiveListener(fetchOpenRooms);
 }
 
-function renderWaiting(root: HTMLElement, code: string, isHost: boolean) {
+function renderWaiting(
+  root: HTMLElement,
+  code: string,
+  isHost: boolean,
+  roomTitle = "",
+) {
   phase = "waiting";
   detachOpenRoomsLiveListener();
   root.replaceChildren(
@@ -781,6 +893,7 @@ function renderWaiting(root: HTMLElement, code: string, isHost: boolean) {
     <div class="shell shell--wait">
       <h1>${isHost ? UI.waitConnect : UI.syncing}</h1>
       <p class="tagline">${UI.roomCodeLabel}</p>
+      <p class="room-wait-custom-title hidden" id="room-wait-custom-title"></p>
       <div class="code-display">${code}</div>
       <div class="connect-visual" aria-hidden="true">
         <span class="prong"></span><span class="connect-visual-ico">\u2694\ufe0f</span><span class="prong"></span>
@@ -797,6 +910,13 @@ function renderWaiting(root: HTMLElement, code: string, isHost: boolean) {
     </div>
   `),
   );
+
+  const titleLine = root.querySelector("#room-wait-custom-title");
+  const tShow = roomTitle.trim();
+  if (titleLine && tShow) {
+    titleLine.textContent = `${UI.roomDisplayNameLabel}\uff1a ${tShow}`;
+    titleLine.classList.remove("hidden");
+  }
 
   if (isHost) {
     $("#btn-copy", root).addEventListener("click", async () => {
@@ -816,7 +936,12 @@ function renderWaiting(root: HTMLElement, code: string, isHost: boolean) {
   s.removeAllListeners("linked");
   s.removeAllListeners("peer_left");
   const goBattle = (payload: {
-    foe?: { species?: string; nickname?: string; virtAge?: number };
+    foe?: {
+      species?: string;
+      nickname?: string;
+      virtAge?: number;
+      power?: number;
+    };
   }) => {
     if (payload?.foe) {
       battleFoeSnapshot = normalizeBattleFoe(payload.foe);
@@ -885,11 +1010,15 @@ function renderBattle(root: HTMLElement) {
             <img class="pet-sprite battle-pet" id="battle-you-sprite" alt="" width="72" height="72" decoding="async" />
             <div class="name" id="battle-you-label"></div>
             <div class="hp-wrap"><div class="hp-fill" id="hp-you" style="width:100%"></div></div>
+            <div class="mp-label">${UI.battleMp}</div>
+            <div class="mp-wrap"><div class="mp-fill" id="mp-you" style="width:100%"></div></div>
           </div>
           <div class="monster">
             <img class="pet-sprite battle-pet" id="battle-foe-sprite" alt="" width="72" height="72" decoding="async" />
             <div class="name" id="battle-foe-label"></div>
             <div class="hp-wrap"><div class="hp-fill foe" id="hp-foe" style="width:100%"></div></div>
+            <div class="mp-label">${UI.battleMp}</div>
+            <div class="mp-wrap"><div class="mp-fill mp-fill--foe" id="mp-foe" style="width:100%"></div></div>
           </div>
         </div>
         <p class="battle-hint">${UI.chooseMove}</p>
@@ -924,6 +1053,8 @@ function renderBattle(root: HTMLElement) {
   s.removeAllListeners("linked");
   s.removeAllListeners("peer_left");
   let myLocked = false;
+  /** 最近一次同步的己方靈力，供本地鎖招時仍用於按鈕狀態。 */
+  let lastYourMp = 999;
   let deadlineTs = Date.now() + ROUND_MS;
   const logEl = $("#battle-log", root);
   const lockHint = $("#lock-hint", root);
@@ -942,6 +1073,37 @@ function renderBattle(root: HTMLElement) {
     ($("#hp-foe", root) as HTMLElement).style.width = `${foeHp}%`;
   };
 
+  const setMp = (
+    yourMp: number,
+    yourMpMax: number,
+    foeMp: number,
+    foeMpMax: number,
+  ) => {
+    const yPct = yourMpMax > 0 ? (yourMp / yourMpMax) * 100 : 0;
+    const fPct = foeMpMax > 0 ? (foeMp / foeMpMax) * 100 : 0;
+    ($("#mp-you", root) as HTMLElement).style.width = `${yPct}%`;
+    ($("#mp-foe", root) as HTMLElement).style.width = `${fPct}%`;
+  };
+
+  const applyMoveButtonState = (yourMp: number, allLocked: boolean) => {
+    root.querySelectorAll(".move-btn").forEach((b) => {
+      const btn = b as HTMLButtonElement;
+      const m = btn.dataset.move as Move | undefined;
+      if (allLocked) {
+        btn.disabled = true;
+        btn.removeAttribute("title");
+        return;
+      }
+      if (m === "charge" && yourMp < MP_COST_CHARGE) {
+        btn.disabled = true;
+        btn.title = UI.chargeMpBlocked(MP_COST_CHARGE);
+      } else {
+        btn.disabled = false;
+        btn.removeAttribute("title");
+      }
+    });
+  };
+
   const updateTimer = (deadline: number) => {
     deadlineTs = deadline;
     const left = Math.max(0, deadline - Date.now());
@@ -952,21 +1114,36 @@ function renderBattle(root: HTMLElement) {
     round: number;
     yourHp: number;
     foeHp: number;
+    yourMp?: number;
+    yourMpMax?: number;
+    foeMp?: number;
+    foeMpMax?: number;
     deadline: number;
     locked?: { host: boolean; guest: boolean };
   }) => {
     roundLabel.textContent = UI.round(st.round);
     setHp(st.yourHp, st.foeHp);
     updateTimer(st.deadline);
+    const iAmHost = role === "host";
+    if (
+      typeof st.yourMp === "number" &&
+      typeof st.yourMpMax === "number" &&
+      typeof st.foeMp === "number" &&
+      typeof st.foeMpMax === "number"
+    ) {
+      lastYourMp = st.yourMp;
+      setMp(st.yourMp, st.yourMpMax, st.foeMp, st.foeMpMax);
+    }
+    const yourMpForUi =
+      typeof st.yourMp === "number" ? st.yourMp : lastYourMp;
     if (st.locked) {
-      const iAmHost = role === "host";
       const iLocked = iAmHost ? st.locked.host : st.locked.guest;
       myLocked = iLocked;
       lockHint.classList.toggle("hidden", !iLocked);
       lockHint.textContent = UI.lockedYou;
-      root.querySelectorAll(".move-btn").forEach((b) => {
-        (b as HTMLButtonElement).disabled = iLocked;
-      });
+      applyMoveButtonState(yourMpForUi, iLocked);
+    } else {
+      applyMoveButtonState(yourMpForUi, myLocked);
     }
   };
 
@@ -974,19 +1151,31 @@ function renderBattle(root: HTMLElement) {
     yourLog: string;
     foeLog: string;
     hp: { host: number; guest: number };
+    mp?: { host: number; guest: number };
+    mpMax?: { host: number; guest: number };
     yours: Move;
     theirs: Move;
     auto: boolean;
   }) => {
     myLocked = false;
     root.querySelectorAll(".move-btn").forEach((b) => {
-      (b as HTMLButtonElement).disabled = false;
-      b.classList.remove("selected");
+      (b as HTMLButtonElement).classList.remove("selected");
     });
     lockHint.classList.add("hidden");
     const yh = role === "host" ? r.hp.host : r.hp.guest;
     const fh = role === "host" ? r.hp.guest : r.hp.host;
     setHp(yh, fh);
+    if (r.mp && r.mpMax) {
+      const ym = role === "host" ? r.mp.host : r.mp.guest;
+      const yM = role === "host" ? r.mpMax.host : r.mpMax.guest;
+      const fm = role === "host" ? r.mp.guest : r.mp.host;
+      const fM = role === "host" ? r.mpMax.guest : r.mpMax.host;
+      lastYourMp = ym;
+      setMp(ym, yM, fm, fM);
+      applyMoveButtonState(ym, false);
+    } else {
+      applyMoveButtonState(lastYourMp, false);
+    }
     appendLog(r.yourLog);
     if (r.auto) appendLog(`\u00bb ${UI.autoPick}`);
   };
@@ -1032,9 +1221,7 @@ function renderBattle(root: HTMLElement) {
       if (btn.disabled) return;
       const move = btn.dataset.move as Move;
       myLocked = true;
-      root.querySelectorAll(".move-btn").forEach((x) => {
-        (x as HTMLButtonElement).disabled = true;
-      });
+      applyMoveButtonState(lastYourMp, true);
       lockHint.classList.remove("hidden");
       lockHint.textContent = UI.lockedYou;
       s.emit("choose_move", { move });
@@ -1062,6 +1249,7 @@ function renderBattle(root: HTMLElement) {
 }
 
 function showEndModal(root: HTMLElement, title: string) {
+  phase = "end";
   const overlay = el(`
     <div class="modal-overlay" id="end-modal">
       <div class="modal">

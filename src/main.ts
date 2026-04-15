@@ -1,7 +1,9 @@
 import { io, Socket } from "socket.io-client";
+import { initDexDogCanvases, renderDogCanvas } from "./canvasDog";
 import {
   careIdleSpriteFile,
   carePoseFile,
+  careSpriteScale,
   cleanPet,
   eggSpriteForSpecies,
   feed,
@@ -19,6 +21,7 @@ import {
   petEmoji,
   resetNewPet,
   restPet,
+  speciesUsesCanvasArt,
   trainPet,
   treatPet,
   type CarePose,
@@ -173,10 +176,12 @@ const UI = {
     "\u5f9e\u6696\u967d\u86cb\u7834\u6bbc\u5f8c\u70ba\u96de\u5bf6\u9020\u578b\u3002",
   dexBlurbCat:
     "\u8a8d\u990a\u6642\u5df2\u70ba\u5c0f\u8c93\uff0c\u7121\u86cb\u968e\u6bb5\u3002",
+  dexBlurbDog:
+    "\u5f9e\u6bdb\u7d68\u86cb\u7834\u6bbc\uff1b\u7cbe\u9748\u70ba\u524d\u7aef Canvas \u50cf\u7d20\u7e6a\u88fd\uff08\u7121 PNG\uff09\u3002",
   backToPet: "\u56de\u5230\u6211\u7684\u5925\u4f34",
   restartAdopt: "\u91cd\u65b0\u8a8d\u990a",
   confirmRestartAdopt:
-    "\u78ba\u5b9a\u8981\u91cd\u65b0\u8a8d\u990a\uff1f\u73fe\u6709\u990a\u6210\u9032\u5ea6\u6703\u5168\u90e8\u6e05\u9664\u4e14\u7121\u6cd5\u9084\u539f\u3002\u65b0\u5925\u4f34\u53ef\u80fd\u662f\u8c93\u3001\u96de\uff0c\u6216\u5f9e\u86cb\u536f\u5316\u7684\u5947\u7378\u3002",
+    "\u78ba\u5b9a\u8981\u91cd\u65b0\u8a8d\u990a\uff1f\u73fe\u6709\u990a\u6210\u9032\u5ea6\u6703\u5168\u90e8\u6e05\u9664\u4e14\u7121\u6cd5\u9084\u539f\u3002\u65b0\u5925\u4f34\u53ef\u80fd\u662f\u8c93\u3001\u96de\u3001\u72d7\uff0c\u6216\u5f9e\u86cb\u536f\u5316\u7684\u5947\u7378\u3002",
   statHunger: "\u98fd\u98df",
   statHappy: "\u5fc3\u60c5",
   statClean: "\u6e05\u6f54",
@@ -279,7 +284,11 @@ function normalizeBattleFoe(raw: {
 }): BattleFoeSnap {
   const sp = raw.species;
   const species: PetSpecies =
-    sp === "volt" || sp === "crystal" || sp === "chicken" || sp === "cat"
+    sp === "volt" ||
+    sp === "crystal" ||
+    sp === "chicken" ||
+    sp === "cat" ||
+    sp === "dog"
       ? sp
       : "volt";
   const nickname =
@@ -411,7 +420,13 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-const DEX_SPECIES_ORDER: PetSpecies[] = ["volt", "crystal", "chicken", "cat"];
+const DEX_SPECIES_ORDER: PetSpecies[] = [
+  "volt",
+  "crystal",
+  "chicken",
+  "cat",
+  "dog",
+];
 
 function speciesDexIntroLine(species: PetSpecies): string {
   switch (species) {
@@ -421,6 +436,8 @@ function speciesDexIntroLine(species: PetSpecies): string {
       return UI.dexBlurbChicken;
     case "crystal":
       return UI.dexBlurbCrystal;
+    case "dog":
+      return UI.dexBlurbDog;
     default:
       return UI.dexBlurbVolt;
   }
@@ -438,9 +455,19 @@ function dexJoinWithArrows(parts: string[]): string {
 
 function dexStageCardHtml(species: PetSpecies, stage: 0 | 1 | 2 | 3 | 4): string {
   const scale = growthSpriteScale(stage);
+  const senior = stage === 4 ? " dex-stage-card--senior" : "";
+  if (species === "dog") {
+    return `
+    <div class="dex-stage-card${senior}">
+      <div class="dex-sprite-wrap">
+        <canvas class="dex-sprite dex-dog-canvas" width="96" height="96" data-dex-dog="idle" data-stage="${stage}" style="transform: scale(${scale});"></canvas>
+      </div>
+      <span class="dex-stage-label">${growthLabel(stage)}</span>
+    </div>
+  `;
+  }
   const file = idleSpriteForSpeciesStage(species, stage);
   const alt = species === "crystal" ? " pet-sprite--alt" : "";
-  const senior = stage === 4 ? " dex-stage-card--senior" : "";
   return `
     <div class="dex-stage-card${senior}">
       <div class="dex-sprite-wrap">
@@ -452,6 +479,16 @@ function dexStageCardHtml(species: PetSpecies, stage: 0 | 1 | 2 | 3 | 4): string
 }
 
 function dexEggCardHtml(species: PetSpecies): string {
+  if (species === "dog") {
+    return `
+    <div class="dex-stage-card dex-stage-card--egg">
+      <div class="dex-sprite-wrap">
+        <canvas class="dex-sprite dex-dog-canvas" width="96" height="96" data-dex-dog="egg"></canvas>
+      </div>
+      <span class="dex-stage-label">${UI.dexEgg}</span>
+    </div>
+  `;
+  }
   return `
     <div class="dex-stage-card dex-stage-card--egg">
       <div class="dex-sprite-wrap">
@@ -513,6 +550,7 @@ function renderSpeciesDex(
   `),
   );
   $("#btn-dex-back", root).addEventListener("click", onBack);
+  initDexDogCanvases(root);
 }
 
 function renderCare(root: HTMLElement) {
@@ -538,7 +576,10 @@ function renderCare(root: HTMLElement) {
       <p class="care-egg-battle-hint hidden" id="care-egg-battle-hint" role="status">${UI.eggBattleBlocked}</p>
       <div class="screen-bezel care-bezel">
         <div class="pet-stage" id="pet-stage">
-          <img class="pet-sprite" id="pet-sprite" alt="" width="96" height="96" decoding="async" />
+          <div class="pet-sprite-mount pet-sprite-mount--care" id="pet-sprite-mount">
+            <img class="pet-sprite" id="pet-sprite" alt="" width="96" height="96" decoding="async" />
+            <canvas class="pet-sprite pet-sprite-canvas hidden" id="pet-sprite-canvas" width="96" height="96" aria-hidden="true"></canvas>
+          </div>
           <input class="pet-nick field" id="pet-nick" maxlength="12" autocomplete="off" />
         </div>
         <p class="pet-age-line" id="pet-age-line"></p>
@@ -589,6 +630,8 @@ function renderCare(root: HTMLElement) {
   const stageEl = $("#pet-stage", root);
   const treatBtn = $("#btn-treat", root);
   const spriteEl = $("#pet-sprite", root) as HTMLImageElement;
+  const spriteCv = $("#pet-sprite-canvas", root) as HTMLCanvasElement;
+  const spriteMountEl = $("#pet-sprite-mount", root);
   const toastEl = $("#care-toast", root);
   const eggBattleHintEl = $("#care-egg-battle-hint", root);
   let reactionTimer: number | null = null;
@@ -607,6 +650,18 @@ function renderCare(root: HTMLElement) {
   };
 
   const showCareIdleSprite = () => {
+    if (speciesUsesCanvasArt(state.species)) {
+      const st = growthStage(state.virtAge);
+      renderDogCanvas(spriteCv, {
+        cssSize: 96,
+        hatched: state.hatched,
+        stage: st,
+        pose: null,
+      });
+      spriteCv.style.transform = `scale(${careSpriteScale(state)})`;
+      spriteCv.style.transformOrigin = "center 70%";
+      return;
+    }
     spriteEl.src = petAssetUrl(careIdleSpriteFile(state));
     syncSpriteSpecies();
   };
@@ -616,11 +671,34 @@ function renderCare(root: HTMLElement) {
       showCareIdleSprite();
       return;
     }
-    if (reactionTimer != null) window.clearTimeout(reactionTimer);
+    if (reactionTimer != null) {
+      window.clearTimeout(reactionTimer);
+      reactionTimer = null;
+      spriteMountEl.classList.remove("pet-sprite-mount--paused");
+    }
+    spriteMountEl.classList.add("pet-sprite-mount--paused");
+    if (speciesUsesCanvasArt(state.species)) {
+      const st = growthStage(state.virtAge);
+      renderDogCanvas(spriteCv, {
+        cssSize: 96,
+        hatched: true,
+        stage: st,
+        pose,
+      });
+      spriteCv.style.transform = `scale(${careSpriteScale(state)})`;
+      spriteCv.style.transformOrigin = "center 70%";
+      reactionTimer = domSetTimeout(() => {
+        showCareIdleSprite();
+        spriteMountEl.classList.remove("pet-sprite-mount--paused");
+        reactionTimer = null;
+      }, 1700);
+      return;
+    }
     spriteEl.src = petAssetUrl(carePoseFile(state.species, pose));
     syncSpriteSpecies();
     reactionTimer = domSetTimeout(() => {
       showCareIdleSprite();
+      spriteMountEl.classList.remove("pet-sprite-mount--paused");
       reactionTimer = null;
     }, 1700);
   };
@@ -631,11 +709,24 @@ function renderCare(root: HTMLElement) {
     const st = growthStage(state.virtAge);
     ageLineEl.textContent = `${formatVirtAgeDays(state.virtAge)} \u00b7 ${growthLabelForPet(state)}`;
     stageEl.classList.toggle("pet-stage--senior", state.hatched && st === 4);
-    const sc = state.hatched
-      ? growthSpriteScale(st)
-      : growthSpriteScale(0) * 0.9;
-    spriteEl.style.transform = `scale(${sc})`;
-    syncSpriteSpecies();
+    const sc = careSpriteScale(state);
+    if (speciesUsesCanvasArt(state.species)) {
+      spriteEl.classList.add("hidden");
+      spriteCv.classList.remove("hidden");
+      renderDogCanvas(spriteCv, {
+        cssSize: 96,
+        hatched: state.hatched,
+        stage: st,
+        pose: null,
+      });
+      spriteCv.style.transform = `scale(${sc})`;
+      spriteCv.style.transformOrigin = "center 70%";
+    } else {
+      spriteEl.classList.remove("hidden");
+      spriteCv.classList.add("hidden");
+      spriteEl.style.transform = `scale(${sc})`;
+      syncSpriteSpecies();
+    }
     treatBtn.classList.toggle("hidden", !state.ill);
     eggBattleHintEl.classList.toggle("hidden", state.hatched);
     const battleBtn = $("#btn-open-battle", root) as HTMLButtonElement;
@@ -668,7 +759,11 @@ function renderCare(root: HTMLElement) {
       renderCare(root);
       return;
     }
-    if (reactionTimer != null) window.clearTimeout(reactionTimer);
+    if (reactionTimer != null) {
+      window.clearTimeout(reactionTimer);
+      reactionTimer = null;
+      spriteMountEl.classList.remove("pet-sprite-mount--paused");
+    }
     renderLobby(root);
   });
 
@@ -677,6 +772,7 @@ function renderCare(root: HTMLElement) {
     if (reactionTimer != null) {
       window.clearTimeout(reactionTimer);
       reactionTimer = null;
+      spriteMountEl.classList.remove("pet-sprite-mount--paused");
     }
     resetNewPet();
     renderCare(root);
@@ -1153,14 +1249,20 @@ function renderBattle(root: HTMLElement) {
         </div>
         <div class="battle-arena">
           <div class="monster">
-            <img class="pet-sprite battle-pet" id="battle-you-sprite" alt="" width="72" height="72" decoding="async" />
+            <div class="pet-sprite-mount pet-sprite-mount--battle pet-sprite-mount--battle-you">
+              <img class="pet-sprite battle-pet" id="battle-you-sprite" alt="" width="72" height="72" decoding="async" />
+              <canvas class="pet-sprite battle-pet battle-pet-canvas hidden" id="battle-you-canvas" width="72" height="72" aria-hidden="true"></canvas>
+            </div>
             <div class="name" id="battle-you-label"></div>
             <div class="hp-wrap"><div class="hp-fill" id="hp-you" style="width:100%"></div></div>
             <div class="mp-label">${UI.battleMp}</div>
             <div class="mp-wrap"><div class="mp-fill" id="mp-you" style="width:100%"></div></div>
           </div>
           <div class="monster">
-            <img class="pet-sprite battle-pet" id="battle-foe-sprite" alt="" width="72" height="72" decoding="async" />
+            <div class="pet-sprite-mount pet-sprite-mount--battle pet-sprite-mount--battle-foe">
+              <img class="pet-sprite battle-pet" id="battle-foe-sprite" alt="" width="72" height="72" decoding="async" />
+              <canvas class="pet-sprite battle-pet battle-pet-canvas hidden" id="battle-foe-canvas" width="72" height="72" aria-hidden="true"></canvas>
+            </div>
             <div class="name" id="battle-foe-label"></div>
             <div class="hp-wrap"><div class="hp-fill foe" id="hp-foe" style="width:100%"></div></div>
             <div class="mp-label">${UI.battleMp}</div>
@@ -1185,8 +1287,36 @@ function renderBattle(root: HTMLElement) {
 
   const youSp = $("#battle-you-sprite", root) as HTMLImageElement;
   const foeSp = $("#battle-foe-sprite", root) as HTMLImageElement;
-  youSp.src = youSprite;
-  foeSp.src = foeSprite;
+  const youCv = $("#battle-you-canvas", root) as HTMLCanvasElement;
+  const foeCv = $("#battle-foe-canvas", root) as HTMLCanvasElement;
+  if (speciesUsesCanvasArt(myPet.species)) {
+    youSp.classList.add("hidden");
+    youCv.classList.remove("hidden");
+    renderDogCanvas(youCv, {
+      cssSize: 72,
+      hatched: true,
+      stage: mySt,
+      pose: null,
+    });
+  } else {
+    youSp.classList.remove("hidden");
+    youCv.classList.add("hidden");
+    youSp.src = youSprite;
+  }
+  if (speciesUsesCanvasArt(foeSnap.species)) {
+    foeSp.classList.add("hidden");
+    foeCv.classList.remove("hidden");
+    renderDogCanvas(foeCv, {
+      cssSize: 72,
+      hatched: true,
+      stage: foeSt,
+      pose: null,
+    });
+  } else {
+    foeSp.classList.remove("hidden");
+    foeCv.classList.add("hidden");
+    foeSp.src = foeSprite;
+  }
   youSp.classList.toggle("pet-sprite--alt", myPet.species === "crystal");
   foeSp.classList.toggle("pet-sprite--alt", foeSnap.species === "crystal");
   $("#battle-you-label", root).textContent = `${myPet.nickname} \u00b7 \u6211\u65b9`;

@@ -27,7 +27,7 @@ const MP_REGEN_PER_ROUND = 5;
 
 /** @typedef {'strike' | 'guard' | 'charge'} Move */
 
-/** @typedef {{ species: 'volt'|'crystal'|'chicken'|'cat', nickname: string, virtAge: number, power: number }} PetSnap */
+/** @typedef {{ species: 'volt'|'crystal'|'chicken'|'cat'|'dog', nickname: string, virtAge: number, power: number }} PetSnap */
 
 function defaultPetSnap() {
   return {
@@ -52,7 +52,11 @@ function parsePetSnap(raw) {
   const o = /** @type {Record<string, unknown>} */ (raw);
   const sp = o.species;
   const species =
-    sp === "volt" || sp === "crystal" || sp === "chicken" || sp === "cat"
+    sp === "volt" ||
+    sp === "crystal" ||
+    sp === "chicken" ||
+    sp === "cat" ||
+    sp === "dog"
       ? sp
       : "volt";
   const nick = String(o.nickname ?? "")
@@ -87,6 +91,7 @@ function speciesAtkBonus(species) {
   if (species === "crystal") return 0;
   if (species === "chicken") return 1;
   if (species === "cat") return 1;
+  if (species === "dog") return 1;
   return 0;
 }
 
@@ -94,6 +99,7 @@ function speciesAtkBonus(species) {
 function speciesDefMul(species) {
   if (species === "crystal") return 0.92;
   if (species === "cat") return 0.96;
+  if (species === "dog") return 0.97;
   if (species === "chicken") return 0.98;
   return 1;
 }

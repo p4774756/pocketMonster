@@ -1,4 +1,4 @@
-export type PetSpecies = "volt" | "crystal" | "chicken" | "cat";
+export type PetSpecies = "volt" | "crystal" | "chicken" | "cat" | "dog";
 
 export type DeathCause = "old" | "neglect" | "illness";
 
@@ -63,10 +63,21 @@ function clamp(n: number, lo: number, hi: number) {
 }
 
 function parseSpecies(raw: unknown): PetSpecies {
-  if (raw === "volt" || raw === "crystal" || raw === "chicken" || raw === "cat") {
+  if (
+    raw === "volt" ||
+    raw === "crystal" ||
+    raw === "chicken" ||
+    raw === "cat" ||
+    raw === "dog"
+  ) {
     return raw;
   }
   return "volt";
+}
+
+/** 狗物種以 Canvas 繪製，不使用 `public/pets` PNG。 */
+export function speciesUsesCanvasArt(species: PetSpecies): boolean {
+  return species === "dog";
 }
 
 export type CarePose = "eat" | "train" | "rest" | "clean";
@@ -156,6 +167,12 @@ export function growthStage(virtAge: number): 0 | 1 | 2 | 3 | 4 {
 export function growthSpriteScale(stage: 0 | 1 | 2 | 3 | 4): number {
   const t = [0.58, 0.72, 0.86, 1, 1][stage];
   return t;
+}
+
+/** 養成畫面精靈縮放（含蛋期略小）。 */
+export function careSpriteScale(p: PetState): number {
+  const st = growthStage(p.virtAge);
+  return p.hatched ? growthSpriteScale(st) : growthSpriteScale(0) * 0.9;
 }
 
 /**
@@ -345,6 +362,7 @@ export function petEmoji(species: PetSpecies): string {
   if (species === "crystal") return "\ud83d\udc8e";
   if (species === "chicken") return "\ud83d\udc24";
   if (species === "cat") return "\ud83d\udc31";
+  if (species === "dog") return "\ud83d\udc15";
   return "\u26a1";
 }
 
@@ -352,15 +370,17 @@ export function petDefaultName(species: PetSpecies): string {
   if (species === "crystal") return "\u6676\u683c\u7378";
   if (species === "chicken") return "\u5c0f\u96de";
   if (species === "cat") return "\u5c0f\u8c93";
+  if (species === "dog") return "\u5c0f\u72d7";
   return "\u96f7\u866b\u7378";
 }
 
 /** 新認養抽選：貓＝直接小貓；其餘先孵蛋，破殼後為該物種。 */
 export function rollAdoptionProfile(): { species: PetSpecies; hatched: boolean } {
   const u = Math.random();
-  if (u < 0.22) return { species: "cat", hatched: true };
-  if (u < 0.47) return { species: "chicken", hatched: false };
-  if (u < 0.735) return { species: "volt", hatched: false };
+  if (u < 0.2) return { species: "cat", hatched: true };
+  if (u < 0.4) return { species: "chicken", hatched: false };
+  if (u < 0.58) return { species: "dog", hatched: false };
+  if (u < 0.78) return { species: "volt", hatched: false };
   return { species: "crystal", hatched: false };
 }
 

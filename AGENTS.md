@@ -19,6 +19,7 @@
 |------|------|
 | `src/main.ts` | 幾乎全部 UI：養成畫面、紀念頁、對戰大廳與戰鬥 UI；Socket 客戶端事件綁定。 |
 | `src/pet.ts` | 寵物狀態型別、`loadPet`/`save`、成長階段、各種照護 action、死亡條件。 |
+| `src/canvasDog.ts` | **狗**物種：Canvas 像素格繪製（無 PNG），供養成／對戰／圖鑑。 |
 | `src/style.css` | 全域樣式。 |
 | `src/fonts.css` | 自託管字型（`@fontsource` 拉丁子集）；由 `main.ts` 早於 `style.css` 匯入。 |
 | `scripts/optimize-pet-pngs.mjs` | 縮小 `public/pets/*.png`：`npm run optimize:pets`（換圖後應重跑）。 |
@@ -98,7 +99,7 @@ npm run start:api   # SERVE_STATIC=0：只跑 API（給 Pages + 分離後端）
 
 ## 改功能時該看哪
 
-- **養成數值／壽命／儲存格式**：`src/pet.ts`（含 `STORAGE_KEY`、`idleSpriteForStage`、成長階段閾值）。
+- **養成數值／壽命／儲存格式**：`src/pet.ts`（含 `STORAGE_KEY`、`idleSpriteForStage`、成長階段閾值）。**狗**外觀見 `src/canvasDog.ts`（`speciesUsesCanvasArt`）。
 - **畫面與對戰流程**：`src/main.ts`（體積大，可用搜尋 `renderCare`、`renderBattle`、`ensureSocket`）。
 - **對戰平衡與房間生命週期**：`server/index.js`。
 - **樣式**：`src/style.css`。

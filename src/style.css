@@ -76,7 +76,7 @@ body {
   min-height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .view-root {
@@ -91,20 +91,46 @@ body {
 }
 
 .theme-bar {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 4px 2px 2px;
+  column-gap: 12px;
+  row-gap: 10px;
+  padding: 10px 12px;
   flex-shrink: 0;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.52);
+  border: 1px solid var(--edge);
+  box-shadow: var(--shadow-xs);
 }
 
-.theme-bar-actions {
+.theme-bar-cell--version {
+  justify-self: start;
+  align-self: center;
+}
+
+.theme-bar-cell--theme {
+  justify-self: center;
+  min-width: 0;
+  width: 100%;
+  max-width: 280px;
+}
+
+.theme-bar-cell--actions {
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
+}
+
+.theme-field {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
 }
 
 .app-version {
@@ -114,9 +140,12 @@ body {
   letter-spacing: 0.04em;
   color: var(--muted-2);
   user-select: none;
+  line-height: 1.2;
+  padding: 4px 0;
 }
 
 .theme-bar-label {
+  flex: 0 0 auto;
   font-size: 0.74rem;
   font-weight: 600;
   color: var(--muted);
@@ -127,14 +156,45 @@ body {
   font-family: inherit;
   font-size: 0.8rem;
   font-weight: 600;
-  padding: 8px 12px;
+  padding: 8px 10px;
   border-radius: var(--radius-md);
   border: 1px solid var(--edge-strong);
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.92);
   color: var(--text);
   cursor: pointer;
-  min-width: 148px;
+  min-width: 0;
+  flex: 1 1 auto;
+  max-width: 200px;
   box-shadow: var(--shadow-xs);
+}
+
+@media (max-width: 380px) {
+  .theme-bar {
+    grid-template-columns: 1fr;
+    padding: 10px 12px 12px;
+  }
+
+  .theme-bar-cell--version {
+    justify-self: center;
+  }
+
+  .theme-bar-cell--theme {
+    justify-self: stretch;
+    max-width: none;
+  }
+
+  .theme-field {
+    justify-content: space-between;
+  }
+
+  .theme-select {
+    max-width: none;
+  }
+
+  .theme-bar-cell--actions {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
 }
 
 .theme-select:focus {
@@ -572,7 +632,7 @@ h1 {
 
 .battle-pet {
   display: block;
-  margin: 0 auto 8px;
+  margin: 0 auto;
   width: 72px;
   height: 72px;
   object-fit: contain;
@@ -1051,6 +1111,10 @@ footer.note {
   filter: hue-rotate(195deg) saturate(0.96) brightness(1.02);
 }
 
+.dex-stage-card--senior .dex-dog-canvas {
+  filter: saturate(0.9);
+}
+
 .dex-sprite-wrap {
   display: flex;
   align-items: center;
@@ -1135,6 +1199,62 @@ footer.note {
   font-size: 0.85rem;
 }
 
+@keyframes pet-idle-walk {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  18% {
+    transform: translate3d(1px, -2px, 0);
+  }
+  36% {
+    transform: translate3d(2px, -4px, 0);
+  }
+  54% {
+    transform: translate3d(1px, -2px, 0);
+  }
+  72% {
+    transform: translate3d(-1px, -3px, 0);
+  }
+  86% {
+    transform: translate3d(-2px, -1px, 0);
+  }
+}
+
+.pet-sprite-mount {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  margin: 0 auto 10px;
+  width: fit-content;
+  max-width: 100%;
+  animation: pet-idle-walk 2.65s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+
+.pet-sprite-mount--battle {
+  margin-bottom: 8px;
+  animation-duration: 2.2s;
+}
+
+.pet-sprite-mount--battle-you {
+  animation-delay: 0s;
+}
+
+.pet-sprite-mount--battle-foe {
+  animation-delay: 0.7s;
+}
+
+.pet-sprite-mount--paused {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pet-sprite-mount {
+    animation: none;
+  }
+}
+
 .pet-stage {
   text-align: center;
   margin-bottom: 10px;
@@ -1165,6 +1285,41 @@ footer.note {
   transition: transform 0.35s ease;
 }
 
+.pet-stage .pet-sprite-mount .pet-sprite {
+  margin-bottom: 0;
+}
+
+.pet-sprite-canvas {
+  display: block;
+  margin: 0 auto 10px;
+  width: 96px;
+  height: 96px;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: pixelated;
+  transform-origin: center 70%;
+}
+
+.pet-stage .pet-sprite-mount .pet-sprite-canvas {
+  margin-bottom: 0;
+}
+
+.battle-pet-canvas {
+  display: block;
+  margin: 0 auto;
+  width: 72px;
+  height: 72px;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: pixelated;
+}
+
+.dex-dog-canvas {
+  display: block;
+  margin: 0 auto;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: pixelated;
+  transform-origin: center 70%;
+}
+
 .pet-stage--senior .pet-sprite {
   filter: saturate(0.9);
 }
@@ -1175,6 +1330,10 @@ footer.note {
 
 .pet-stage--senior .pet-sprite--alt {
   filter: hue-rotate(195deg) saturate(0.96) brightness(1.02);
+}
+
+.pet-stage--senior .pet-sprite-canvas {
+  filter: saturate(0.9);
 }
 
 .pet-nick {
@@ -1377,6 +1536,14 @@ html[data-theme="retro"] body {
     ),
     radial-gradient(ellipse 800px 500px at 50% 0%, rgba(16, 185, 129, 0.12), transparent 55%),
     linear-gradient(180deg, #0c1812 0%, #050a08 100%);
+}
+
+html[data-theme="retro"] .theme-bar {
+  background: rgba(8, 20, 14, 0.58);
+  border-color: rgba(52, 211, 153, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.05),
+    0 2px 14px rgb(0 0 0 / 0.35);
 }
 
 html[data-theme="retro"] .theme-bar-label {
@@ -1633,6 +1800,13 @@ html[data-theme="minimal"] {
 html[data-theme="minimal"] body {
   background-color: #ececec;
   background-image: none;
+}
+
+html[data-theme="minimal"] .theme-bar {
+  background: #fff;
+  border: 2px solid #0a0a0a;
+  border-radius: 10px;
+  box-shadow: 3px 3px 0 #0a0a0a;
 }
 
 html[data-theme="minimal"] .theme-bar-label {

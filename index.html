@@ -13,14 +13,20 @@
   <body>
     <div id="app" class="app-root">
       <header class="theme-bar" aria-label="介面風格">
-        <span class="app-version" id="app-version" translate="no"></span>
-        <div class="theme-bar-actions">
-          <span class="theme-bar-label">風格</span>
-          <select id="theme-select" class="theme-select" aria-label="切換介面風格">
-            <option value="soft">柔和漸層</option>
-            <option value="retro">復古液晶</option>
-            <option value="minimal">極簡黑白</option>
-          </select>
+        <div class="theme-bar-cell theme-bar-cell--version">
+          <span class="app-version" id="app-version" translate="no"></span>
+        </div>
+        <div class="theme-bar-cell theme-bar-cell--theme">
+          <label class="theme-field" for="theme-select">
+            <span class="theme-bar-label">風格</span>
+            <select id="theme-select" class="theme-select" aria-label="切換介面風格">
+              <option value="soft">柔和漸層</option>
+              <option value="retro">復古液晶</option>
+              <option value="minimal">極簡黑白</option>
+            </select>
+          </label>
+        </div>
+        <div class="theme-bar-cell theme-bar-cell--actions">
           <button type="button" class="theme-rules-btn" id="btn-game-rules">遊戲說明</button>
           <button type="button" class="theme-rules-btn" id="btn-feedback">意見回饋</button>
         </div>

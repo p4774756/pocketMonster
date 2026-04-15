@@ -48,11 +48,13 @@ npm run dev
 | 變數 | 誰用 | 說明 |
 |------|------|------|
 | `VITE_SOCKET_URL` | 前端建置／執行 | **生產或分離部署時必填**（完整 origin，無尾隨 `/`）。見 `deploy.env.example`。開發留空則連同源並走 proxy。 |
+| `VITE_FEEDBACK_URL` | 前端建置 | 選填。意見回饋彈窗的「開啟回饋表單」連結（建議 `https:`）。 |
+| `VITE_FEEDBACK_EMAIL` | 前端建置 | 選填。`mailto` 收件信箱。 |
 | `PORT` | `server/index.js` | HTTP 埠，預設 `3000`。 |
 | `NODE_ENV=production` | 伺服器 | 生產模式。 |
 | `SERVE_STATIC=0` | 伺服器 | 僅 API：不從 `dist` 提供靜態（Render 上的 API 服務用）。 |
 
-型別：`src/vite-env.d.ts` 宣告了 `VITE_SOCKET_URL`。
+型別：`src/vite-env.d.ts` 宣告了 `VITE_SOCKET_URL` 與選填的 `VITE_FEEDBACK_*`。
 
 ## Socket 協定（客戶端 ↔ `server/index.js`）
 
@@ -62,12 +64,14 @@ npm run dev
 
 - `create_room({ pet: { species, nickname, virtAge } }, ack)` — `ack({ ok, roomCode })`；舊版只傳 `ack` 仍相容（伺服器用預設外觀）。`pet` 供對手顯示精靈與暱稱。
 - `join_room({ roomCode, pet: { species, nickname, virtAge } }, ack)` — `ack({ ok, error? })`；建議一律帶 `pet`。
+- `list_open_rooms({}, ack)` — `ack({ ok, rooms })`；`rooms` 為最多 40 筆 `{ roomCode, hostNickname, hostSpecies, created }`（僅「房主已連線、尚無訪客」且排除呼叫端自己開的房）。
 - `choose_move({ move })` — `move`: `"strike" | "guard" | "charge"`
 - `forfeit` — 投降並結束對戰
 
 **Server → Client**
 
 - `linked` — 配對成功；payload 含 `role`、`roomCode`、**`foe`**（對手 `{ species, nickname, virtAge }`，供對戰畫面）。
+- `open_rooms_changed` — 無 payload；**可加入的公開房清單**有變（開房、有人加入、房關閉、訪客斷線回到等待等）時廣播；大廳可據此再呼叫 `list_open_rooms`（實作含約 200ms 防抖合併）。
 - `peer_joined` / `peer_left` — 對端狀態
 - `battle_state` — 回合、HP、deadline、phase、鎖定狀態等
 - `round_result` — 雙方出招與敘述、HP

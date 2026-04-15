@@ -359,6 +359,99 @@ h1 {
   text-transform: none;
 }
 
+/* ----- lobby: browse open rooms ----- */
+.open-rooms {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--edge);
+}
+
+.open-rooms-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.open-rooms-title {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.open-rooms-status {
+  margin: 0 0 8px;
+  min-height: 1.1em;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.open-rooms-live-hint {
+  margin: -4px 0 10px;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--muted-2);
+}
+
+.open-rooms-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: min(40vh, 220px);
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.open-rooms-empty {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.open-room-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--edge);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.open-room-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.open-room-code {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--indigo);
+}
+
+.open-room-host {
+  font-size: 0.78rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn--compact {
+  flex: 0 0 auto;
+  min-width: auto;
+  padding: 8px 14px;
+  font-size: 0.8rem;
+}
+
 .code-display {
   font-family: var(--font-mono);
   font-size: 1.65rem;
@@ -650,6 +743,89 @@ h1 {
 
 .modal--rules .btn {
   width: 100%;
+  margin: 0;
+}
+
+.modal--feedback {
+  max-width: min(400px, 94vw);
+  width: 100%;
+  text-align: left;
+  padding: 20px 18px 18px;
+}
+
+.modal--feedback h2 {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.feedback-modal-intro {
+  margin: 0 0 14px !important;
+  font-size: 0.82rem !important;
+  line-height: 1.55 !important;
+}
+
+.feedback-modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.feedback-modal-actions.row {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.feedback-modal-actions.row > a.btn,
+.feedback-modal-actions.row > .btn {
+  flex: 1;
+  min-width: 120px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.feedback-no-channel {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.5;
+  text-align: center;
+}
+
+.feedback-meta-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.feedback-meta {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--text-soft);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--edge);
+  background: rgba(255, 255, 255, 0.75);
+  resize: vertical;
+  min-height: 120px;
+}
+
+.feedback-modal-footer {
+  margin-top: 0;
+  gap: 10px;
+}
+
+.feedback-modal-footer .btn {
+  flex: 1;
   margin: 0;
 }
 

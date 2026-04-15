@@ -449,6 +449,8 @@ export function trainPet(p: PetState): PetState {
 
 export function restPet(p: PetState): PetState {
   if (!p.alive) return p;
+  /** 已破殼且體力已滿時不必再休息，避免狂點反而一直扣飽食度。 */
+  if (p.hatched && p.energy >= 100) return p;
   const gain = p.ill ? 22 : 32;
   let next: PetState = {
     ...p,

@@ -29,6 +29,10 @@ type Move = "strike" | "guard" | "charge";
 
 const ROUND_MS = 12_000;
 
+/** 養成畫面：兩次照顧操作之間最短間隔，避免連點略過真實時間節奏。 */
+const CARE_ACTION_GAP_MS = 1100;
+let lastCareActionAt = 0;
+
 function petAssetUrl(file: string) {
   return `${import.meta.env.BASE_URL}pets/${file}`;
 }
@@ -69,6 +73,14 @@ const UI = {
     "\u985e\u4f3c\u5be6\u9ad4\u6a5f\u63a5\u9ede\uff0c\u533f\u540d\u958b\u623f\u5c0d\u6230",
   createHost: "\u958b\u623f\uff08\u4e3b\u6a5f\uff09",
   join: "\u52a0\u5165\u6230\u5c0d",
+  openRoomsTitle: "\u53ef\u52a0\u5165\u7684\u623f\u9593",
+  refreshOpenRooms: "\u5237\u65b0\u6e05\u55ae",
+  joinThisRoom: "\u52a0\u5165\u6b64\u623f",
+  openRoomsEmpty: "\u76ee\u524d\u6c92\u6709\u53ef\u52a0\u5165\u7684\u623f\u9593",
+  openRoomsLoading: "\u8b80\u53d6\u4e2d\u2026",
+  openRoomsErr: "\u7121\u6cd5\u8b80\u53d6\u623f\u9593\u6e05\u55ae",
+  openRoomsLiveHint:
+    "\u6709\u4eba\u958b\u623f\u3001\u52a0\u5165\u6216\u96e2\u7dda\u6642\uff0c\u6e05\u55ae\u6703\u81ea\u52d5\u66f4\u65b0\uff08\u4e5f\u53ef\u624b\u52d5\u5237\u65b0\uff09\u3002",
   roomPlaceholder: "\u623f\u9593\u78bc",
   waitConnect: "\u7b49\u5f85\u5c0d\u65b9\u63a5\u4e0a\u9023\u7dda\u2026",
   syncing: "\u9023\u7dda\u540c\u6b65\u4e2d\u2026",
@@ -126,6 +138,9 @@ const UI = {
   eggTrainBlocked:
     "\u9084\u6c92\u536f\u5316\uff0c\u5148\u5225\u8a13\u7df4\u56c9\u3002",
   justHatched: "\u7834\u6bbc\u4e86\uff01\u4f86\u6253\u500b\u62db\u547c\u5427\uff5e",
+  careTooFast:
+    "\u5148\u7a0d\u5f85\u4e00\u4e0b\u518d\u7167\u9867\u5427\uff08\u52d5\u4f5c\u592a\u5feb\u56c9\uff09\u3002",
+  restNotNeeded: "\u9ad4\u529b\u5df2\u6eff\uff0c\u4e0d\u7528\u518d\u4f11\u606f\u56c9\u3002",
   cancelWait: "\u53d6\u6d88",
   surrenderLeave: "\u6295\u964d\uff0f\u96e2\u958b",
   confirmForfeit:
@@ -141,6 +156,32 @@ let tickTimer: number | null = null;
 let roomCode: string | null = null;
 let role: "host" | "guest" | null = null;
 let phase: "lobby" | "waiting" | "battle" | "end" = "lobby";
+
+/** 大廳 create/join 逾時解鎖（模組級，避免舊 closure 計時器誤傷新一輪操作）。 */
+let lobbySocketGuardTimer: number | null = null;
+
+function clearLobbySocketGuardTimer() {
+  if (lobbySocketGuardTimer != null) {
+    window.clearTimeout(lobbySocketGuardTimer);
+    lobbySocketGuardTimer = null;
+  }
+}
+
+function unlockLobbyFormControlsSoft() {
+  const host = document.getElementById("btn-host") as HTMLButtonElement | null;
+  const join = document.getElementById("btn-join") as HTMLButtonElement | null;
+  const inp = document.getElementById("room-input") as HTMLInputElement | null;
+  const refreshOpen = document.getElementById(
+    "btn-refresh-open-rooms",
+  ) as HTMLButtonElement | null;
+  if (host) host.disabled = false;
+  if (join) join.disabled = false;
+  if (inp) inp.disabled = false;
+  if (refreshOpen) refreshOpen.disabled = false;
+  document.querySelectorAll<HTMLButtonElement>(".open-room-join").forEach((b) => {
+    b.disabled = false;
+  });
+}
 
 /** `linked` 時由伺服器帶入，供對戰畫面顯示真實對手。 */
 type BattleFoeSnap = {
@@ -192,6 +233,29 @@ function ensureSocket(): Socket {
   return socket;
 }
 
+/** 伺服器 `open_rooms_changed` 時自動重拉清單；離開大廳時務必 `detach`。 */
+let openRoomsLiveHandler: (() => void) | null = null;
+
+function detachOpenRoomsLiveListener(): void {
+  if (socket && openRoomsLiveHandler) {
+    socket.off("open_rooms_changed", openRoomsLiveHandler);
+  }
+  openRoomsLiveHandler = null;
+}
+
+function attachOpenRoomsLiveListener(fetchOpenRooms: () => void): void {
+  detachOpenRoomsLiveListener();
+  const s = ensureSocket();
+  openRoomsLiveHandler = () => {
+    if (phase !== "lobby") return;
+    if (!document.getElementById("open-rooms-list")) return;
+    const hostBtn = document.getElementById("btn-host") as HTMLButtonElement | null;
+    if (hostBtn?.disabled) return;
+    fetchOpenRooms();
+  };
+  s.on("open_rooms_changed", openRoomsLiveHandler);
+}
+
 function stopTick() {
   if (tickTimer != null) {
     window.clearInterval(tickTimer);
@@ -201,6 +265,7 @@ function stopTick() {
 
 function cancelWaitingAndReturn(root: HTMLElement) {
   battleFoeSnapshot = null;
+  detachOpenRoomsLiveListener();
   const s = socket;
   if (s) {
     s.removeAllListeners("linked");
@@ -252,6 +317,8 @@ function escapeHtml(s: string): string {
 
 function renderCare(root: HTMLElement) {
   battleFoeSnapshot = null;
+  detachOpenRoomsLiveListener();
+  clearLobbySocketGuardTimer();
   const hint = consumeCareFlash();
   let state: PetState = loadPet();
   if (!state.alive) {
@@ -406,10 +473,17 @@ function renderCare(root: HTMLElement) {
   root.querySelectorAll("[data-care]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const act = (btn as HTMLElement).dataset.care;
+      const now = Date.now();
+      if (now - lastCareActionAt < CARE_ACTION_GAP_MS) {
+        toastEl.textContent = UI.careTooFast;
+        toastEl.classList.remove("hidden");
+        return;
+      }
       toastEl.classList.add("hidden");
       if (act === "feed") {
         const wasEgg = !state.hatched;
         state = feed(state);
+        lastCareActionAt = Date.now();
         paint();
         if (wasEgg && state.hatched) {
           toastEl.textContent = UI.justHatched;
@@ -421,6 +495,7 @@ function renderCare(root: HTMLElement) {
       if (act === "clean") {
         const wasEgg = !state.hatched;
         state = cleanPet(state);
+        lastCareActionAt = Date.now();
         paint();
         if (wasEgg && state.hatched) {
           toastEl.textContent = UI.justHatched;
@@ -444,18 +519,35 @@ function renderCare(root: HTMLElement) {
           return;
         }
         state = trainPet(state);
+        lastCareActionAt = Date.now();
         paint();
         flashCareSprite("train");
         return;
       }
       if (act === "treat") {
+        const prev = state;
         state = treatPet(state);
+        if (state !== prev) lastCareActionAt = Date.now();
         paint();
         return;
       }
       if (act === "rest") {
+        if (state.hatched && state.energy >= 100 && !state.ill) {
+          toastEl.textContent = UI.restNotNeeded;
+          toastEl.classList.remove("hidden");
+          paint();
+          return;
+        }
+        const before = state;
         const wasEgg = !state.hatched;
         state = restPet(state);
+        if (state === before) {
+          toastEl.textContent = UI.restNotNeeded;
+          toastEl.classList.remove("hidden");
+          paint();
+          return;
+        }
+        lastCareActionAt = Date.now();
         paint();
         if (wasEgg && state.hatched) {
           toastEl.textContent = UI.justHatched;
@@ -472,8 +564,12 @@ function renderCare(root: HTMLElement) {
   paint();
 }
 
-function renderLobby(root: HTMLElement) {
+function renderLobby(
+  root: HTMLElement,
+  opts?: { lockForAutoJoin?: boolean },
+) {
   battleFoeSnapshot = null;
+  clearLobbySocketGuardTimer();
   const pet = loadPet();
   if (!pet.alive) {
     flashCare(UI.deadPetBattleBlocked);
@@ -506,6 +602,16 @@ function renderLobby(root: HTMLElement) {
       <div class="row mt-gap">
         <button type="button" class="btn btn-secondary" id="btn-join">${UI.join}</button>
       </div>
+      <section class="open-rooms" aria-label="${UI.openRoomsTitle}">
+        <div class="open-rooms-head">
+          <h2 class="open-rooms-title">${UI.openRoomsTitle}</h2>
+          <button type="button" class="btn btn-secondary btn--compact" id="btn-refresh-open-rooms">${UI.refreshOpenRooms}</button>
+        </div>
+        <p class="open-rooms-status" id="open-rooms-status"></p>
+        <p class="open-rooms-live-hint">${UI.openRoomsLiveHint}</p>
+        <div class="open-rooms-list" id="open-rooms-list"></div>
+        <p class="open-rooms-empty hidden" id="open-rooms-empty">${UI.openRoomsEmpty}</p>
+      </section>
       <p class="toast hidden" id="lobby-toast"></p>
     </div>
   `),
@@ -514,17 +620,140 @@ function renderLobby(root: HTMLElement) {
   $("#btn-back-pet", root).addEventListener("click", () => renderCare(root));
 
   const toast = $("#lobby-toast", root);
-  $("#btn-host", root).addEventListener("click", () => {
+  const btnHost = $("#btn-host", root) as HTMLButtonElement;
+  const btnJoin = $("#btn-join", root) as HTMLButtonElement;
+  const roomInput = $("#room-input", root) as HTMLInputElement;
+  const openRoomsList = $("#open-rooms-list", root);
+  const openRoomsEmpty = $("#open-rooms-empty", root);
+  const openRoomsStatus = $("#open-rooms-status", root);
+  const btnRefreshOpenRooms = $("#btn-refresh-open-rooms", root) as HTMLButtonElement;
+
+  type OpenRoomRow = {
+    roomCode: string;
+    hostNickname: string;
+    hostSpecies: string;
+    created: number;
+  };
+
+  const setLobbyBusy = (busy: boolean) => {
+    btnHost.disabled = busy;
+    btnJoin.disabled = busy;
+    roomInput.disabled = busy;
+    btnRefreshOpenRooms.disabled = busy;
+    openRoomsList.querySelectorAll<HTMLButtonElement>(".open-room-join").forEach((b) => {
+      b.disabled = busy;
+    });
+    clearLobbySocketGuardTimer();
+    if (busy) {
+      lobbySocketGuardTimer = domSetTimeout(() => {
+        lobbySocketGuardTimer = null;
+        unlockLobbyFormControlsSoft();
+      }, 15_000);
+    }
+  };
+
+  if (opts?.lockForAutoJoin) setLobbyBusy(true);
+
+  const attemptJoinRoom = (code: string) => {
+    const c = code.trim().toUpperCase();
+    if (c.length < 4) {
+      toast.textContent = UI.roomPlaceholder;
+      toast.classList.remove("hidden");
+      return;
+    }
     toast.classList.add("hidden");
+    roomInput.value = c;
+    setLobbyBusy(true);
+    const s = ensureSocket();
+    const pet = loadPet();
+    s.emit(
+      "join_room",
+      { roomCode: c, pet: battlePetPayload(pet) },
+      (res: { ok: boolean; error?: string }) => {
+        clearLobbySocketGuardTimer();
+        if (!res?.ok) {
+          toast.textContent = res?.error || UI.errGeneric;
+          toast.classList.remove("hidden");
+          setLobbyBusy(false);
+          return;
+        }
+        roomCode = c;
+        role = "guest";
+        renderWaiting(root, c, false);
+      },
+    );
+  };
+
+  const paintOpenRooms = (rows: OpenRoomRow[]) => {
+    openRoomsList.replaceChildren();
+    const joinLocked = btnHost.disabled;
+    if (rows.length === 0) {
+      openRoomsEmpty.classList.remove("hidden");
+      return;
+    }
+    openRoomsEmpty.classList.add("hidden");
+    for (const row of rows) {
+      const wrap = document.createElement("div");
+      wrap.className = "open-room-row";
+      const meta = document.createElement("div");
+      meta.className = "open-room-meta";
+      const codeEl = document.createElement("span");
+      codeEl.className = "open-room-code";
+      codeEl.textContent = row.roomCode;
+      const nickEl = document.createElement("span");
+      nickEl.className = "open-room-host";
+      nickEl.textContent = row.hostNickname;
+      meta.append(codeEl, nickEl);
+      const joinBtn = document.createElement("button");
+      joinBtn.type = "button";
+      joinBtn.className = "btn btn-secondary btn--compact open-room-join";
+      joinBtn.textContent = UI.joinThisRoom;
+      joinBtn.disabled = joinLocked;
+      joinBtn.addEventListener("click", () => attemptJoinRoom(row.roomCode));
+      wrap.append(meta, joinBtn);
+      openRoomsList.append(wrap);
+    }
+  };
+
+  const fetchOpenRooms = () => {
+    openRoomsStatus.textContent = UI.openRoomsLoading;
+    openRoomsEmpty.classList.add("hidden");
+    const s = ensureSocket();
+    s.emit(
+      "list_open_rooms",
+      {},
+      (res: { ok?: boolean; rooms?: OpenRoomRow[] }) => {
+        if (!res?.ok || !Array.isArray(res.rooms)) {
+          openRoomsStatus.textContent = UI.openRoomsErr;
+          paintOpenRooms([]);
+          return;
+        }
+        openRoomsStatus.textContent = "";
+        paintOpenRooms(res.rooms);
+      },
+    );
+  };
+
+  btnRefreshOpenRooms.addEventListener("click", () => {
+    if (btnRefreshOpenRooms.disabled) return;
+    fetchOpenRooms();
+  });
+
+  $("#btn-host", root).addEventListener("click", () => {
+    if (btnHost.disabled || btnJoin.disabled) return;
+    toast.classList.add("hidden");
+    setLobbyBusy(true);
     const s = ensureSocket();
     const pet = loadPet();
     s.emit(
       "create_room",
       { pet: battlePetPayload(pet) },
       (res: { ok: boolean; roomCode?: string }) => {
+        clearLobbySocketGuardTimer();
         if (!res?.ok || !res.roomCode) {
           toast.textContent = UI.errGeneric;
           toast.classList.remove("hidden");
+          setLobbyBusy(false);
           return;
         }
         roomCode = res.roomCode;
@@ -535,34 +764,17 @@ function renderLobby(root: HTMLElement) {
   });
 
   $("#btn-join", root).addEventListener("click", () => {
-    toast.classList.add("hidden");
-    const code = ($("#room-input", root) as HTMLInputElement).value.trim().toUpperCase();
-    if (code.length < 4) {
-      toast.textContent = UI.roomPlaceholder;
-      toast.classList.remove("hidden");
-      return;
-    }
-    const s = ensureSocket();
-    const pet = loadPet();
-    s.emit(
-      "join_room",
-      { roomCode: code, pet: battlePetPayload(pet) },
-      (res: { ok: boolean; error?: string }) => {
-        if (!res?.ok) {
-          toast.textContent = res?.error || UI.errGeneric;
-          toast.classList.remove("hidden");
-          return;
-        }
-        roomCode = code;
-        role = "guest";
-        renderWaiting(root, code, false);
-      },
-    );
+    if (btnHost.disabled || btnJoin.disabled) return;
+    attemptJoinRoom(roomInput.value);
   });
+
+  fetchOpenRooms();
+  attachOpenRoomsLiveListener(fetchOpenRooms);
 }
 
 function renderWaiting(root: HTMLElement, code: string, isHost: boolean) {
   phase = "waiting";
+  detachOpenRoomsLiveListener();
   root.replaceChildren(
     el(`
     <div class="shell shell--wait">
@@ -620,13 +832,19 @@ function renderWaiting(root: HTMLElement, code: string, isHost: boolean) {
   s.on("linked", goBattle);
   s.on("peer_left", onPeerLeft);
 
-  $("#btn-wait-cancel", root).addEventListener("click", () => {
+  const btnWaitCancel = $("#btn-wait-cancel", root) as HTMLButtonElement;
+  let waitCancelOnce = false;
+  btnWaitCancel.addEventListener("click", () => {
+    if (waitCancelOnce) return;
+    waitCancelOnce = true;
+    btnWaitCancel.disabled = true;
     cancelWaitingAndReturn(root);
   });
 }
 
 function renderBattle(root: HTMLElement) {
   phase = "battle";
+  detachOpenRoomsLiveListener();
   stopTick();
 
   const myPet = loadPet();
@@ -809,14 +1027,30 @@ function renderBattle(root: HTMLElement) {
   root.querySelectorAll(".move-btn").forEach((b) => {
     b.addEventListener("click", () => {
       if (myLocked) return;
-      const move = (b as HTMLElement).dataset.move as Move;
+      const btn = b as HTMLButtonElement;
+      if (btn.disabled) return;
+      const move = btn.dataset.move as Move;
+      myLocked = true;
+      root.querySelectorAll(".move-btn").forEach((x) => {
+        (x as HTMLButtonElement).disabled = true;
+      });
+      lockHint.classList.remove("hidden");
+      lockHint.textContent = UI.lockedYou;
       s.emit("choose_move", { move });
-      b.classList.add("selected");
+      btn.classList.add("selected");
     });
   });
 
-  $("#btn-forfeit", root).addEventListener("click", () => {
+  const btnForfeit = $("#btn-forfeit", root) as HTMLButtonElement;
+  let forfeitSent = false;
+  btnForfeit.addEventListener("click", () => {
+    if (forfeitSent || btnForfeit.disabled) return;
     if (!window.confirm(UI.confirmForfeit)) return;
+    forfeitSent = true;
+    btnForfeit.disabled = true;
+    root.querySelectorAll(".move-btn").forEach((b) => {
+      (b as HTMLButtonElement).disabled = true;
+    });
     s.emit("forfeit");
   });
 
@@ -849,6 +1083,123 @@ function mountGameRulesButton(): void {
   const btn = document.getElementById("btn-game-rules");
   if (!btn) return;
   btn.addEventListener("click", () => showGameRulesModal());
+}
+
+function safeHttpUrl(raw: string): string | null {
+  const t = raw.trim();
+  if (!t) return null;
+  try {
+    const u = new URL(t);
+    if (u.protocol === "https:" || u.protocol === "http:") return u.href;
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function feedbackMetaBlock(): string {
+  const lines = [
+    `app: ${__APP_VERSION__}`,
+    `url: ${location.href}`,
+    `ua: ${navigator.userAgent}`,
+    `time: ${new Date().toISOString()}`,
+  ];
+  return `${lines.join("\n")}\n\n\u8acb\u5728\u4e0b\u65b9\u5beb\u4e0b\u60a8\u7684\u610f\u898b\u6216\u554f\u984c\u2026\n`;
+}
+
+function mountFeedbackButton(): void {
+  const btn = document.getElementById("btn-feedback");
+  if (!btn) return;
+  btn.addEventListener("click", () => showFeedbackModal());
+}
+
+function showFeedbackModal(): void {
+  if (document.getElementById("feedback-modal-overlay")) return;
+  const urlRaw = (import.meta.env.VITE_FEEDBACK_URL || "").trim();
+  const emailRaw = (import.meta.env.VITE_FEEDBACK_EMAIL || "").trim();
+  const linkHref = safeHttpUrl(urlRaw);
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw);
+  const meta = feedbackMetaBlock();
+  const subject = encodeURIComponent(
+    "[Pocket\u96fb\u5b50\u5bf5\u7269] \u56de\u994b",
+  );
+  const mailHref = emailOk
+    ? `mailto:${emailRaw}?subject=${subject}&body=${encodeURIComponent(meta)}`
+    : "";
+
+  const overlay = el(`
+    <div class="modal-overlay feedback-modal-overlay" id="feedback-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="feedback-modal-title">
+      <div class="modal modal--feedback">
+        <h2 id="feedback-modal-title">\u610f\u898b\u56de\u994b</h2>
+        <p class="feedback-modal-intro">\u6b61\u8fce\u63d0\u4f9b\u554f\u984c\u3001\u5efa\u8b70\u6216\u9ad4\u9a57\u5206\u4eab\u3002\u82e5\u5df2\u8a2d\u5b9a\u8868\u55ae\u6216\u4fe1\u7bb1\uff0c\u53ef\u76f4\u63a5\u958b\u555f\uff1b\u5426\u5247\u8acb\u8907\u88fd\u4e0b\u65b9\u8cc7\u8a0a\u8cbc\u7d66\u958b\u767c\u8005\u3002</p>
+        <div class="feedback-modal-actions" id="feedback-modal-actions"></div>
+        <label class="feedback-meta-label" for="feedback-meta">\u74b0\u5883\u8cc7\u8a0a\uff08\u9078\u8cbc\uff09</label>
+        <textarea class="feedback-meta" id="feedback-meta" readonly rows="6" spellcheck="false"></textarea>
+        <div class="row feedback-modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-feedback-copy">\u8907\u88fd\u8cc7\u8a0a</button>
+          <button type="button" class="btn btn-primary" id="btn-feedback-close">\u95dc\u9589</button>
+        </div>
+      </div>
+    </div>
+  `);
+  const ta = $("#feedback-meta", overlay) as HTMLTextAreaElement;
+  ta.value = meta;
+
+  const actions = $("#feedback-modal-actions", overlay);
+  if (linkHref || mailHref) actions.classList.add("row");
+  if (linkHref) {
+    const a = document.createElement("a");
+    a.className = "btn btn-primary";
+    a.href = linkHref;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.textContent = "\u958b\u555f\u56de\u994b\u8868\u55ae";
+    actions.append(a);
+  }
+  if (mailHref) {
+    const a = document.createElement("a");
+    a.className = "btn btn-secondary";
+    a.href = mailHref;
+    a.textContent = "\u7528\u96fb\u5b50\u90f5\u4ef6\u56de\u994b";
+    actions.append(a);
+  }
+  if (!linkHref && !mailHref) {
+    const hint = document.createElement("p");
+    hint.className = "feedback-no-channel";
+    hint.textContent =
+      "\u5c1a\u672a\u8a2d\u5b9a\u56de\u994b\u9023\u7d50\uff0c\u8acb\u8907\u88fd\u4e0b\u65b9\u8cc7\u8a0a\u5f8c\u81ea\u884c\u50b3\u7d66\u5718\u968a\u3002";
+    actions.append(hint);
+  }
+
+  const close = () => {
+    overlay.remove();
+    document.removeEventListener("keydown", onKey);
+  };
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === "Escape") close();
+  };
+  document.addEventListener("keydown", onKey);
+
+  $("#btn-feedback-close", overlay).addEventListener("click", close);
+  $("#btn-feedback-copy", overlay).addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(ta.value);
+      const b = $("#btn-feedback-copy", overlay) as HTMLButtonElement;
+      const prev = b.textContent;
+      b.textContent = "\u5df2\u8907\u88fd";
+      domSetTimeout(() => {
+        b.textContent = prev;
+      }, 1600);
+    } catch {
+      ta.select();
+      document.execCommand("copy");
+    }
+  });
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) close();
+  });
+
+  document.body.appendChild(overlay);
 }
 
 function showGameRulesModal(): void {
@@ -893,21 +1244,32 @@ function boot() {
   mountAppVersionLabel();
   mountThemeBar();
   mountGameRulesButton();
+  mountFeedbackButton();
   const root = $("#view-root");
   const params = new URLSearchParams(location.search);
   const preJoin = params.get("join")?.toUpperCase().trim();
   if (preJoin && preJoin.length >= 4) {
-    renderLobby(root);
+    renderLobby(root, { lockForAutoJoin: true });
     window.setTimeout(() => {
       const input = document.getElementById("room-input") as HTMLInputElement | null;
       if (input) input.value = preJoin;
+      const host = document.getElementById("btn-host") as HTMLButtonElement | null;
+      const join = document.getElementById("btn-join") as HTMLButtonElement | null;
+      const unlockUrlJoinLobby = () => {
+        if (phase !== "lobby") return;
+        if (host) host.disabled = false;
+        if (join) join.disabled = false;
+        if (input) input.disabled = false;
+      };
       const s = ensureSocket();
       const pet = loadPet();
       s.emit(
         "join_room",
         { roomCode: preJoin, pet: battlePetPayload(pet) },
         (res: { ok: boolean; error?: string }) => {
+          clearLobbySocketGuardTimer();
           if (!res?.ok) {
+            unlockUrlJoinLobby();
             const toast = document.getElementById("lobby-toast");
             if (toast) {
               toast.textContent = res?.error || UI.errGeneric;

@@ -64,6 +64,16 @@ const io = new Server(httpServer, {
   cors: { origin: true, credentials: true },
 });
 
+/** 公開房清單變動時廣播；短防抖合併連續事件。 */
+let openRoomsNotifyTimer = null;
+function notifyOpenRoomsChanged() {
+  if (openRoomsNotifyTimer != null) return;
+  openRoomsNotifyTimer = setTimeout(() => {
+    openRoomsNotifyTimer = null;
+    io.emit("open_rooms_changed");
+  }, 200);
+}
+
 app.get("/health", (_req, res) => {
   res.type("text/plain").send("ok");
 });
@@ -106,6 +116,7 @@ function cleanupRoom(code) {
   if (!r) return;
   if (r.battle?.timer) clearTimeout(r.battle.timer);
   rooms.delete(code);
+  notifyOpenRoomsChanged();
 }
 
 function pruneStaleRooms() {
@@ -343,6 +354,7 @@ io.on("connection", (socket) => {
     socket.join(code);
     socketRoom.set(socket.id, { roomCode: code, role: "host" });
     if (typeof cb === "function") cb({ ok: true, roomCode: code });
+    notifyOpenRoomsChanged();
   });
 
   socket.on("join_room", (payload, ack) => {
@@ -373,6 +385,30 @@ io.on("connection", (socket) => {
     if (typeof ack === "function") ack({ ok: true, roomCode: code });
     io.to(r.hostId).emit("peer_joined");
     startBattle(code);
+    notifyOpenRoomsChanged();
+  });
+
+  /** 列出尚無訪客、可加入的房間（不含自己開的房）。 */
+  socket.on("list_open_rooms", (payload, ack) => {
+    let cb = ack;
+    if (typeof payload === "function") cb = payload;
+    pruneStaleRooms();
+    /** @type {{ roomCode: string, hostNickname: string, hostSpecies: string, created: number }[]} */
+    const out = [];
+    for (const [code, r] of rooms) {
+      if (!r.hostId || r.guestId) continue;
+      if (r.hostId === socket.id) continue;
+      const pet = r.hostPet || defaultPetSnap();
+      out.push({
+        roomCode: code,
+        hostNickname: pet.nickname || "\u73a9\u5bb6",
+        hostSpecies: pet.species,
+        created: r.created,
+      });
+    }
+    out.sort((a, b) => b.created - a.created);
+    const roomsOut = out.slice(0, 40);
+    if (typeof cb === "function") cb({ ok: true, rooms: roomsOut });
   });
 
   socket.on("choose_move", (payload) => {
@@ -443,6 +479,7 @@ io.on("connection", (socket) => {
       if (r.battle?.timer) clearTimeout(r.battle.timer);
       r.battle = undefined;
       io.to(r.hostId).emit("peer_left");
+      notifyOpenRoomsChanged();
     }
   });
 });

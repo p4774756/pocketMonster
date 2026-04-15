@@ -200,7 +200,7 @@ export function renderDogCanvas(
   else drawDogIdle(ctx, cell, st);
 }
 
-/** 圖鑑掛載：含 `data-dex-dog="egg"` 或 `data-dex-dog="idle"` + `data-stage` */
+/** 圖鑑掛載：`data-dex-dog="idle"` + `data-stage`（`egg` 僅供相容舊 HTML） */
 export function initDexDogCanvases(root: HTMLElement): void {
   root.querySelectorAll<HTMLCanvasElement>("[data-dex-dog]").forEach((cv) => {
     const kind = cv.dataset.dexDog;

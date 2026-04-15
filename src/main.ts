@@ -177,7 +177,7 @@ const UI = {
   dexBlurbCat:
     "\u8a8d\u990a\u6642\u5df2\u70ba\u5c0f\u8c93\uff0c\u7121\u86cb\u968e\u6bb5\u3002",
   dexBlurbDog:
-    "\u5f9e\u6bdb\u7d68\u86cb\u7834\u6bbc\uff1b\u7cbe\u9748\u70ba\u524d\u7aef Canvas \u50cf\u7d20\u7e6a\u88fd\uff08\u7121 PNG\uff09\u3002",
+    "\u8a8d\u990a\u6642\u5df2\u70ba\u5c0f\u72d7\uff0c\u7121\u86cb\u968e\u6bb5\uff1b\u7cbe\u9748\u70ba\u524d\u7aef Canvas \u50cf\u7d20\u7e6a\u88fd\uff08\u7121 PNG\uff09\u3002",
   backToPet: "\u56de\u5230\u6211\u7684\u5925\u4f34",
   restartAdopt: "\u91cd\u65b0\u8a8d\u990a",
   confirmRestartAdopt:
@@ -479,16 +479,6 @@ function dexStageCardHtml(species: PetSpecies, stage: 0 | 1 | 2 | 3 | 4): string
 }
 
 function dexEggCardHtml(species: PetSpecies): string {
-  if (species === "dog") {
-    return `
-    <div class="dex-stage-card dex-stage-card--egg">
-      <div class="dex-sprite-wrap">
-        <canvas class="dex-sprite dex-dog-canvas" width="96" height="96" data-dex-dog="egg"></canvas>
-      </div>
-      <span class="dex-stage-label">${UI.dexEgg}</span>
-    </div>
-  `;
-  }
   return `
     <div class="dex-stage-card dex-stage-card--egg">
       <div class="dex-sprite-wrap">
@@ -507,7 +497,7 @@ function dexSpeciesBlockHtml(species: PetSpecies): string {
     dexStageCardHtml(species, st),
   );
   const trackInner =
-    species === "cat"
+    species === "cat" || species === "dog"
       ? dexJoinWithArrows(stages)
       : dexJoinWithArrows([dexEggCardHtml(species), ...stages]);
   return `

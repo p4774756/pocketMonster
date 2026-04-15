@@ -374,12 +374,12 @@ export function petDefaultName(species: PetSpecies): string {
   return "\u96f7\u866b\u7378";
 }
 
-/** 新認養抽選：貓＝直接小貓；其餘先孵蛋，破殼後為該物種。 */
+/** 新認養抽選：貓、狗＝已孵化；其餘先孵蛋，破殼後為該物種。 */
 export function rollAdoptionProfile(): { species: PetSpecies; hatched: boolean } {
   const u = Math.random();
   if (u < 0.2) return { species: "cat", hatched: true };
   if (u < 0.4) return { species: "chicken", hatched: false };
-  if (u < 0.58) return { species: "dog", hatched: false };
+  if (u < 0.58) return { species: "dog", hatched: true };
   if (u < 0.78) return { species: "volt", hatched: false };
   return { species: "crystal", hatched: false };
 }

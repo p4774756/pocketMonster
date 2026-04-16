@@ -160,6 +160,7 @@
 | 圖鑑介面 | `src/main.ts` `renderSpeciesDex`：物種**分頁**切換；貓／狗屬性變體為**摺疊** `<details>`；成長／姿勢列可**橫向捲動**（`src/style.css`）。雷／水貓示意檔見 `dexCatVolt*`／`dexCatAqua*`（`src/pet.ts`）；狗四屬 Canvas 見 `data-dex-dog-element`（`src/canvasDog.ts`） |
 | 對戰結算、房間、計時 | `server/index.js` |
 | 專案架構給 agent | `AGENTS.md` |
+| 對外說明（GitHub 首頁） | 根目錄 `README.md`；可替換截圖見 `docs/readme/IMAGES.md` |
 | 產品路線與任務勾選 | `docs/ROADMAP_TASKS.md`（與 `docs/IMPROVEMENT_BACKLOG.md` 互補） |
 | 遊戲內規則彈窗內容 | `src/gameRulesContent.ts`（`?raw` 本檔 + `getGameRulesPlayerHtml` 節錄並轉 HTML；**改規則請編輯本 MD**） |
 

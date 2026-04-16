@@ -5,7 +5,7 @@
 
 **與倉庫同步**：實作進度以程式為準；**版號**見根目錄 `package.json`（頂欄與後端 `/version` 同源）。本檔勾選由維護者在里程碑完成時更新。
 
-**進度摘要（請隨版本更新此段）**：**v0.3 進化核心**已擴充：貓／狗屬性鍵、`cat_volt` 專用 PNG、圖鑑雷貓示意列、`doodoo` 大便怪 Canvas、狗 Canvas、`lightsOn` 與夜間結算（`GAME_RULES.md` §1.7～1.8）；**v0.3 其餘**（戰鬥 log、README、server 模組化、水／草貓專屬圖等）仍為待辦。
+**進度摘要（請隨版本更新此段）**：**v0.3 進化核心**已擴充：貓／狗屬性鍵、`cat_volt`／`cat_aqua` 專用 PNG、圖鑑改版、`doodoo` 大便怪 Canvas、狗 Canvas 四屬、`lightsOn` 與夜間結算（`GAME_RULES.md` §1.7～1.8）；**根目錄 README**（技術棧、啟動、部署、圖片示意）已補；**v0.3 其餘**（戰鬥 log、server 模組化、草貓專屬圖等）仍為待辦。
 
 ---
 
@@ -30,7 +30,7 @@
 
 ### README／作品集
 
-- [ ] **根目錄 README**：遊戲一句話、技術棧、核心功能、本機啟動、部署提示、2～4 張截圖、未來規劃（連結本檔與 `GAME_RULES.md`）。
+- [x] **根目錄 README**：遊戲一句話、技術棧、核心功能、本機啟動、部署提示、圖片（`docs/readme/banner.svg` + `public/pets` 示意，可替換為 UI 截圖見 `docs/readme/IMAGES.md`）、連結 `GAME_RULES.md`／`AGENTS.md`／路線檔。
 - [ ] **架構圖**（選做）：前端／Socket／Node 一張圖（Mermaid 或 PNG）。
 
 ### 後端模組化（可與 v0.3 並行或緊接）

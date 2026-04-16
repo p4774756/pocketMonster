@@ -157,8 +157,7 @@
 | 畫面與 Socket 客戶端（含大廳房名、骰子、公開清單列） | `src/main.ts` |
 | 自託管字型子集 | `src/fonts.css`（`@fontsource/dm-sans`、`@fontsource/jetbrains-mono`） |
 | 寵物 PNG 批次壓縮 | `scripts/optimize-pet-pngs.mjs`（`npm run optimize:pets`） |
-| 圖鑑雷／水貓示意 | `src/main.ts` 貓物種區塊內嵌「雷屬進化」「水屬進化」列（`dexCatVoltIdleFile`／`dexCatVoltCarePoseFile`、`dexCatAquaIdleFile`／`dexCatAquaCarePoseFile`，`src/pet.ts`） |
-| 圖鑑狗四屬示意 | `src/main.ts` 狗物種區塊內嵌雷／水／火／毒四列（`data-dex-dog-element`，`src/canvasDog.ts`） |
+| 圖鑑介面 | `src/main.ts` `renderSpeciesDex`：物種**分頁**切換；貓／狗屬性變體為**摺疊** `<details>`；成長／姿勢列可**橫向捲動**（`src/style.css`）。雷／水貓示意檔見 `dexCatVolt*`／`dexCatAqua*`（`src/pet.ts`）；狗四屬 Canvas 見 `data-dex-dog-element`（`src/canvasDog.ts`） |
 | 對戰結算、房間、計時 | `server/index.js` |
 | 專案架構給 agent | `AGENTS.md` |
 | 產品路線與任務勾選 | `docs/ROADMAP_TASKS.md`（與 `docs/IMPROVEMENT_BACKLOG.md` 互補） |

@@ -182,7 +182,11 @@ const UI = {
   openSpeciesDex: "\u5925\u4f34\u5716\u9451",
   dexTitle: "\u5925\u4f34\u5716\u9451",
   dexSubtitle:
-    "\u5404\u7269\u7a2e\u6210\u9577\u968e\u6bb5\u8207\u7167\u8b77\u52d5\u4f5c\u5c55\u793a\uff08\u6210\u9577\u70ba\u865b\u64ec\u65e5\u9f61\u5230\u9054\u5c0d\u61c9\u968e\u6bb5\u6642\u7684\u5916\u89c0\uff1b\u7167\u8b77\u59ff\u52e2\u4ee5\u9752\u5c11\u5e74\u671f\u9ad4\u578b\u793a\u610f\uff09\u3002\u7bad\u982d\u8868\u793a\u6642\u9593\u9032\u7a0b\u65b9\u5411\u3002",
+    "\u6210\u9577\u968e\u6bb5\u8207\u7167\u8b77\u52d5\u4f5c\u5c55\u793a\uff1b\u7bad\u982d\u70ba\u6642\u9593\u9032\u7a0b\u3002\u6210\u9577\u4ee5\u865b\u64ec\u65e5\u9f61\u5230\u968e\u6bb5\u70ba\u6e96\uff0c\u59ff\u52e2\u5716\u70ba\u9752\u5c11\u5e74\u671f\u9ad4\u578b\u793a\u610f\u3002",
+  dexLayoutHint:
+    "\u7528\u4e0a\u65b9\u5206\u9801\u5207\u63db\u7269\u7a2e\uff1b\u8c93\uff0f\u72d7\u7684\u5c6c\u6027\u9032\u5316\u5217\u9ed8\u8a8d\u6536\u5408\uff0c\u9ede\u6a19\u984c\u53ef\u5c55\u958b\u3002",
+  dexTablistAria:
+    "\u5716\u9451\u7269\u7a2e\u5206\u9801",
   dexEvolutionSection: "\u6210\u9577\u968e\u6bb5",
   dexPoseSection: "\u7167\u8b77\u52d5\u4f5c",
   dexPoseNote:
@@ -561,6 +565,35 @@ function dexJoinWithArrows(parts: string[]): string {
     .join("");
 }
 
+/** 貓／狗屬性分支：預設收合，減少圖鑑縱向長度。 */
+function dexMorphAccordionHtml(summary: string, innerHtml: string): string {
+  return `
+    <details class="dex-morph-details">
+      <summary class="dex-morph-summary">${summary}</summary>
+      <div class="dex-morph-details-body">
+        ${innerHtml}
+      </div>
+    </details>`;
+}
+
+function dexSpeciesTabsHtml(): string {
+  const tabs = DEX_SPECIES_ORDER.map((sp) => {
+    const emoji = petEmoji(sp);
+    const name = petDefaultName(sp);
+    const id = `dex-tab-${sp}`;
+    const panelId = `dex-panel-${sp}`;
+    return `
+      <button type="button" class="dex-tab" role="tab" id="${id}" data-dex-tab="${sp}" aria-controls="${panelId}" aria-selected="false" tabindex="-1">
+        <span class="dex-tab-emoji" aria-hidden="true">${emoji}</span>
+        <span class="dex-tab-label">${escapeHtml(name)}</span>
+      </button>`;
+  }).join("");
+  return `
+    <div class="dex-species-tabs" role="tablist" aria-label="${escapeHtml(UI.dexTablistAria)}">
+      ${tabs}
+    </div>`;
+}
+
 function dexStageCardHtml(species: PetSpecies, stage: 0 | 1 | 2 | 3 | 4): string {
   const scale = growthSpriteScale(stage);
   const senior = stage === 4 ? " dex-stage-card--senior" : "";
@@ -690,10 +723,9 @@ function dexDogMorphSubdexBlockHtml(
   section: string,
   intro: string,
 ): string {
-  return `
-      <div class="dex-morph-subdex">
-        <h4 class="dex-section-heading">${section}</h4>
-        <p class="dex-species-intro">${escapeHtml(intro)}</p>
+  const inner = `
+        <p class="dex-species-intro dex-morph-details-intro">${escapeHtml(intro)}</p>
+        <h4 class="dex-section-heading">${UI.dexEvolutionSection}</h4>
         <div class="dex-evolution-track">
           ${dexJoinWithArrows(
             ([0, 1, 2, 3, 4] as const).map((st) =>
@@ -709,8 +741,8 @@ function dexDogMorphSubdexBlockHtml(
               dexDogElementPoseCardHtml(element, pose),
             ),
           )}
-        </div>
-      </div>`;
+        </div>`;
+  return dexMorphAccordionHtml(escapeHtml(section), inner);
 }
 
 function dexPoseCardHtml(species: PetSpecies, pose: CarePose): string {
@@ -754,9 +786,11 @@ function dexSpeciesBlockHtml(species: PetSpecies): string {
   const catMorphSubdexes =
     species === "cat"
       ? `
-      <div class="dex-morph-subdex">
-        <h4 class="dex-section-heading">${UI.dexCatVoltSection}</h4>
-        <p class="dex-species-intro">${escapeHtml(UI.dexCatVoltIntro)}</p>
+      ${dexMorphAccordionHtml(
+        escapeHtml(UI.dexCatVoltSection),
+        `
+        <p class="dex-species-intro dex-morph-details-intro">${escapeHtml(UI.dexCatVoltIntro)}</p>
+        <h4 class="dex-section-heading">${UI.dexEvolutionSection}</h4>
         <div class="dex-evolution-track">
           ${dexJoinWithArrows(
             ([0, 1, 2, 3, 4] as const).map((st) => dexCatVoltStageCardHtml(st)),
@@ -768,11 +802,13 @@ function dexSpeciesBlockHtml(species: PetSpecies): string {
           ${dexJoinWithArrows(
             DEX_POSE_ORDER.map((pose) => dexCatVoltPoseCardHtml(pose)),
           )}
-        </div>
-      </div>
-      <div class="dex-morph-subdex">
-        <h4 class="dex-section-heading">${UI.dexCatAquaSection}</h4>
-        <p class="dex-species-intro">${escapeHtml(UI.dexCatAquaIntro)}</p>
+        </div>`,
+      )}
+      ${dexMorphAccordionHtml(
+        escapeHtml(UI.dexCatAquaSection),
+        `
+        <p class="dex-species-intro dex-morph-details-intro">${escapeHtml(UI.dexCatAquaIntro)}</p>
+        <h4 class="dex-section-heading">${UI.dexEvolutionSection}</h4>
         <div class="dex-evolution-track">
           ${dexJoinWithArrows(
             ([0, 1, 2, 3, 4] as const).map((st) => dexCatAquaStageCardHtml(st)),
@@ -784,18 +820,18 @@ function dexSpeciesBlockHtml(species: PetSpecies): string {
           ${dexJoinWithArrows(
             DEX_POSE_ORDER.map((pose) => dexCatAquaPoseCardHtml(pose)),
           )}
-        </div>
-      </div>
+        </div>`,
+      )}
     `
       : "";
   const dogMorphSubdexes =
     species === "dog"
-      ? `
+      ? `<div class="dex-morph-accordion-stack">
       ${dexDogMorphSubdexBlockHtml("volt", UI.dexDogVoltSection, UI.dexDogVoltIntro)}
       ${dexDogMorphSubdexBlockHtml("aqua", UI.dexDogAquaSection, UI.dexDogAquaIntro)}
       ${dexDogMorphSubdexBlockHtml("pyro", UI.dexDogPyroSection, UI.dexDogPyroIntro)}
       ${dexDogMorphSubdexBlockHtml("tox", UI.dexDogToxSection, UI.dexDogToxIntro)}
-    `
+    </div>`
       : "";
   return `
     <section class="dex-species-block" aria-label="${escapeHtml(name)}">
@@ -810,10 +846,47 @@ function dexSpeciesBlockHtml(species: PetSpecies): string {
       <div class="dex-pose-track">
         ${poseTrack}
       </div>
-      ${catMorphSubdexes}
+      ${
+        catMorphSubdexes
+          ? `<div class="dex-morph-accordion-stack">${catMorphSubdexes}</div>`
+          : ""
+      }
       ${dogMorphSubdexes}
     </section>
   `;
+}
+
+function wireDexSpeciesTabs(shell: HTMLElement): void {
+  const tabs = shell.querySelectorAll<HTMLButtonElement>("[data-dex-tab]");
+  const panels = shell.querySelectorAll<HTMLElement>("[data-dex-panel]");
+  const show = (sp: PetSpecies) => {
+    panels.forEach((panel) => {
+      const on = panel.dataset.dexPanel === sp;
+      panel.toggleAttribute("hidden", !on);
+      panel.setAttribute("aria-hidden", on ? "false" : "true");
+    });
+    tabs.forEach((tab) => {
+      const on = tab.dataset.dexTab === sp;
+      tab.classList.toggle("dex-tab--active", on);
+      tab.setAttribute("aria-selected", on ? "true" : "false");
+      tab.tabIndex = on ? 0 : -1;
+    });
+    const active = shell.querySelector<HTMLElement>(`[data-dex-panel="${sp}"]`);
+    if (active) initDexDogCanvases(active);
+  };
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const sp = tab.dataset.dexTab as PetSpecies | undefined;
+      if (sp && DEX_SPECIES_ORDER.includes(sp)) show(sp);
+    });
+  });
+  shell.querySelectorAll("details.dex-morph-details").forEach((det) => {
+    det.addEventListener("toggle", () => {
+      if ((det as HTMLDetailsElement).open)
+        initDexDogCanvases(det as HTMLElement);
+    });
+  });
+  show(DEX_SPECIES_ORDER[0]);
 }
 
 function renderSpeciesDex(
@@ -828,9 +901,15 @@ function renderSpeciesDex(
   phase = "dex";
   const backLabel = opts?.backLabel ?? UI.backToPet;
   const onBack = opts?.onBack ?? (() => renderCare(root));
-  const blocks = DEX_SPECIES_ORDER.map((sp) => dexSpeciesBlockHtml(sp)).join("");
-  root.replaceChildren(
-    el(`
+  const panels = DEX_SPECIES_ORDER.map((sp) => {
+    const panelId = `dex-panel-${sp}`;
+    const tabId = `dex-tab-${sp}`;
+    return `
+    <div class="dex-species-panel" id="${panelId}" role="tabpanel" aria-labelledby="${tabId}" data-dex-panel="${sp}" hidden>
+      ${dexSpeciesBlockHtml(sp)}
+    </div>`;
+  }).join("");
+  const shell = el(`
     <div class="shell shell--dex dex-shell">
       <div class="row dex-actions">
         <button type="button" class="btn btn-secondary care-back" id="btn-dex-back">${backLabel}</button>
@@ -838,15 +917,17 @@ function renderSpeciesDex(
       <div class="screen-bezel dex-bezel">
         <h2 class="dex-heading">${UI.dexTitle}</h2>
         <p class="dex-tagline">${UI.dexSubtitle}</p>
-        <div class="dex-species-list">
-          ${blocks}
+        <p class="dex-layout-hint">${UI.dexLayoutHint}</p>
+        ${dexSpeciesTabsHtml()}
+        <div class="dex-species-panels">
+          ${panels}
         </div>
       </div>
     </div>
-  `),
-  );
+  `);
+  root.replaceChildren(shell);
   $("#btn-dex-back", root).addEventListener("click", onBack);
-  initDexDogCanvases(root);
+  wireDexSpeciesTabs(shell);
 }
 
 function renderCare(root: HTMLElement) {

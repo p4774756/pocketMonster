@@ -28,15 +28,12 @@ const MP_REGEN_PER_ROUND = 5;
 /** @typedef {'strike' | 'guard' | 'charge'} Move */
 
 /**
- * `playerTag` 若存在則為恰好四位數字（0000–9999）。
- *
  * @typedef {{
  *   species: 'volt'|'crystal'|'chicken'|'cat'|'dog',
  *   nickname: string,
  *   virtAge: number,
  *   power: number,
  *   morphKey?: 'striker'|'guardian'|'survivor'|'harmony'|'cat_volt'|'cat_aqua'|'cat_flora'|'dog_volt'|'dog_aqua'|'dog_pyro'|'dog_tox'|'doodoo'|null,
- *   playerTag?: string|null,
  * }} PetSnap
  */
 
@@ -100,19 +97,12 @@ function parsePetSnap(raw) {
       ? mk
       : null;
   if (mk === "dog_flora") morphKey = "dog_pyro";
-  let playerTag = null;
-  const ptRaw = o.playerTag;
-  if (typeof ptRaw === "string") {
-    const t = String(ptRaw).replace(/\D/g, "").slice(0, 4);
-    if (t.length === 4) playerTag = t;
-  }
   return {
     species,
     nickname: nick || "\u73a9\u5bb6",
     virtAge,
     power,
     morphKey,
-    playerTag,
   };
 }
 
@@ -625,15 +615,13 @@ io.on("connection", (socket) => {
       if (!r.hostId || r.guestId) continue;
       if (r.hostId === socket.id) continue;
       const pet = r.hostPet || defaultPetSnap();
-      const row = {
+      out.push({
         roomCode: code,
         roomTitle: typeof r.roomTitle === "string" ? r.roomTitle : "",
         hostNickname: pet.nickname || "\u73a9\u5bb6",
         hostSpecies: pet.species,
         created: r.created,
-      };
-      if (pet.playerTag) row.hostPlayerTag = pet.playerTag;
-      out.push(row);
+      });
     }
     out.sort((a, b) => b.created - a.created);
     const roomsOut = out.slice(0, 40);

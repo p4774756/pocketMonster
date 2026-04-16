@@ -2,16 +2,6 @@ import { io, Socket } from "socket.io-client";
 import { initDexDogCanvases, renderDogCanvas } from "./canvasDog";
 import { renderPoopMonsterCanvas } from "./canvasPoop";
 import {
-  addFriendBookmark,
-  friendTagSet,
-  getOrCreatePlayerTag,
-  isFriendTag,
-  isValidPlayerTag,
-  loadFriendBookmarks,
-  normalizePlayerTag,
-  removeFriendBookmark,
-} from "./playerTag";
-import {
   careIdleSpriteFile,
   carePoseFile,
   careSpriteScale,
@@ -234,25 +224,6 @@ const UI = {
     "\u5c0d\u6230\u9700\u8981\u5f8c\u7aef\uff1a\u8acb\u8a2d\u5b9a VITE_SOCKET_URL \u5f8c\u91cd\u65b0\u6253\u5305\uff0c\u6216\u53c3\u8003 deploy \u8aaa\u660e\u3002",
   hubSubtitle:
     "\u533f\u540d\u958b\u623f\u3001\u8f38\u5165\u623f\u9593\u78bc\u5373\u53ef\u5c0d\u6230\uff08\u990a\u6210\u8cc7\u6599\u5728\u4e0a\u4e00\u9801\uff09",
-  socialMyTagLabel: "\u6211\u7684\u5c0d\u6230\u4ee3\u865f",
-  socialMyTagHint:
-    "\u8cbc\u7d66\u5e38\u4e00\u8d77\u73a9\u7684\u4eba\uff1b\u5c0d\u65b9\u53ef\u628a\u4f60\u7684\u4ee3\u865f\u52a0\u5165\u300c\u597d\u53cb\u5099\u5fd8\u300d\uff0c\u5728\u516c\u958b\u623f\u6e05\u55ae\u8fa6\u8b58\u4f60\u7684\u623f\u3002",
-  socialCopyTag: "\u8907\u88fd\u4ee3\u865f",
-  socialCopiedTag: "\u5df2\u8907\u88fd\u4ee3\u865f",
-  socialFriendsTitle: "\u597d\u53cb\u5099\u5fd8\uff08\u672c\u6a5f\uff09",
-  socialFriendsHint:
-    "\u50c5\u5b58\u5728\u6b64\u700f\u89bd\u5668\uff1b\u8a18\u9304\u5c0d\u624b\u7684\u5c0d\u6230\u4ee3\u865f\u8207\u986f\u793a\u540d\uff0c\u4e0d\u7b49\u65bc\u5e33\u865f\u6216\u597d\u53cb\u78ba\u8a8d\u3002",
-  socialFriendNamePh: "\u986f\u793a\u540d\u7a31\uff08\u5982\u5c0f\u660e\uff09",
-  socialFriendTagPh: "\u5c0d\u624b\u4ee3\u865f\uff084\u4f4d\u6578\u5b57\uff09",
-  socialAddFriend: "\u52a0\u5165",
-  socialRemoveFriend: "\u79fb\u9664",
-  socialFriendEmpty: "\u5c1a\u7121\u7d00\u9304",
-  socialAddDup: "\u5df2\u6709\u9019\u500b\u4ee3\u865f",
-  socialAddInvalid: "\u4ee3\u865f\u683c\u5f0f\u4e0d\u5c0d\uff08\u8acb\u8f38\u5165 4 \u500b\u6578\u5b57 0\u301c9\uff09",
-  socialAddEmptyName: "\u8acb\u586b\u986f\u793a\u540d\u7a31",
-  socialFoeFriendBtn: "\u52a0\u5c0d\u624b\u70ba\u597d\u53cb",
-  socialFoeFriendAdded: "\u5df2\u52a0\u5165\u597d\u53cb\u5099\u5fd8",
-  openRoomFriendBadge: "\u597d\u53cb",
   battleSection: "\u9023\u7dda\u5c0d\u6230",
   openBattle: "\u9023\u7dda\u5c0d\u6230",
   openSpeciesDex: "\u5925\u4f34\u5716\u9451",
@@ -438,8 +409,6 @@ type BattleFoeSnap = {
   virtAge: number;
   power: number;
   morphKey: PetMorphKey | null;
-  /** 對手自願附帶的對戰代號（匿名辨識用）。 */
-  playerTag: string | null;
 };
 let battleFoeSnapshot: BattleFoeSnap | null = null;
 
@@ -449,7 +418,6 @@ function normalizeBattleFoe(raw: {
   virtAge?: number;
   power?: number;
   morphKey?: string | null;
-  playerTag?: string | null;
 }): BattleFoeSnap {
   const sp = raw.species;
   const species: PetSpecies =
@@ -488,13 +456,7 @@ function normalizeBattleFoe(raw: {
     mk === "doodoo"
       ? mk
       : null;
-  let playerTag: string | null = null;
-  const pt = raw.playerTag;
-  if (typeof pt === "string") {
-    const t = normalizePlayerTag(pt);
-    if (isValidPlayerTag(t)) playerTag = t;
-  }
-  return { species, nickname, virtAge, power, morphKey, playerTag };
+  return { species, nickname, virtAge, power, morphKey };
 }
 
 function battlePetPayload(p: PetState) {
@@ -503,7 +465,6 @@ function battlePetPayload(p: PetState) {
     nickname: p.nickname,
     virtAge: p.virtAge,
     power: p.power,
-    playerTag: getOrCreatePlayerTag(),
     ...(p.morphTier >= 1 && p.morphKey
       ? { morphKey: p.morphKey }
       : {}),
@@ -1494,22 +1455,6 @@ function renderLobby(
       <div class="status-pill"><span class="dot on"></span> ONLINE</div>
       <h1>${UI.battleSection}</h1>
       <p class="tagline">${UI.hubSubtitle}</p>
-      <section class="hub-social" aria-label="${escapeHtml(UI.socialFriendsTitle)}">
-        <h2 class="hub-social-title">${UI.socialFriendsTitle}</h2>
-        <p class="hub-social-hint">${UI.socialFriendsHint}</p>
-        <div class="hub-my-tag-row">
-          <span class="hub-my-tag-label">${UI.socialMyTagLabel}</span>
-          <code class="hub-my-tag-code" id="my-player-tag"></code>
-          <button type="button" class="btn btn-secondary btn--compact" id="btn-copy-my-tag">${UI.socialCopyTag}</button>
-        </div>
-        <p class="hub-social-hint hub-social-hint--sub">${UI.socialMyTagHint}</p>
-        <div class="hub-friends-add row">
-          <input class="field" id="friend-label-input" maxlength="12" autocomplete="off" placeholder="${UI.socialFriendNamePh}" />
-          <input class="field friend-tag-field" id="friend-tag-input" maxlength="4" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="${UI.socialFriendTagPh}" />
-          <button type="button" class="btn btn-secondary" id="btn-add-friend">${UI.socialAddFriend}</button>
-        </div>
-        <ul class="hub-friends-list" id="hub-friends-list"></ul>
-      </section>
       <div class="row stack-gap">
         <button type="button" class="btn btn-secondary" id="btn-back-pet">${UI.backToPet}</button>
       </div>
@@ -1560,7 +1505,6 @@ function renderLobby(
     hostNickname: string;
     hostSpecies: string;
     created: number;
-    hostPlayerTag?: string;
   };
 
   const setLobbyBusy = (busy: boolean) => {
@@ -1622,15 +1566,9 @@ function renderLobby(
       return;
     }
     openRoomsEmpty.classList.add("hidden");
-    const friendTags = friendTagSet();
     for (const row of rows) {
       const wrap = document.createElement("div");
       wrap.className = "open-room-row";
-      const hostTag = row.hostPlayerTag
-        ? normalizePlayerTag(row.hostPlayerTag)
-        : "";
-      if (hostTag && friendTags.has(hostTag))
-        wrap.classList.add("open-room-row--friend");
       const meta = document.createElement("div");
       meta.className = "open-room-meta";
       const titleStr = (row.roomTitle || "").trim();
@@ -1647,12 +1585,6 @@ function renderLobby(
       nickEl.className = "open-room-host";
       nickEl.textContent = row.hostNickname;
       meta.append(codeEl, nickEl);
-      if (hostTag && friendTags.has(hostTag)) {
-        const badge = document.createElement("span");
-        badge.className = "open-room-friend-badge";
-        badge.textContent = UI.openRoomFriendBadge;
-        meta.append(badge);
-      }
       const joinBtn = document.createElement("button");
       joinBtn.type = "button";
       joinBtn.className = "btn btn-secondary btn--compact open-room-join";
@@ -1685,87 +1617,6 @@ function renderLobby(
       },
     );
   };
-
-  const myTagEl = $("#my-player-tag", root);
-  myTagEl.textContent = getOrCreatePlayerTag();
-  const friendLabelInp = $("#friend-label-input", root) as HTMLInputElement;
-  const friendTagInp = $("#friend-tag-input", root) as HTMLInputElement;
-  const hubFriendsList = $("#hub-friends-list", root);
-
-  const paintFriendsList = () => {
-    hubFriendsList.replaceChildren();
-    const list = loadFriendBookmarks();
-    if (list.length === 0) {
-      const li = document.createElement("li");
-      li.className = "hub-friends-empty";
-      li.textContent = UI.socialFriendEmpty;
-      hubFriendsList.append(li);
-      return;
-    }
-    for (const f of list) {
-      const li = document.createElement("li");
-      li.className = "hub-friend-row";
-      const span = document.createElement("span");
-      span.className = "hub-friend-meta";
-      span.textContent = `${f.label} · ${f.tag}`;
-      const rm = document.createElement("button");
-      rm.type = "button";
-      rm.className = "btn btn-secondary btn--compact";
-      rm.textContent = UI.socialRemoveFriend;
-      rm.addEventListener("click", () => {
-        removeFriendBookmark(f.tag);
-        paintFriendsList();
-        fetchOpenRooms();
-      });
-      li.append(span, rm);
-      hubFriendsList.append(li);
-    }
-  };
-
-  $("#btn-copy-my-tag", root).addEventListener("click", async () => {
-    const t = myTagEl.textContent || "";
-    try {
-      await navigator.clipboard.writeText(t);
-      toast.textContent = UI.socialCopiedTag;
-      toast.classList.remove("hidden");
-    } catch {
-      toast.textContent = UI.errGeneric;
-      toast.classList.remove("hidden");
-    }
-  });
-
-  $("#btn-add-friend", root).addEventListener("click", () => {
-    const label = friendLabelInp.value.trim();
-    const tagRaw = friendTagInp.value.trim();
-    if (!label) {
-      toast.textContent = UI.socialAddEmptyName;
-      toast.classList.remove("hidden");
-      return;
-    }
-    const err = addFriendBookmark(tagRaw, label);
-    if (err === "invalid") {
-      toast.textContent = UI.socialAddInvalid;
-      toast.classList.remove("hidden");
-      return;
-    }
-    if (err === "dup") {
-      toast.textContent = UI.socialAddDup;
-      toast.classList.remove("hidden");
-      return;
-    }
-    if (err === "empty") {
-      toast.textContent = UI.socialAddEmptyName;
-      toast.classList.remove("hidden");
-      return;
-    }
-    friendTagInp.value = "";
-    friendLabelInp.value = "";
-    toast.classList.add("hidden");
-    paintFriendsList();
-    fetchOpenRooms();
-  });
-
-  paintFriendsList();
 
   btnRefreshOpenRooms.addEventListener("click", () => {
     if (btnRefreshOpenRooms.disabled) return;
@@ -2235,15 +2086,6 @@ function renderBattle(root: HTMLElement) {
     if (r.auto) appendLog(`\u00bb ${UI.autoPick}`);
   };
 
-  const foeSocialOpts = ():
-    | { foeTag: string; foeNickname: string }
-    | undefined => {
-    const t = foeSnap.playerTag;
-    if (t && !isFriendTag(t))
-      return { foeTag: t, foeNickname: foeSnap.nickname };
-    return undefined;
-  };
-
   const onBattleEnd = (r: {
     winner: string;
     you: string;
@@ -2253,8 +2095,8 @@ function renderBattle(root: HTMLElement) {
     const fb = r.forfeitBy;
     if (fb === "host" || fb === "guest") {
       if (fb !== r.you) recordPvpWin();
-      if (fb === r.you) showEndModal(root, UI.youSurrendered, foeSocialOpts());
-      else showEndModal(root, UI.foeSurrenderYouWin, foeSocialOpts());
+      if (fb === r.you) showEndModal(root, UI.youSurrendered);
+      else showEndModal(root, UI.foeSurrenderYouWin);
       return;
     }
     const iWon =
@@ -2263,12 +2105,12 @@ function renderBattle(root: HTMLElement) {
     if (r.winner !== "draw" && iWon) recordPvpWin();
     const title =
       r.winner === "draw" ? UI.draw : iWon ? UI.win : UI.lose;
-    showEndModal(root, title, foeSocialOpts());
+    showEndModal(root, title);
   };
 
   const onPeerLeftBattle = () => {
     stopTick();
-    showEndModal(root, UI.peerLeft, foeSocialOpts());
+    showEndModal(root, UI.peerLeft);
   };
 
   const onBattleEmote = (payload: { key?: string }) => {
@@ -2337,53 +2179,24 @@ function renderBattle(root: HTMLElement) {
   }, 100);
 }
 
-function showEndModal(
-  root: HTMLElement,
-  title: string,
-  social?: { foeTag: string; foeNickname: string },
-) {
+function showEndModal(root: HTMLElement, title: string) {
   phase = "end";
-  const canAddFoe =
-    social &&
-    social.foeTag &&
-    !isFriendTag(social.foeTag) &&
-    social.foeTag !== getOrCreatePlayerTag();
-  const addFoeBlock = canAddFoe
-    ? `<button type="button" class="btn btn-secondary" id="btn-end-add-friend">${UI.socialFoeFriendBtn}</button>`
-    : "";
   const overlay = el(`
     <div class="modal-overlay" id="end-modal">
       <div class="modal">
         <h2>${title}</h2>
         <p>${UI.endModalHint}</p>
-        <div class="row end-modal-actions">
-          ${addFoeBlock}
-          <button type="button" class="btn btn-primary" id="btn-home">${UI.again}</button>
-        </div>
+        <button type="button" class="btn btn-primary" id="btn-home">${UI.again}</button>
       </div>
     </div>
   `);
   document.body.appendChild(overlay);
-  const goCare = () => {
+  $("#btn-home", overlay).addEventListener("click", () => {
     overlay.remove();
     socket?.disconnect();
     socket = null;
     renderCare(root);
-  };
-  if (canAddFoe) {
-    $("#btn-end-add-friend", overlay).addEventListener("click", () => {
-      const err = addFriendBookmark(
-        social!.foeTag,
-        social!.foeNickname.trim().slice(0, 12) || "\u5c0d\u624b",
-      );
-      if (err === "dup" || err === null) {
-        const hint = $("#btn-end-add-friend", overlay);
-        hint.textContent = UI.socialFoeFriendAdded;
-        (hint as HTMLButtonElement).disabled = true;
-      }
-    });
-  }
-  $("#btn-home", overlay).addEventListener("click", goCare);
+  });
 }
 
 function mountGameRulesButton(): void {

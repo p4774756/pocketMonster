@@ -9,7 +9,7 @@
 ## 目前專案狀態（快照）
 
 - **版號**：以根目錄 **`package.json` 的 `version`** 為準（與頂欄、`GET /version` 同源），勿在此檔另寫死數字。
-- **已落地（養成／對戰）**：首次**進化分支**（`morphTier`／`morphKey`）、`pvpWins`／`careQualityEma`／`totalIllVirtDays`、勝場結算、`create_room`／`join_room` 寵物快照可選 **`morphKey`**、對戰畫面顯示對手形態；規則與門檻見 **`GAME_RULES.md` 第 1.7 節**；實作見 **`src/pet.ts`**（`tryEvolve`、`recordPvpWin`）、**`src/main.ts`**、**`server/index.js`**（`parsePetSnap`）。
+- **已落地（養成／對戰）**：首次**進化分支**（`morphTier`／`morphKey`；貓／狗含雷／水／草屬性鍵與照護過差之 **`doodoo` 大便怪 Canvas**）、`pvpWins`／`careQualityEma`／`totalIllVirtDays`、勝場結算、`create_room`／`join_room` 寵物快照可選 **`morphKey`**、對戰畫面顯示對手形態；**夜間本機時段結算**與養成畫面**開關燈**（`lightsOn`）見 **`GAME_RULES.md` 第 1.7～1.8 節**；實作見 **`src/pet.ts`**、**`src/canvasPoop.ts`**、**`src/canvasDog.ts`**、**`src/main.ts`**、**`server/index.js`**（`parsePetSnap`）。
 - **仍屬規劃／待辦**：形態專屬美術、戰鬥本場 log、根目錄 README 完整化、`server/index.js` 模組化等——見 **`ROADMAP_TASKS.md`** 未勾選項。
 
 ---

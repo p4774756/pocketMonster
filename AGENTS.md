@@ -74,7 +74,7 @@ npm run dev
 
 **Client → Server**
 
-- `create_room({ pet: { species, nickname, virtAge, power, morphKey? }, roomTitle? }, ack)` — `ack({ ok, roomCode, roomTitle })`；`roomTitle` 為伺服器裁切後的展示名（最多 24 字，可空字串）。舊版只傳 `ack` 仍相容。`pet` 供對手顯示與**對戰 MP 上限**（`power` 0～100，缺省伺服器以 12 計）。`morphKey` 選填：`striker`／`guardian`／`survivor`／`harmony`，供對戰頭像旁形態字樣。
+- `create_room({ pet: { species, nickname, virtAge, power, morphKey? }, roomTitle? }, ack)` — `ack({ ok, roomCode, roomTitle })`；`roomTitle` 為伺服器裁切後的展示名（最多 24 字，可空字串）。舊版只傳 `ack` 仍相容。`pet` 供對手顯示與**對戰 MP 上限**（`power` 0～100，缺省伺服器以 12 計）。`morphKey` 選填：`striker`／`guardian`／`survivor`／`harmony`／`cat_volt`／`cat_aqua`／`cat_flora`／`dog_volt`／`dog_aqua`／`dog_flora`／`doodoo`，供對戰頭像旁形態字樣。
 - `join_room({ roomCode, pet: { species, nickname, virtAge, power, morphKey? } }, ack)` — `ack({ ok, error? })`；建議一律帶 `pet`。
 - `list_open_rooms({}, ack)` — 成功：`ack({ ok: true, rooms })`；`rooms` 為最多 40 筆 `{ roomCode, roomTitle, hostNickname, hostSpecies, created }`（僅「房主已連線、尚無訪客」且排除呼叫端自己開的房）。**節流**：同一連線 **1 秒內超過 10 次** 回 `ack({ ok: false, error: "too_fast" })`。
 - `choose_move({ move })` — `move`: `"strike" | "guard" | "charge"`
@@ -106,7 +106,7 @@ npm run start:api   # SERVE_STATIC=0：只跑 API（給 Pages + 分離後端）
 
 ## 改功能時該看哪
 
-- **養成數值／壽命／儲存格式／進化**：`src/pet.ts`（含 `STORAGE_KEY`、`idleSpriteForStage`、成長階段閾值、`tryEvolve`／`morphKey`）。**狗**外觀見 `src/canvasDog.ts`（`speciesUsesCanvasArt`）。
+- **養成數值／壽命／儲存格式／進化**：`src/pet.ts`（含 `STORAGE_KEY`、`idleSpriteForStage`、成長階段閾值、`tryEvolve`／`morphKey`／`lightsOn`、夜間結算）。**狗**外觀見 `src/canvasDog.ts`（`speciesUsesCanvasArt`）；**貓／狗大便怪**見 `src/canvasPoop.ts`（`careUsesPoopCanvas` 時取代 PNG／狗 Canvas）。
 - **畫面與對戰流程**：`src/main.ts`（體積大，可用搜尋 `renderCare`、`renderBattle`、`ensureSocket`）。
 - **對戰平衡與房間生命週期**：`server/index.js`。
 - **樣式**：`src/style.css`。

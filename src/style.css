@@ -270,6 +270,53 @@ body {
   padding-top: 16px;
 }
 
+.care-shell--night .care-bezel {
+  background: linear-gradient(165deg, #f1f5f9 0%, #e2e8f0 48%, #dbeafe 100%);
+}
+
+.care-shell--lights-off .care-bezel {
+  box-shadow:
+    var(--shadow-inset),
+    inset 0 -1px 0 rgba(15, 23, 42, 0.12),
+    0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+.care-shell--lights-off .care-bezel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(15, 23, 42, 0.38);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.care-shell--lights-off .care-bezel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.care-lights-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 12px;
+  margin: 0 0 8px;
+}
+
+.care-night-hint {
+  font-size: 0.68rem;
+  line-height: 1.45;
+  color: var(--muted-2);
+  max-width: 280px;
+  text-align: center;
+}
+
+.care-night-hint.hidden {
+  display: none;
+}
+
 .shell--hub h1,
 .shell--wait h1,
 .shell--battle .round-meta {
@@ -1534,6 +1581,34 @@ footer.note {
 
 .pet-stage[data-morph="harmony"] .pet-sprite-mount--care {
   filter: drop-shadow(0 0 8px rgba(52, 211, 153, 0.45));
+}
+
+.pet-stage[data-morph="doodoo"] .pet-sprite-mount--care {
+  filter: drop-shadow(0 0 7px rgba(120, 83, 53, 0.45));
+}
+
+.pet-sprite-mount--care[data-cat-element="volt"] .pet-sprite {
+  filter: drop-shadow(0 0 7px rgba(250, 204, 21, 0.65)) saturate(1.12);
+}
+
+.pet-sprite-mount--care[data-cat-element="aqua"] .pet-sprite {
+  filter: drop-shadow(0 0 7px rgba(56, 189, 248, 0.55)) hue-rotate(-8deg) saturate(1.08);
+}
+
+.pet-sprite-mount--care[data-cat-element="flora"] .pet-sprite {
+  filter: drop-shadow(0 0 7px rgba(74, 222, 128, 0.55)) hue-rotate(12deg) saturate(1.06);
+}
+
+.pet-sprite-mount--battle[data-cat-element="volt"] .battle-pet:not(.battle-pet-canvas) {
+  filter: drop-shadow(0 0 5px rgba(250, 204, 21, 0.55)) saturate(1.1);
+}
+
+.pet-sprite-mount--battle[data-cat-element="aqua"] .battle-pet:not(.battle-pet-canvas) {
+  filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.5)) hue-rotate(-8deg) saturate(1.06);
+}
+
+.pet-sprite-mount--battle[data-cat-element="flora"] .battle-pet:not(.battle-pet-canvas) {
+  filter: drop-shadow(0 0 5px rgba(74, 222, 128, 0.5)) hue-rotate(12deg) saturate(1.05);
 }
 
 .pet-mood {

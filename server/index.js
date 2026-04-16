@@ -33,7 +33,7 @@ const MP_REGEN_PER_ROUND = 5;
  *   nickname: string,
  *   virtAge: number,
  *   power: number,
- *   morphKey?: 'striker'|'guardian'|'survivor'|'harmony'|null,
+ *   morphKey?: 'striker'|'guardian'|'survivor'|'harmony'|'cat_volt'|'cat_aqua'|'cat_flora'|'dog_volt'|'dog_aqua'|'dog_flora'|'doodoo'|null,
  * }} PetSnap
  */
 
@@ -84,7 +84,14 @@ function parsePetSnap(raw) {
     mk === "striker" ||
     mk === "guardian" ||
     mk === "survivor" ||
-    mk === "harmony"
+    mk === "harmony" ||
+    mk === "cat_volt" ||
+    mk === "cat_aqua" ||
+    mk === "cat_flora" ||
+    mk === "dog_volt" ||
+    mk === "dog_aqua" ||
+    mk === "dog_flora" ||
+    mk === "doodoo"
       ? mk
       : null;
   return {

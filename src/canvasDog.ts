@@ -163,11 +163,38 @@ function drawDogClean(
   cellR(ctx, 22, 9, 1.5, 1.5, COL.spark, cell);
 }
 
+/** 屬性進化時狗身 Canvas 小色塊／光點裝飾（與 `PetMorphKey` 的 `dog_*` 對應）。 */
+export type DogElementAccent = "volt" | "aqua" | "flora" | null;
+
+function drawDogElementAccent(
+  ctx: CanvasRenderingContext2D,
+  cell: number,
+  stage: 0 | 1 | 2 | 3 | 4,
+  accent: "volt" | "aqua" | "flora",
+) {
+  const g = stageGrow(stage);
+  if (accent === "volt") {
+    cellR(ctx, g.hx - 1, g.hy - 1, 2, 2, "#facc15", cell);
+    cellR(ctx, g.hx + g.hw, g.hy, 1.8, 1.8, "#fde047", cell);
+    cellR(ctx, g.bx + g.bw, 22, 1.5, 1.5, "#eab308", cell);
+  } else if (accent === "aqua") {
+    cellR(ctx, g.hx + 0.5, g.hy + 1.2, 2, 2, "#38bdf8", cell);
+    cellR(ctx, g.hx + g.hw - 2, g.hy + 2, 2, 2, "#0ea5e9", cell);
+    cellR(ctx, g.bx + 1, 19.5, 2, 1.5, "#7dd3fc", cell);
+  } else {
+    cellR(ctx, g.hx + 2, g.hy + 6.5, 2, 1.5, "#4ade80", cell);
+    cellR(ctx, g.hx + g.hw - 3, g.hy + 5.5, 2.5, 1.8, "#22c55e", cell);
+    cellR(ctx, g.bx + g.bw * 0.2, 20, 2, 2, "#86efac", cell);
+  }
+}
+
 export type DogCanvasOptions = {
   cssSize: number;
   hatched: boolean;
   stage: 0 | 1 | 2 | 3 | 4;
   pose?: CarePose | null;
+  /** 狗屬性進化（雷／水／草）時的裝飾層 */
+  elementAccent?: DogElementAccent;
 };
 
 export function renderDogCanvas(
@@ -198,6 +225,10 @@ export function renderDogCanvas(
   else if (pose === "rest") drawDogRest(ctx, cell, st);
   else if (pose === "clean") drawDogClean(ctx, cell, st);
   else drawDogIdle(ctx, cell, st);
+  const acc = options.elementAccent;
+  if (acc === "volt" || acc === "aqua" || acc === "flora") {
+    drawDogElementAccent(ctx, cell, st, acc);
+  }
 }
 
 /** 圖鑑掛載：`data-dex-dog` — `egg` | 其他；`data-stage` 0…4；可選 `data-dex-pose` = eat|train|rest|clean */

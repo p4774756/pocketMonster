@@ -2,8 +2,22 @@ export type PetSpecies = "volt" | "crystal" | "chicken" | "cat" | "dog";
 
 export type DeathCause = "old" | "neglect" | "illness";
 
-/** 首次進化分支（僅本機養成；不影響物種）。 */
-export type PetMorphKey = "striker" | "guardian" | "survivor" | "harmony";
+/**
+ * 首次進化分支（僅本機養成；不影響物種）。
+ * 貓／狗：`cat_*`／`dog_*` 為屬性分支，`doodoo` 為照護過差的大便怪；其餘物種仍為四種作戰風格鍵。
+ */
+export type PetMorphKey =
+  | "striker"
+  | "guardian"
+  | "survivor"
+  | "harmony"
+  | "cat_volt"
+  | "cat_aqua"
+  | "cat_flora"
+  | "dog_volt"
+  | "dog_aqua"
+  | "dog_flora"
+  | "doodoo";
 
 export interface PetState {
   species: PetSpecies;
@@ -30,6 +44,8 @@ export interface PetState {
   /** 0 = 未進化；1 = 已選定分支（`morphKey`）。 */
   morphTier: 0 | 1;
   morphKey: PetMorphKey | null;
+  /** 養成畫面房間燈（關燈時夜間回體力略強）。 */
+  lightsOn: boolean;
   /** Accumulated real hours while critically hungry. */
   starveHours: number;
   alive: boolean;
@@ -71,6 +87,7 @@ const DEFAULT: PetState = {
   pvpWins: 0,
   morphTier: 0,
   morphKey: null,
+  lightsOn: true,
   starveHours: 0,
   alive: true,
 };
@@ -92,10 +109,56 @@ function parseMorphKey(raw: unknown): PetMorphKey | null {
     raw === "striker" ||
     raw === "guardian" ||
     raw === "survivor" ||
-    raw === "harmony"
+    raw === "harmony" ||
+    raw === "cat_volt" ||
+    raw === "cat_aqua" ||
+    raw === "cat_flora" ||
+    raw === "dog_volt" ||
+    raw === "dog_aqua" ||
+    raw === "dog_flora" ||
+    raw === "doodoo"
   ) {
     return raw;
   }
+  return null;
+}
+
+/** 本機時鐘：夜間（自動睡眠結算用）。22:00～06:59。 */
+export function isLocalNightHour(d = new Date()): boolean {
+  const h = d.getHours();
+  return h >= 22 || h < 7;
+}
+
+/** 貓／狗且已進化為大便怪時，養成／對戰改用 Canvas 大便怪。 */
+export function careUsesPoopCanvas(p: PetState): boolean {
+  return (
+    p.alive &&
+    p.hatched &&
+    p.morphTier >= 1 &&
+    p.morphKey === "doodoo" &&
+    (p.species === "cat" || p.species === "dog")
+  );
+}
+
+/** 對戰／養成：貓屬性進化給 DOM `data-cat-element`。 */
+export function catElementKeyFromMorph(
+  species: PetSpecies,
+  k: PetMorphKey | null,
+): "volt" | "aqua" | "flora" | null {
+  if (species !== "cat") return null;
+  if (k === "cat_volt") return "volt";
+  if (k === "cat_aqua") return "aqua";
+  if (k === "cat_flora") return "flora";
+  return null;
+}
+
+/** 狗 Canvas 屬性裝飾鍵。 */
+export function dogElementKeyFromMorph(
+  k: PetMorphKey | null,
+): "volt" | "aqua" | "flora" | null {
+  if (k === "dog_volt") return "volt";
+  if (k === "dog_aqua") return "aqua";
+  if (k === "dog_flora") return "flora";
   return null;
 }
 
@@ -104,16 +167,59 @@ export function morphLabelZh(key: PetMorphKey): string {
   if (key === "striker") return "\u9b25\u9b42\u5f62\u614b";
   if (key === "guardian") return "\u5b88\u8b77\u5f62\u614b";
   if (key === "survivor") return "\u97cc\u6027\u5f62\u614b";
-  return "\u5747\u8861\u5f62\u614b";
+  if (key === "harmony") return "\u5747\u8861\u5f62\u614b";
+  if (key === "cat_volt" || key === "dog_volt")
+    return "\u96f7\u5c6c\u9032\u5316";
+  if (key === "cat_aqua" || key === "dog_aqua")
+    return "\u6c34\u5c6c\u9032\u5316";
+  if (key === "cat_flora" || key === "dog_flora")
+    return "\u8349\u5c6c\u9032\u5316";
+  return "\u5927\u4fbf\u602a";
+}
+
+function isDoodooMorphCandidate(p: PetState): boolean {
+  const ema = p.careQualityEma;
+  const illLife = p.totalIllVirtDays;
+  return (
+    ema <= 29 &&
+    illLife >= 4 &&
+    p.clean < 36 &&
+    p.hunger < 42 &&
+    (p.happy < 40 || p.clean < 30)
+  );
+}
+
+function pickCatDogElementMorph(p: PetState): PetMorphKey {
+  const pref = p.species === "cat" ? "cat_" : "dog_";
+  const ema = p.careQualityEma;
+  const illLife = p.totalIllVirtDays;
+  if (p.power >= 21 && ema >= 34) return `${pref}volt` as PetMorphKey;
+  if (p.clean >= 58 && illLife <= 4.5 && ema >= 35)
+    return `${pref}aqua` as PetMorphKey;
+  if (p.happy >= 60 && p.hunger >= 46 && ema >= 36)
+    return `${pref}flora` as PetMorphKey;
+  const v = p.power * 1.15 + p.pvpWins * 2.8;
+  const a = p.clean * 1.08 + (100 - illLife) * 0.12;
+  const f = p.happy * 1.05 + p.hunger * 0.22;
+  if (v >= a && v >= f) return `${pref}volt` as PetMorphKey;
+  if (a >= f) return `${pref}aqua` as PetMorphKey;
+  return `${pref}flora` as PetMorphKey;
 }
 
 /**
- * 依養成軌跡選首次分支（優先序：鬥魂 → 守護 → 韌性 → 均衡）。
- * 門檻為初版平衡，請與 `docs/GAME_RULES.md` 同步敘述。
+ * 貓／狗：12 虛擬日起可變大便怪；滿 13 虛擬日且非大便怪則屬性進化。
+ * 其他物種：鬥魂 → 守護 → 韌性 → 均衡（舊版）。
  */
 function pickMorphKey(p: PetState): PetMorphKey | null {
   if (p.morphTier >= 1 || !p.alive || !p.hatched) return null;
   if (p.virtAge < EVOLVE_MIN_VIRT_AGE) return null;
+
+  if (p.species === "cat" || p.species === "dog") {
+    if (isDoodooMorphCandidate(p)) return "doodoo";
+    if (p.virtAge < 13) return null;
+    return pickCatDogElementMorph(p);
+  }
+
   const ema = p.careQualityEma;
   const illLife = p.totalIllVirtDays;
   const wins = p.pvpWins;
@@ -130,8 +236,19 @@ export function tryEvolve(p: PetState): PetState {
   if (p.morphTier >= 1 || !p.alive || !p.hatched) return p;
   const key = pickMorphKey(p);
   if (!key) return p;
-  pendingMorphToast = `\u9032\u5316\uff01${morphLabelZh(key)}`;
+  if (key === "doodoo") {
+    pendingMorphToast =
+      "\u9032\u5316\uff01\u2026\u597d\u50cf\u8b8a\u6210\u5927\u4fbf\u602a\u4e86\uff08\u7167\u9867\u8981\u7528\u5fc3\u9ede\uff09";
+  } else {
+    pendingMorphToast = `\u9032\u5316\uff01${morphLabelZh(key)}`;
+  }
   return { ...p, morphTier: 1, morphKey: key };
+}
+
+/** 養成畫面切換房間燈。 */
+export function toggleCareLights(p: PetState): PetState {
+  if (!p.alive) return p;
+  return savePet({ ...p, lightsOn: !p.lightsOn });
 }
 
 function clamp(n: number, lo: number, hi: number) {
@@ -205,11 +322,20 @@ function mergeDefaults(raw: Partial<PetState>): PetState {
   );
   const pvpWins = clamp(Number(raw.pvpWins) || 0, 0, 9999);
   const morphTier = raw.morphTier === 1 ? 1 : 0;
+  const species = parseSpecies(raw.species);
   let morphKey: PetMorphKey | null =
     morphTier === 1 ? parseMorphKey(raw.morphKey) : null;
-  if (morphTier === 1 && !morphKey) morphKey = "harmony";
+  if (morphTier === 1 && !morphKey) {
+    morphKey =
+      species === "cat"
+        ? "cat_flora"
+        : species === "dog"
+          ? "dog_flora"
+          : "harmony";
+  }
+  const lightsOn = raw.lightsOn === false ? false : true;
   return {
-    species: parseSpecies(raw.species),
+    species,
     nickname:
       typeof raw.nickname === "string" && raw.nickname.trim().length > 0
         ? raw.nickname.trim().slice(0, 12)
@@ -229,6 +355,7 @@ function mergeDefaults(raw: Partial<PetState>): PetState {
     pvpWins,
     morphTier,
     morphKey,
+    lightsOn,
     starveHours: Math.max(0, Number(raw.starveHours) || 0),
     alive,
     deathCause:
@@ -356,14 +483,32 @@ function applyLifecycleAndDecay(p: PetState): PetState {
   const dAge = hours / HOURS_PER_VIRT_DAY;
   virtAge += dAge;
 
+  const night = !egg && p.hatched && isLocalNightHour(new Date(now));
+  const deepSleep = night && !p.lightsOn;
+  const nightHungerMul = night ? (deepSleep ? 0.58 : 0.74) : 1;
+  const nightCleanMul = night ? (deepSleep ? 0.72 : 0.85) : 1;
+  const nightHappyMul = night ? (deepSleep ? 0.78 : 0.88) : 1;
+  const nightEnergyDrainMul = night ? (deepSleep ? 0.42 : 0.55) : 1;
+
   const illMul = ill ? 1.38 : 1;
   const eggDecay = egg ? 0.42 : 1;
   const decay = illMul * eggDecay;
-  hunger = clamp(hunger - hours * 7 * decay, 0, 100);
-  clean = clamp(clean - hours * 4 * decay, 0, 100);
-  const hungryPenalty = hunger < 38 ? hours * 6 * decay : hours * 2.5 * decay;
+  hunger = clamp(hunger - hours * 7 * decay * nightHungerMul, 0, 100);
+  clean = clamp(clean - hours * 4 * decay * nightCleanMul, 0, 100);
+  const hungryPenalty =
+    hunger < 38
+      ? hours * 6 * decay * nightHappyMul
+      : hours * 2.5 * decay * nightHappyMul;
   happy = clamp(happy - hungryPenalty, 0, 100);
-  energy = clamp(energy - hours * 1.85 * decay, 0, 100);
+  energy = clamp(
+    energy - hours * 1.85 * decay * nightEnergyDrainMul,
+    0,
+    100,
+  );
+  if (night) {
+    const bonus = hours * (deepSleep ? 1.42 : 0.92) * (ill ? 0.5 : 1);
+    energy = clamp(energy + bonus, 0, 100);
+  }
 
   if (!ill && !egg && hunger < 34 && clean < 38 && happy < 48) {
     const stress = Math.min(1, hours / 8);
@@ -532,29 +677,165 @@ export function newAdoptionPetState(): PetState {
     pvpWins: 0,
     morphTier: 0,
     morphKey: null,
+    lightsOn: true,
     starveHours: 0,
     alive: true,
   };
 }
 
+function pickMoodLine(seed: number, lines: readonly string[]): string {
+  if (lines.length === 0) return "";
+  const u = ((seed % 9973) + 9973) % 9973;
+  return lines[u % lines.length]!;
+}
+
 export function moodLine(p: PetState): string {
   if (!p.alive) return "";
-  if (!p.hatched)
-    return "\u8f15\u8f15\u52d5\u4e86\u4e00\u4e0b\u2026\u9084\u5728\u86cb\u88e1\uff0c\u591a\u966a\u6211\u3001\u9935\u9ede\u6eab\u6696\u5427\u3002";
-  if (p.ill) return "\u597d\u4e0d\u8212\u670d\u2026\u5e36\u6211\u770b\u91ab\u751f\u597d\u55ce\uff1f";
+  if (!p.hatched) {
+    const eggLines = [
+      "\u8f15\u8f15\u52d5\u4e86\u4e00\u4e0b\u2026\u9084\u5728\u86cb\u88e1\uff0c\u591a\u966a\u6211\u3001\u9935\u9ede\u6eab\u6696\u5427\u3002",
+      "\u86cb\u6bbc\u88e1\u807d\u5f97\u5230\u4f60\u7684\u8072\u97f3\uff0c\u597d\u5b89\u5fc3\u3002",
+      "\u518d\u7b49\u4e00\u4e0b\u4e0b\u2026\u5feb\u8981\u8ddf\u4f60\u6253\u62db\u547c\u56c9\u3002",
+    ];
+    return pickMoodLine(
+      Math.floor(p.virtAge * 31) + p.nickname.charCodeAt(0),
+      eggLines,
+    );
+  }
+  if (p.ill) {
+    const illLines = [
+      "\u597d\u4e0d\u8212\u670d\u2026\u5e36\u6211\u770b\u91ab\u751f\u597d\u55ce\uff1f",
+      "\u54b3\u54b3\u2026\u4eca\u5929\u53ef\u4ee5\u5148\u6062\u606f\u55ce\uff1f",
+      "\u8eab\u9ad4\u597d\u91cd\u2026\u8cbc\u8cbc\u6211\u4e00\u4e0b\u597d\u55ce\u3002",
+    ];
+    return pickMoodLine(
+      p.nickname.charCodeAt(0) + Math.floor(p.illDays * 17),
+      illLines,
+    );
+  }
   const avg = (p.hunger + p.happy + p.clean + p.energy) / 4;
   const stage = growthStage(p.virtAge);
-  if (stage === 0 && p.hunger < 40)
-    return "\u9084\u597d\u5c0f\uff0c\u8981\u591a\u9935\u4e00\u9ede\u9ede\uff5e";
-  if (stage >= 4 && avg >= 55)
-    return "\u966a\u4f60\u9019\u9ebd\u4e45\u4e86\uff0c\u6bcf\u5929\u90fd\u5f88\u73cd\u8cb4\u3002";
-  if (p.hunger < 25)
-    return "\u597d\u9913\u2026\u5feb\u9935\u6211\u5403\u7684\uff01";
-  if (p.clean < 25) return "\u8eab\u4e0a\u597d\u9ad2\uff0c\u60f3\u6d17\u6d17\u2026";
-  if (p.energy < 22) return "\u7d2f\u4e86\uff0c\u60f3\u4f11\u606f\u2026";
-  if (avg >= 72) return "\u5fc3\u60c5\u8d85\u597d\uff01\u4e00\u8d77\u73a9\u5427\uff01";
-  if (avg >= 48) return "\u9084\u4e0d\u932f\uff0c\u966a\u6211\u7df4\u7df4\u5427\u3002";
-  return "\u6709\u9ede\u6c92\u52c1\u2026\u966a\u6211\u4e00\u4e0b\u597d\u55ce\uff1f";
+  const seedBase =
+    Math.floor(p.virtAge * 13) +
+    p.nickname.charCodeAt(0) * 5 +
+    Math.floor(avg * 7);
+
+  if (p.morphTier >= 1 && p.morphKey === "doodoo") {
+    const dLines = [
+      "\u2026\u2026\u5473\u9053\u597d\u516b\u3002\u4f46\u6211\u9084\u662f\u60f3\u966a\u4f60\u3002",
+      "\u9019\u6a23\u4e5f\u80fd\u5e6b\u6211\u5237\u5237\u7259\u55ce\uff1f",
+      "\u6211\u8b8a\u6210\u9019\u6a23\u4e86\u2026\u4f60\u9084\u6703\u6478\u6478\u6211\u55ce\uff1f",
+    ];
+    return pickMoodLine(seedBase + 101, dLines);
+  }
+
+  if (p.hunger < 25) {
+    const h = [
+      "\u597d\u9913\u2026\u5feb\u9935\u6211\u5403\u7684\uff01",
+      "\u98fd\u98df\u5ea6\u5feb\u898b\u5e95\u4e86\uff0c\u6551\u547d\u554a\u3002",
+    ];
+    return pickMoodLine(seedBase + 3, h);
+  }
+  if (p.clean < 25) {
+    const c = [
+      "\u8eab\u4e0a\u597d\u9ad2\uff0c\u60f3\u6d17\u6d17\u2026",
+      "\u6709\u9ede\u81ed\u81ed\u7684\u2026\u6e05\u6f54\u4e00\u4e0b\u55ce\u3002",
+    ];
+    return pickMoodLine(seedBase + 4, c);
+  }
+  if (p.energy < 22) {
+    const e = [
+      "\u7d2f\u4e86\uff0c\u60f3\u4f11\u606f\u2026",
+      "\u773c\u76ae\u597d\u91cd\u2026\u8eba\u4e00\u4e0b\u5c31\u597d\u3002",
+    ];
+    return pickMoodLine(seedBase + 5, e);
+  }
+
+  if (isLocalNightHour()) {
+    const nightOn = [
+      "\u665a\u4e0a\u5230\u4e86\uff0c\u8eab\u9ad4\u8a18\u61b6\u6703\u81ea\u52d5\u60f3\u7761\u4e00\u9ede\u2026",
+      "\u5916\u9762\u597d\u5b89\u975c\uff0c\u661f\u661f\u5728\u770b\u6211\u5011\u55ce\uff1f",
+      "\u591c\u8c93\u5b50\u6a21\u5f0f\uff1f\u9084\u662f\u4f60\u4e5f\u7761\u4e0d\u8457\uff1f",
+    ];
+    const nightOff = [
+      "\u95dc\u71c8\u5f8c\u5fc3\u88e1\u597d\u5b89\u5b9a\uff0c\u8b93\u6211\u7761\u5427\u3002",
+      "ZZZ\u2026\u8b8a\u6210\u591c\u884c\u6027\u683c\u4e86\u3002",
+      "\u9ed1\u6697\u88e1\u6211\u6700\u653e\u9b06\u4e86\u3002",
+    ];
+    return pickMoodLine(
+      seedBase + (p.lightsOn ? 0 : 404),
+      p.lightsOn ? nightOn : nightOff,
+    );
+  }
+
+  if (p.morphTier >= 1 && p.morphKey && p.morphKey !== "doodoo") {
+    const mk = p.morphKey;
+    if (
+      mk === "cat_volt" ||
+      mk === "dog_volt" ||
+      mk === "cat_aqua" ||
+      mk === "dog_aqua" ||
+      mk === "cat_flora" ||
+      mk === "dog_flora"
+    ) {
+      const eLines =
+        mk.endsWith("volt") || mk === "striker"
+          ? [
+              "\u8eab\u9ad4\u88e1\u6709\u5c0f\u5c0f\u96fb\u6d41\u5728\u8dd1\uff01",
+              "\u96f7\u96f2\u5473\u7684\u4e00\u5929\u958b\u59cb\u56c9\u3002",
+            ]
+          : mk.endsWith("aqua") || mk === "guardian"
+            ? [
+                "\u6e05\u723d\u7684\u611f\u89ba\uff0c\u60f3\u53bb\u73a9\u6c34\u3002",
+                "\u6ce1\u6ce1\u5fc3\u60c5\uff0c\u6d17\u500b\u6fa1\u66f4\u8212\u670d\u3002",
+              ]
+            : mk.endsWith("flora") || mk === "harmony"
+              ? [
+                  "\u8349\u539f\u7684\u98a8\u5439\u904e\u8033\u908a\u3002",
+                  "\u5fc3\u60c5\u8edf\u8edf\u7684\uff0c\u60f3\u66ec\u66ec\u592a\u967d\u3002",
+                ]
+              : [];
+      if (eLines.length)
+        return pickMoodLine(seedBase + mk.charCodeAt(2), eLines);
+    }
+  }
+
+  if (stage === 0 && p.hunger < 40) {
+    const b = [
+      "\u9084\u597d\u5c0f\uff0c\u8981\u591a\u9935\u4e00\u9ede\u9ede\uff5e",
+      "\u809a\u5b50\u5495\u5695\u53eb\uff0c\u6211\u9084\u5728\u9577\u5927\u5462\u3002",
+    ];
+    return pickMoodLine(seedBase, b);
+  }
+  if (stage >= 4 && avg >= 55) {
+    const s = [
+      "\u966a\u4f60\u9019\u9ebd\u4e45\u4e86\uff0c\u6bcf\u5929\u90fd\u5f88\u73cd\u8cb4\u3002",
+      "\u8001\u670b\u53cb\u4e86\uff0c\u8b1d\u8b1d\u4f60\u4e00\u8def\u7167\u9867\u6211\u3002",
+    ];
+    return pickMoodLine(seedBase + 2, s);
+  }
+  if (avg >= 72) {
+    const hi = [
+      "\u5fc3\u60c5\u8d85\u597d\uff01\u4e00\u8d77\u73a9\u5427\uff01",
+      "\u4eca\u5929\u4e5f\u662f\u5143\u6c23\u6eff\u6eff\u7684\u4e00\u5929\uff01",
+      "\u559c\u6b61\u559c\u6b61\u559c\u6b61\u4f60\uff01",
+    ];
+    return pickMoodLine(seedBase + 6, hi);
+  }
+  if (avg >= 48) {
+    const mid = [
+      "\u9084\u4e0d\u932f\uff0c\u966a\u6211\u7df4\u7df4\u5427\u3002",
+      "\u5e73\u5e73\u9806\u9806\u7684\uff0c\u9019\u6a23\u633a\u597d\u3002",
+      "\u6709\u4f60\u5728\u5c31\u5b89\u5fc3\u591a\u4e86\u3002",
+    ];
+    return pickMoodLine(seedBase + 7, mid);
+  }
+  const low = [
+    "\u6709\u9ede\u6c92\u52c1\u2026\u966a\u6211\u4e00\u4e0b\u597d\u55ce\uff1f",
+    "\u4eca\u5929\u60f3\u8981\u591a\u4e00\u9ede\u9ede\u95dc\u6ce8\u3002",
+    "\u6478\u6478\u6211\u7684\u982d\u597d\u55ce\uff1f",
+  ];
+  return pickMoodLine(seedBase + 8, low);
 }
 
 export function feed(p: PetState): PetState {

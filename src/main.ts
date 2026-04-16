@@ -1,11 +1,15 @@
 import { io, Socket } from "socket.io-client";
 import { initDexDogCanvases, renderDogCanvas } from "./canvasDog";
+import { renderPoopMonsterCanvas } from "./canvasPoop";
 import {
   careIdleSpriteFile,
   carePoseFile,
   careSpriteScale,
+  careUsesPoopCanvas,
+  catElementKeyFromMorph,
   cleanPet,
   consumeMorphToast,
+  dogElementKeyFromMorph,
   eggSpriteForSpecies,
   feed,
   formatVirtAgeDays,
@@ -14,6 +18,7 @@ import {
   growthSpriteScale,
   growthStage,
   idleSpriteForSpeciesStage,
+  isLocalNightHour,
   loadPet,
   memorialLine,
   moodLine,
@@ -25,6 +30,7 @@ import {
   resetNewPet,
   restPet,
   speciesUsesCanvasArt,
+  toggleCareLights,
   trainPet,
   treatPet,
   type CarePose,
@@ -236,6 +242,10 @@ const UI = {
   battleMp: "\u9748\u529b",
   chargeMpBlocked: (n: number) =>
     `\u9748\u529b\u4e0d\u8db3\uff08\u9700 ${n} \u9ede\u624d\u53ef\u84c4\u529b\uff09`,
+  careLightsTurnOff: "\u95dc\u71c8",
+  careLightsTurnOn: "\u958b\u71c8",
+  careNightHint:
+    "\u591c\u9593\uff0822:00\u301c06:59\uff09\u8eab\u9ad4\u6703\u591a\u4f11\u606f\uff1b\u95dc\u71c8\u6642\u9ad4\u529b\u56de\u5fa9\u7a0d\u5feb\u3002",
 };
 
 const socketServerUrl = (import.meta.env.VITE_SOCKET_URL || "").replace(/\/$/, "");
@@ -250,6 +260,16 @@ let phase: "care" | "memorial" | "dex" | "lobby" | "waiting" | "battle" | "end" 
 
 /** 大廳 create/join 逾時解鎖（模組級，避免舊 closure 計時器誤傷新一輪操作）。 */
 let lobbySocketGuardTimer: number | null = null;
+
+/** 養成畫面夜間／心情輪詢；離開養成時務必清除。 */
+let careAmbientTimer: number | null = null;
+
+function clearCareAmbientTimer() {
+  if (careAmbientTimer != null) {
+    window.clearInterval(careAmbientTimer);
+    careAmbientTimer = null;
+  }
+}
 
 function clearLobbySocketGuardTimer() {
   if (lobbySocketGuardTimer != null) {
@@ -325,7 +345,14 @@ function normalizeBattleFoe(raw: {
     mk === "striker" ||
     mk === "guardian" ||
     mk === "survivor" ||
-    mk === "harmony"
+    mk === "harmony" ||
+    mk === "cat_volt" ||
+    mk === "cat_aqua" ||
+    mk === "cat_flora" ||
+    mk === "dog_volt" ||
+    mk === "dog_aqua" ||
+    mk === "dog_flora" ||
+    mk === "doodoo"
       ? mk
       : null;
   return { species, nickname, virtAge, power, morphKey };
@@ -404,6 +431,7 @@ function renderMemorial(
   state: PetState,
   hint: string | null = null,
 ) {
+  clearCareAmbientTimer();
   phase = "memorial";
   const days = Math.max(0, Math.floor(state.virtAge));
   const hintBlock =
@@ -587,6 +615,7 @@ function renderSpeciesDex(
   root: HTMLElement,
   opts?: { backLabel?: string; onBack?: () => void },
 ) {
+  clearCareAmbientTimer();
   battleFoeSnapshot = null;
   detachOpenRoomsLiveListener();
   clearLobbySocketGuardTimer();
@@ -616,6 +645,7 @@ function renderSpeciesDex(
 }
 
 function renderCare(root: HTMLElement) {
+  clearCareAmbientTimer();
   battleFoeSnapshot = null;
   detachOpenRoomsLiveListener();
   clearLobbySocketGuardTimer();
@@ -647,6 +677,10 @@ function renderCare(root: HTMLElement) {
         </div>
         <p class="pet-age-line" id="pet-age-line"></p>
         <p class="pet-morph-line hidden" id="pet-morph-line"></p>
+        <div class="care-lights-row">
+          <button type="button" class="btn btn-secondary btn--compact" id="btn-care-lights" aria-pressed="true"></button>
+          <span class="care-night-hint hidden" id="care-night-hint"></span>
+        </div>
         <p class="pet-pvp-meta" id="pet-pvp-meta"></p>
         <p class="pet-mood" id="pet-mood"></p>
         <div class="care-stats">
@@ -715,25 +749,61 @@ function renderCare(root: HTMLElement) {
     }
   }
 
+  const btnCareLights = $("#btn-care-lights", root) as HTMLButtonElement;
+  const careNightHintEl = $("#care-night-hint", root);
+  const careShellEl = root.querySelector(".care-shell");
+
   const syncSpriteSpecies = () => {
     spriteEl.classList.toggle("pet-sprite--alt", state.species === "crystal");
   };
 
+  const syncCatElementMount = () => {
+    const ce = catElementKeyFromMorph(state.species, state.morphKey);
+    if (ce) spriteMountEl.dataset.catElement = ce;
+    else delete spriteMountEl.dataset.catElement;
+  };
+
   const showCareIdleSprite = () => {
-    if (speciesUsesCanvasArt(state.species)) {
-      const st = growthStage(state.virtAge);
-      renderDogCanvas(spriteCv, {
+    const st = growthStage(state.virtAge);
+    const sc = careSpriteScale(state);
+    const poop = careUsesPoopCanvas(state);
+    const dogCanvas = speciesUsesCanvasArt(state.species) && !poop;
+
+    if (poop) {
+      spriteEl.classList.add("hidden");
+      spriteCv.classList.remove("hidden");
+      syncCatElementMount();
+      renderPoopMonsterCanvas(spriteCv, {
         cssSize: 96,
         hatched: state.hatched,
         stage: st,
         pose: null,
       });
-      spriteCv.style.transform = `scale(${careSpriteScale(state)})`;
+      spriteCv.style.transform = `scale(${sc})`;
       spriteCv.style.transformOrigin = "center 70%";
       return;
     }
+    if (dogCanvas) {
+      spriteEl.classList.add("hidden");
+      spriteCv.classList.remove("hidden");
+      syncCatElementMount();
+      renderDogCanvas(spriteCv, {
+        cssSize: 96,
+        hatched: state.hatched,
+        stage: st,
+        pose: null,
+        elementAccent: dogElementKeyFromMorph(state.morphKey),
+      });
+      spriteCv.style.transform = `scale(${sc})`;
+      spriteCv.style.transformOrigin = "center 70%";
+      return;
+    }
+    spriteEl.classList.remove("hidden");
+    spriteCv.classList.add("hidden");
+    syncCatElementMount();
     spriteEl.src = petAssetUrl(careIdleSpriteFile(state));
     syncSpriteSpecies();
+    spriteEl.style.transform = `scale(${sc})`;
   };
 
   const flashCareSprite = (pose: CarePose) => {
@@ -747,15 +817,39 @@ function renderCare(root: HTMLElement) {
       spriteMountEl.classList.remove("pet-sprite-mount--paused");
     }
     spriteMountEl.classList.add("pet-sprite-mount--paused");
-    if (speciesUsesCanvasArt(state.species)) {
-      const st = growthStage(state.virtAge);
-      renderDogCanvas(spriteCv, {
+    const st = growthStage(state.virtAge);
+    const sc = careSpriteScale(state);
+    if (careUsesPoopCanvas(state)) {
+      spriteEl.classList.add("hidden");
+      spriteCv.classList.remove("hidden");
+      syncCatElementMount();
+      renderPoopMonsterCanvas(spriteCv, {
         cssSize: 96,
         hatched: true,
         stage: st,
         pose,
       });
-      spriteCv.style.transform = `scale(${careSpriteScale(state)})`;
+      spriteCv.style.transform = `scale(${sc})`;
+      spriteCv.style.transformOrigin = "center 70%";
+      reactionTimer = domSetTimeout(() => {
+        showCareIdleSprite();
+        spriteMountEl.classList.remove("pet-sprite-mount--paused");
+        reactionTimer = null;
+      }, 1700);
+      return;
+    }
+    if (speciesUsesCanvasArt(state.species)) {
+      renderDogCanvas(spriteCv, {
+        cssSize: 96,
+        hatched: true,
+        stage: st,
+        pose,
+        elementAccent: dogElementKeyFromMorph(state.morphKey),
+      });
+      spriteEl.classList.add("hidden");
+      spriteCv.classList.remove("hidden");
+      syncCatElementMount();
+      spriteCv.style.transform = `scale(${sc})`;
       spriteCv.style.transformOrigin = "center 70%";
       reactionTimer = domSetTimeout(() => {
         showCareIdleSprite();
@@ -771,6 +865,27 @@ function renderCare(root: HTMLElement) {
       spriteMountEl.classList.remove("pet-sprite-mount--paused");
       reactionTimer = null;
     }, 1700);
+  };
+
+  const syncLightsUi = () => {
+    btnCareLights.textContent = state.lightsOn
+      ? UI.careLightsTurnOff
+      : UI.careLightsTurnOn;
+    btnCareLights.setAttribute(
+      "aria-pressed",
+      state.lightsOn ? "true" : "false",
+    );
+    if (isLocalNightHour()) {
+      careNightHintEl.textContent = UI.careNightHint;
+      careNightHintEl.classList.remove("hidden");
+    } else {
+      careNightHintEl.textContent = "";
+      careNightHintEl.classList.add("hidden");
+    }
+    if (careShellEl) {
+      careShellEl.classList.toggle("care-shell--night", isLocalNightHour());
+      careShellEl.classList.toggle("care-shell--lights-off", !state.lightsOn);
+    }
   };
 
   const paint = () => {
@@ -795,24 +910,8 @@ function renderCare(root: HTMLElement) {
       pvpMetaEl.classList.add("hidden");
     }
     stageEl.classList.toggle("pet-stage--senior", state.hatched && st === 4);
-    const sc = careSpriteScale(state);
-    if (speciesUsesCanvasArt(state.species)) {
-      spriteEl.classList.add("hidden");
-      spriteCv.classList.remove("hidden");
-      renderDogCanvas(spriteCv, {
-        cssSize: 96,
-        hatched: state.hatched,
-        stage: st,
-        pose: null,
-      });
-      spriteCv.style.transform = `scale(${sc})`;
-      spriteCv.style.transformOrigin = "center 70%";
-    } else {
-      spriteEl.classList.remove("hidden");
-      spriteCv.classList.add("hidden");
-      spriteEl.style.transform = `scale(${sc})`;
-      syncSpriteSpecies();
-    }
+    showCareIdleSprite();
+    syncLightsUi();
     treatBtn.classList.toggle("hidden", !state.ill);
     eggBattleHintEl.classList.toggle("hidden", state.hatched);
     const battleBtn = $("#btn-open-battle", root) as HTMLButtonElement;
@@ -970,7 +1069,17 @@ function renderCare(root: HTMLElement) {
     });
   });
 
-  showCareIdleSprite();
+  btnCareLights.addEventListener("click", () => {
+    state = toggleCareLights(state);
+    paint();
+  });
+
+  careAmbientTimer = domSetInterval(() => {
+    if (phase !== "care") return;
+    syncLightsUi();
+    moodEl.textContent = moodLine(state);
+  }, 45000);
+
   paint();
 }
 
@@ -978,6 +1087,7 @@ function renderLobby(
   root: HTMLElement,
   opts?: { lockForAutoJoin?: boolean },
 ) {
+  clearCareAmbientTimer();
   battleFoeSnapshot = null;
   clearLobbySocketGuardTimer();
   const pet = loadPet();
@@ -1214,6 +1324,7 @@ function renderWaiting(
   isHost: boolean,
   roomTitle = "",
 ) {
+  clearCareAmbientTimer();
   phase = "waiting";
   detachOpenRoomsLiveListener();
   root.replaceChildren(
@@ -1298,6 +1409,7 @@ function renderWaiting(
 }
 
 function renderBattle(root: HTMLElement) {
+  clearCareAmbientTimer();
   phase = "battle";
   detachOpenRoomsLiveListener();
   stopTick();
@@ -1376,7 +1488,46 @@ function renderBattle(root: HTMLElement) {
   const foeSp = $("#battle-foe-sprite", root) as HTMLImageElement;
   const youCv = $("#battle-you-canvas", root) as HTMLCanvasElement;
   const foeCv = $("#battle-foe-canvas", root) as HTMLCanvasElement;
-  if (speciesUsesCanvasArt(myPet.species)) {
+  const youMount = root.querySelector(
+    ".pet-sprite-mount--battle-you",
+  ) as HTMLElement;
+  const foeMount = root.querySelector(
+    ".pet-sprite-mount--battle-foe",
+  ) as HTMLElement;
+
+  const foePoopSnap =
+    (foeSnap.species === "cat" || foeSnap.species === "dog") &&
+    foeSnap.morphKey === "doodoo";
+
+  const syncBattleCatMount = (
+    mount: HTMLElement,
+    species: PetSpecies,
+    morphKey: PetMorphKey | null,
+    isPoop: boolean,
+  ) => {
+    if (isPoop) {
+      delete mount.dataset.catElement;
+      return;
+    }
+    const ce = catElementKeyFromMorph(species, morphKey);
+    if (ce) mount.dataset.catElement = ce;
+    else delete mount.dataset.catElement;
+  };
+
+  const youPoop = careUsesPoopCanvas(myPet);
+  syncBattleCatMount(youMount, myPet.species, myPet.morphKey, youPoop);
+  syncBattleCatMount(foeMount, foeSnap.species, foeSnap.morphKey, foePoopSnap);
+
+  if (youPoop) {
+    youSp.classList.add("hidden");
+    youCv.classList.remove("hidden");
+    renderPoopMonsterCanvas(youCv, {
+      cssSize: 72,
+      hatched: true,
+      stage: mySt,
+      pose: null,
+    });
+  } else if (speciesUsesCanvasArt(myPet.species)) {
     youSp.classList.add("hidden");
     youCv.classList.remove("hidden");
     renderDogCanvas(youCv, {
@@ -1384,13 +1535,23 @@ function renderBattle(root: HTMLElement) {
       hatched: true,
       stage: mySt,
       pose: null,
+      elementAccent: dogElementKeyFromMorph(myPet.morphKey),
     });
   } else {
     youSp.classList.remove("hidden");
     youCv.classList.add("hidden");
     youSp.src = youSprite;
   }
-  if (speciesUsesCanvasArt(foeSnap.species)) {
+  if (foePoopSnap) {
+    foeSp.classList.add("hidden");
+    foeCv.classList.remove("hidden");
+    renderPoopMonsterCanvas(foeCv, {
+      cssSize: 72,
+      hatched: true,
+      stage: foeSt,
+      pose: null,
+    });
+  } else if (speciesUsesCanvasArt(foeSnap.species)) {
     foeSp.classList.add("hidden");
     foeCv.classList.remove("hidden");
     renderDogCanvas(foeCv, {
@@ -1398,6 +1559,7 @@ function renderBattle(root: HTMLElement) {
       hatched: true,
       stage: foeSt,
       pose: null,
+      elementAccent: dogElementKeyFromMorph(foeSnap.morphKey),
     });
   } else {
     foeSp.classList.remove("hidden");
@@ -1406,7 +1568,13 @@ function renderBattle(root: HTMLElement) {
   }
   youSp.classList.toggle("pet-sprite--alt", myPet.species === "crystal");
   foeSp.classList.toggle("pet-sprite--alt", foeSnap.species === "crystal");
-  $("#battle-you-label", root).textContent = `${myPet.nickname} \u00b7 \u6211\u65b9`;
+  const myMorphLabel =
+    myPet.morphTier >= 1 && myPet.morphKey
+      ? morphLabelZh(myPet.morphKey)
+      : null;
+  $("#battle-you-label", root).textContent = myMorphLabel
+    ? `${myPet.nickname} \u00b7 ${myMorphLabel} \u00b7 \u6211\u65b9`
+    : `${myPet.nickname} \u00b7 \u6211\u65b9`;
   const foeMorph =
     foeSnap.morphKey != null ? morphLabelZh(foeSnap.morphKey) : null;
   $("#battle-foe-label", root).textContent = foeMorph

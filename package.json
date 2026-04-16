@@ -10,6 +10,7 @@
     "build": "vite build",
     "strip-egg-bg": "node scripts/strip-egg-gray.mjs public/pets/pet-egg-volt.png public/pets/pet-egg-crystal.png public/pets/pet-egg-chicken.png",
     "strip-pet-matte": "node scripts/strip-creature-matte.mjs",
+    "strip-pet-checkerboard": "node scripts/strip-checkerboard-edge.mjs",
     "strip-magenta": "node scripts/strip-magenta-bg.mjs",
     "strip-pet-flood": "node scripts/strip-edge-flood-bg.mjs",
     "optimize:pets": "node scripts/optimize-pet-pngs.mjs",

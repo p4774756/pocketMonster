@@ -150,6 +150,7 @@
 | 寵物 PNG 批次壓縮 | `scripts/optimize-pet-pngs.mjs`（`npm run optimize:pets`） |
 | 對戰結算、房間、計時 | `server/index.js` |
 | 專案架構給 agent | `AGENTS.md` |
+| 產品路線與任務勾選 | `docs/ROADMAP_TASKS.md`（與 `docs/IMPROVEMENT_BACKLOG.md` 互補） |
 | 遊戲內規則彈窗內容 | `src/gameRulesContent.ts`（`?raw` 本檔 + `getGameRulesPlayerHtml` 節錄並轉 HTML；**改規則請編輯本 MD**） |
 
 ---
@@ -162,7 +163,7 @@
 |----------|------------------|
 | **Socket 事件名、payload、流程**（例：`linked`、`list_open_rooms`、`open_rooms_changed`、`create_room` 的 `roomTitle`） | `AGENTS.md` 的 **Socket 協定**（Client → Server / Server → Client） |
 | **建置／環境變數** 影響對戰或回饋 | `AGENTS.md` 環境變數表、`deploy.env.example` |
-| **關閉或落實** `docs/IMPROVEMENT_BACKLOG.md` 裡某條待辦 | 該 backlog 檔案（對照區與待辦區） |
+| **關閉或落實** `docs/IMPROVEMENT_BACKLOG.md` 裡某條待辦 | 該 backlog 檔案（對照區與待辦區）；若屬版本里程碑亦請更新 **`docs/ROADMAP_TASKS.md`** 勾選 |
 | **僅改數值或敘述**、協定不變 | 僅需本檔與程式一致；`AGENTS.md` 若無協定描述可不改 |
 | **`phase` 或照顧冷卻常數**（`src/main.ts`） | 本檔 **§1.6** 若影響玩家體感須同步一句 |
 | **對戰 MP、物種係數、`battle_state` / `round_result` 欄位** | 本檔 **第 2.5～2.7 節**、`AGENTS.md` Socket 協定 |

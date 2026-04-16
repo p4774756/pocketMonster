@@ -2,7 +2,15 @@
 
 以下為先前討論中**可再優化**但**尚未改程式**的項目，方便之後排程。
 
-**版本路線與可勾選任務**見同目錄 **[`ROADMAP_TASKS.md`](./ROADMAP_TASKS.md)**（v0.3～v0.5：進化、戰鬥紀錄、README、server 模組化等）。
+**版本路線與可勾選任務**見同目錄 **[`ROADMAP_TASKS.md`](./ROADMAP_TASKS.md)**（v0.3～v0.5：戰鬥紀錄、README、server 模組化等；進化 MVP 已落地見下）。
+
+---
+
+## 目前專案狀態（快照）
+
+- **版號**：以根目錄 **`package.json` 的 `version`** 為準（與頂欄、`GET /version` 同源），勿在此檔另寫死數字。
+- **已落地（養成／對戰）**：首次**進化分支**（`morphTier`／`morphKey`）、`pvpWins`／`careQualityEma`／`totalIllVirtDays`、勝場結算、`create_room`／`join_room` 寵物快照可選 **`morphKey`**、對戰畫面顯示對手形態；規則與門檻見 **`GAME_RULES.md` 第 1.7 節**；實作見 **`src/pet.ts`**（`tryEvolve`、`recordPvpWin`）、**`src/main.ts`**、**`server/index.js`**（`parsePetSnap`）。
+- **仍屬規劃／待辦**：形態專屬美術、戰鬥本場 log、根目錄 README 完整化、`server/index.js` 模組化等——見 **`ROADMAP_TASKS.md`** 未勾選項。
 
 ---
 
@@ -29,6 +37,7 @@
 
 - （**已實作**）**物種差異**：`resolveRound` 依雙方 `species` 調整攻擊加值與受傷倍率（見 `docs/GAME_RULES.md` 第 2.6 節）。
 - （**已實作**）**MP 與養成 `power` 連動**：`Battle` 含 `mp`／`mpMax`、蓄力耗魔、架盾與回合回魔；客戶端對戰條與蓄力按鈕門檻；規則見 `GAME_RULES.md` 第 2.5 節。可再擴充：第四招／物種專屬招（仍須伺服器白名單驗證）。
+- （**已實作**）**首次進化（形態分支）**：本機養成判定與 UI／對戰展示；門檻與欄位見 `GAME_RULES.md` 第 1.7 節。待擴充：形態專屬 idle／姿勢圖、數值再平衡（見 `ROADMAP_TASKS.md`）。
 
 ---
 
@@ -47,3 +56,4 @@
 - 頂欄意見回饋彈窗與 `VITE_FEEDBACK_*` 選填變數。
 - **首載**：寵物圖批次優化腳本、自託管字型子集（見 `GAME_RULES.md` 第三、四節）。
 - **對戰 MP、物種係數**（`server/index.js`、`src/main.ts`、規則文件）。
+- **進化 MVP**（`src/pet.ts`、`src/main.ts`、`server/index.js` 快照、`GAME_RULES.md` §1.7）。

@@ -6,10 +6,16 @@
 
 ## 專案是什麼
 
-- **電子寵物養成**：狀態存在瀏覽器 `localStorage`（鍵名等見 `src/pet.ts`），含飢餓、心情、清潔、體力、訓練、虛擬日齡、生病與死亡等邏輯。
+- **電子寵物養成**：狀態存在瀏覽器 `localStorage`（鍵名等見 `src/pet.ts`），含飢餓、心情、清潔、體力、訓練、虛擬日齡、生病與死亡等邏輯；並含**首次進化形態**（`morphTier`／`morphKey`）、勝場與照護／生病累積統計（見 `docs/GAME_RULES.md` 第 1.7 節）。
 - **匿名連線對戰**：兩人透過 **房間碼** 配對，**Socket.IO** 同步回合制戰鬥（出招、超時自動出招、投降、斷線處理）。
 
 前端為 **Vite + TypeScript** 單頁應用；後端為 **Node（ESM）+ Express + socket.io** 的單檔伺服器。
+
+### 目前專案狀態（維護者快照）
+
+- **版號**：一律以 **`package.json` 的 `version`** 為單一來源（前端頂欄、`GET /version`）。
+- **已納入主線**：養成進化 MVP（`tryEvolve`、`recordPvpWin`）、對戰寵物快照可選 `morphKey`、`linked` 對手資料可含形態；細節見 **`docs/GAME_RULES.md`** 與 **`docs/ROADMAP_TASKS.md`**（路線勾選與待辦）。
+- **進行中／下一批**：戰鬥本場 log、根目錄 README、`server/index.js` 模組化、形態專屬美術等——以 **`docs/ROADMAP_TASKS.md`** 未勾選項為準。
 
 **版本號**：以根目錄 **`package.json` 的 `version`** 為單一來源；前端建置時由 Vite 注入 `__APP_VERSION__`（頂欄顯示），後端啟動日誌與 **`GET /version`** 亦讀取同檔。實質更新 **`GAME_RULES.md`**、**`AGENTS.md`** 或 **`.cursor/rules/*.mdc`** 時，須在同一批變更內遞增該欄位（預設 patch +1）；遞增後應以**中文 commit 訊息**完成 `git commit` 並 **`git push`**（見 **`.cursor/rules/pocket-pet-game-rules-sync.mdc`** 末段）。
 
@@ -18,7 +24,8 @@
 | 路徑 | 用途 |
 |------|------|
 | `src/main.ts` | 幾乎全部 UI：養成畫面、紀念頁、對戰大廳與戰鬥 UI；Socket 客戶端事件綁定。 |
-| `src/pet.ts` | 寵物狀態型別、`loadPet`/`save`、成長階段、各種照護 action、死亡條件。 |
+| `src/pet.ts` | 寵物狀態型別、`loadPet`/`save`、成長階段、照護 action、死亡條件、**進化**（`tryEvolve`、`morphKey` 等）。 |
+| `docs/ROADMAP_TASKS.md` | 產品路線與任務勾選（v0.3～v0.5）；與 `docs/IMPROVEMENT_BACKLOG.md` 互補。 |
 | `src/canvasDog.ts` | **狗**物種：Canvas 像素格繪製（無 PNG），供養成／對戰／圖鑑。 |
 | `src/style.css` | 全域樣式。 |
 | `src/fonts.css` | 自託管字型（`@fontsource` 拉丁子集）；由 `main.ts` 早於 `style.css` 匯入。 |
@@ -75,7 +82,7 @@ npm run dev
 
 **Server → Client**
 
-- `linked` — 配對成功；payload 含 `role`、`roomCode`、**`foe`**（對手 `{ species, nickname, virtAge, power }`，供對戰畫面）。
+- `linked` — 配對成功；payload 含 `role`、`roomCode`、**`foe`**（對手 `{ species, nickname, virtAge, power, morphKey? }`，供對戰畫面；`morphKey` 選填，見 `create_room`／`join_room` 的 `pet`）。
 - `open_rooms_changed` — 無 payload；**可加入的公開房清單**有變（開房、有人加入、房關閉、訪客斷線回到等待等）時廣播；大廳可據此再呼叫 `list_open_rooms`（實作含約 200ms 防抖合併）。
 - `peer_joined` / `peer_left` — 對端狀態
 - `battle_state` — 回合、HP、**MP**（`mp` / `mpMax` 主客欄位、以及 **`yourMp` / `yourMpMax` / `foeMp` / `foeMpMax`** 視角欄位）、deadline、phase、鎖定狀態等
@@ -99,7 +106,7 @@ npm run start:api   # SERVE_STATIC=0：只跑 API（給 Pages + 分離後端）
 
 ## 改功能時該看哪
 
-- **養成數值／壽命／儲存格式**：`src/pet.ts`（含 `STORAGE_KEY`、`idleSpriteForStage`、成長階段閾值）。**狗**外觀見 `src/canvasDog.ts`（`speciesUsesCanvasArt`）。
+- **養成數值／壽命／儲存格式／進化**：`src/pet.ts`（含 `STORAGE_KEY`、`idleSpriteForStage`、成長階段閾值、`tryEvolve`／`morphKey`）。**狗**外觀見 `src/canvasDog.ts`（`speciesUsesCanvasArt`）。
 - **畫面與對戰流程**：`src/main.ts`（體積大，可用搜尋 `renderCare`、`renderBattle`、`ensureSocket`）。
 - **對戰平衡與房間生命週期**：`server/index.js`。
 - **樣式**：`src/style.css`。

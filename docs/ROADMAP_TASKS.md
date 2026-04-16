@@ -3,6 +3,10 @@
 與對話結論對齊：**不急著重寫**，優先補「養成動機、可維護後端、對外說清楚」。  
 狀態欄：`[ ]` 待辦、`[~]` 進行中、`[x]` 已完成（請在合併／上線後手動勾選）。
 
+**與倉庫同步**：實作進度以程式為準；**版號**見根目錄 `package.json`（頂欄與後端 `/version` 同源）。本檔勾選由維護者在里程碑完成時更新。
+
+**進度摘要（請隨版本更新此段）**：**v0.3 進化核心**（資料模型、判定、`morphKey` 對戰展示、規則見 `GAME_RULES.md` §1.7）已上線；**v0.3 其餘**（戰鬥 log、README、server 模組化、形態美術）仍為待辦。
+
 ---
 
 ## v0.3 — 進化動機、對戰紀錄、README
@@ -15,7 +19,8 @@
 - [x] **玩家回饋**：養成畫面顯示形態名稱、首次進化 toast；可選 `data-morph` 樣式區分。
 - [x] **對戰展示**：對手快照帶可選 `morphKey`，對戰頭像旁顯示形態（`server/index.js` `parsePetSnap`、客戶端 `battlePetPayload`）。
 - [ ] **分支美術**：依形態替換或疊加 idle／姿勢圖（`public/pets/`、`idleSpriteForSpeciesStage` 擴充或 hue）；換圖後跑 `npm run optimize:pets`。
-- [ ] **規則與平衡**：與 `docs/GAME_RULES.md` 同步門檻敘述；依試玩調整常數。
+- [x] **規則敘述**：進化門檻與欄位已寫入 `docs/GAME_RULES.md` 第 1.7 節（與 `src/pet.ts` 常數／`pickMorphKey` 對齊）。
+- [ ] **數值平衡**：依試玩回饋調整 `EVOLVE_MIN_VIRT_AGE`、`pickMorphKey` 閾值等（改動時須同步 `GAME_RULES.md` §1.7）。
 
 ### 戰鬥紀錄／可讀性（輕量版）
 

@@ -34,6 +34,7 @@ const MP_REGEN_PER_ROUND = 5;
  *   virtAge: number,
  *   power: number,
  *   morphKey?: 'striker'|'guardian'|'survivor'|'harmony'|'cat_volt'|'cat_aqua'|'cat_flora'|'dog_volt'|'dog_aqua'|'dog_pyro'|'dog_tox'|'doodoo'|null,
+ *   playerTag?: string|null,
  * }} PetSnap
  */
 
@@ -97,12 +98,22 @@ function parsePetSnap(raw) {
       ? mk
       : null;
   if (mk === "dog_flora") morphKey = "dog_pyro";
+  let playerTag = null;
+  const ptRaw = o.playerTag;
+  if (typeof ptRaw === "string") {
+    const t = ptRaw
+      .toUpperCase()
+      .replace(/[^A-HJ-NP-Z2-9]/g, "")
+      .slice(0, 10);
+    if (t.length >= 4) playerTag = t;
+  }
   return {
     species,
     nickname: nick || "\u73a9\u5bb6",
     virtAge,
     power,
     morphKey,
+    playerTag,
   };
 }
 
@@ -607,13 +618,15 @@ io.on("connection", (socket) => {
       if (!r.hostId || r.guestId) continue;
       if (r.hostId === socket.id) continue;
       const pet = r.hostPet || defaultPetSnap();
-      out.push({
+      const row = {
         roomCode: code,
         roomTitle: typeof r.roomTitle === "string" ? r.roomTitle : "",
         hostNickname: pet.nickname || "\u73a9\u5bb6",
         hostSpecies: pet.species,
         created: r.created,
-      });
+      };
+      if (pet.playerTag) row.hostPlayerTag = pet.playerTag;
+      out.push(row);
     }
     out.sort((a, b) => b.created - a.created);
     const roomsOut = out.slice(0, 40);

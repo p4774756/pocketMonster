@@ -374,6 +374,108 @@ h1 {
   margin-bottom: 16px;
 }
 
+.hub-social {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--edge);
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.hub-social-title {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.hub-social-hint {
+  margin: 0 0 10px;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.hub-social-hint--sub {
+  margin-top: -6px;
+  margin-bottom: 10px;
+}
+
+.hub-my-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-bottom: 10px;
+}
+
+.hub-my-tag-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.hub-my-tag-code {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--indigo);
+}
+
+.hub-friends-add {
+  margin-bottom: 8px;
+}
+
+.hub-friends-add .field {
+  flex: 1 1 120px;
+  min-width: 0;
+}
+
+.hub-friends-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: min(28vh, 160px);
+  overflow-y: auto;
+  padding-right: 2px;
+  margin: 0;
+}
+
+.hub-friend-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(99, 102, 241, 0.06);
+  font-size: 0.78rem;
+  list-style: none;
+}
+
+.hub-friend-meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+}
+
+.hub-friends-empty {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0 2px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.end-modal-actions {
+  margin-top: 4px;
+  justify-content: flex-end;
+}
+
 .row {
   display: flex;
   gap: 10px;
@@ -580,6 +682,28 @@ h1 {
   border-radius: var(--radius-md);
   border: 1px solid var(--edge);
   background: rgba(255, 255, 255, 0.55);
+}
+
+.open-room-row--friend {
+  border-color: rgba(99, 102, 241, 0.35);
+  background: linear-gradient(
+    135deg,
+    rgba(99, 102, 241, 0.1) 0%,
+    rgba(255, 255, 255, 0.55) 55%
+  );
+}
+
+.open-room-friend-badge {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--indigo);
+  padding: 3px 7px;
+  border-radius: var(--radius-pill);
+  background: rgba(99, 102, 241, 0.14);
+  border: 1px solid rgba(99, 102, 241, 0.22);
 }
 
 .open-room-meta {

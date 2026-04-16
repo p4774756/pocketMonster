@@ -5,6 +5,7 @@ import {
   carePoseFile,
   careSpriteScale,
   cleanPet,
+  consumeMorphToast,
   eggSpriteForSpecies,
   feed,
   formatVirtAgeDays,
@@ -16,15 +17,18 @@ import {
   loadPet,
   memorialLine,
   moodLine,
+  morphLabelZh,
   renamePet,
   petDefaultName,
   petEmoji,
+  recordPvpWin,
   resetNewPet,
   restPet,
   speciesUsesCanvasArt,
   trainPet,
   treatPet,
   type CarePose,
+  type PetMorphKey,
   type PetSpecies,
   type PetState,
 } from "./pet";
@@ -187,6 +191,9 @@ const UI = {
   statClean: "\u6e05\u6f54",
   statEnergy: "\u9ad4\u529b",
   statPower: "\u8a13\u7df4",
+  pvpWinsLine: (n: number) =>
+    `\u9023\u7dda\u5c0d\u6230\u52dd\u5834\uff1a${n}`,
+  morphLine: (label: string) => `\u9032\u5316\u5f62\u614b\uff1a${label}`,
   actionFeed: "\u9935\u98df",
   actionClean: "\u6e05\u7406",
   actionTrain: "\u8a13\u7df4",
@@ -273,6 +280,7 @@ type BattleFoeSnap = {
   nickname: string;
   virtAge: number;
   power: number;
+  morphKey: PetMorphKey | null;
 };
 let battleFoeSnapshot: BattleFoeSnap | null = null;
 
@@ -281,6 +289,7 @@ function normalizeBattleFoe(raw: {
   nickname?: string;
   virtAge?: number;
   power?: number;
+  morphKey?: string | null;
 }): BattleFoeSnap {
   const sp = raw.species;
   const species: PetSpecies =
@@ -303,7 +312,15 @@ function normalizeBattleFoe(raw: {
   const power = Number.isFinite(pr)
     ? Math.min(100, Math.max(0, Math.floor(pr)))
     : 12;
-  return { species, nickname, virtAge, power };
+  const mk = raw.morphKey;
+  const morphKey: PetMorphKey | null =
+    mk === "striker" ||
+    mk === "guardian" ||
+    mk === "survivor" ||
+    mk === "harmony"
+      ? mk
+      : null;
+  return { species, nickname, virtAge, power, morphKey };
 }
 
 function battlePetPayload(p: PetState) {
@@ -312,6 +329,9 @@ function battlePetPayload(p: PetState) {
     nickname: p.nickname,
     virtAge: p.virtAge,
     power: p.power,
+    ...(p.morphTier >= 1 && p.morphKey
+      ? { morphKey: p.morphKey }
+      : {}),
   };
 }
 
@@ -549,6 +569,7 @@ function renderCare(root: HTMLElement) {
   clearLobbySocketGuardTimer();
   const hint = consumeCareFlash();
   let state: PetState = loadPet();
+  const morphToast = consumeMorphToast();
   if (!state.alive) {
     renderMemorial(root, state, hint);
     return;
@@ -573,6 +594,8 @@ function renderCare(root: HTMLElement) {
           <input class="pet-nick field" id="pet-nick" maxlength="12" autocomplete="off" />
         </div>
         <p class="pet-age-line" id="pet-age-line"></p>
+        <p class="pet-morph-line hidden" id="pet-morph-line"></p>
+        <p class="pet-pvp-meta" id="pet-pvp-meta"></p>
         <p class="pet-mood" id="pet-mood"></p>
         <div class="care-stats">
           <div class="care-stat">
@@ -617,6 +640,8 @@ function renderCare(root: HTMLElement) {
   const nickEl = $("#pet-nick", root) as HTMLInputElement;
   const moodEl = $("#pet-mood", root);
   const ageLineEl = $("#pet-age-line", root);
+  const morphLineEl = $("#pet-morph-line", root);
+  const pvpMetaEl = $("#pet-pvp-meta", root);
   const stageEl = $("#pet-stage", root);
   const treatBtn = $("#btn-treat", root);
   const spriteEl = $("#pet-sprite", root) as HTMLImageElement;
@@ -626,7 +651,10 @@ function renderCare(root: HTMLElement) {
   const eggBattleHintEl = $("#care-egg-battle-hint", root);
   let reactionTimer: number | null = null;
 
-  if (hint) {
+  if (morphToast) {
+    toastEl.textContent = morphToast;
+    toastEl.classList.remove("hidden");
+  } else if (hint) {
     if (hint === UI.eggBattleBlocked && !state.hatched) {
       // 與頂部 #care-egg-battle-hint 同文，不再用底部 toast 重複
     } else {
@@ -698,6 +726,22 @@ function renderCare(root: HTMLElement) {
     moodEl.textContent = moodLine(state);
     const st = growthStage(state.virtAge);
     ageLineEl.textContent = `${formatVirtAgeDays(state.virtAge)} \u00b7 ${growthLabelForPet(state)}`;
+    if (state.hatched && state.morphTier >= 1 && state.morphKey) {
+      morphLineEl.textContent = UI.morphLine(morphLabelZh(state.morphKey));
+      morphLineEl.classList.remove("hidden");
+      stageEl.setAttribute("data-morph", state.morphKey);
+    } else {
+      morphLineEl.textContent = "";
+      morphLineEl.classList.add("hidden");
+      stageEl.removeAttribute("data-morph");
+    }
+    if (state.hatched) {
+      pvpMetaEl.textContent = UI.pvpWinsLine(state.pvpWins);
+      pvpMetaEl.classList.remove("hidden");
+    } else {
+      pvpMetaEl.textContent = "";
+      pvpMetaEl.classList.add("hidden");
+    }
     stageEl.classList.toggle("pet-stage--senior", state.hatched && st === 4);
     const sc = careSpriteScale(state);
     if (speciesUsesCanvasArt(state.species)) {
@@ -1173,6 +1217,7 @@ function renderWaiting(
       nickname?: string;
       virtAge?: number;
       power?: number;
+      morphKey?: string | null;
     };
   }) => {
     if (payload?.foe) {
@@ -1310,7 +1355,11 @@ function renderBattle(root: HTMLElement) {
   youSp.classList.toggle("pet-sprite--alt", myPet.species === "crystal");
   foeSp.classList.toggle("pet-sprite--alt", foeSnap.species === "crystal");
   $("#battle-you-label", root).textContent = `${myPet.nickname} \u00b7 \u6211\u65b9`;
-  $("#battle-foe-label", root).textContent = `${foeSnap.nickname} \u00b7 \u5c0d\u624b`;
+  const foeMorph =
+    foeSnap.morphKey != null ? morphLabelZh(foeSnap.morphKey) : null;
+  $("#battle-foe-label", root).textContent = foeMorph
+    ? `${foeSnap.nickname} \u00b7 ${foeMorph}`
+    : `${foeSnap.nickname} \u00b7 \u5c0d\u624b`;
 
   const s = ensureSocket();
   s.removeAllListeners("battle_state");
@@ -1454,6 +1503,7 @@ function renderBattle(root: HTMLElement) {
     stopTick();
     const fb = r.forfeitBy;
     if (fb === "host" || fb === "guest") {
+      if (fb !== r.you) recordPvpWin();
       if (fb === r.you) showEndModal(root, UI.youSurrendered);
       else showEndModal(root, UI.foeSurrenderYouWin);
       return;
@@ -1461,6 +1511,7 @@ function renderBattle(root: HTMLElement) {
     const iWon =
       (r.winner === "host" && r.you === "host") ||
       (r.winner === "guest" && r.you === "guest");
+    if (r.winner !== "draw" && iWon) recordPvpWin();
     const title =
       r.winner === "draw" ? UI.draw : iWon ? UI.win : UI.lose;
     showEndModal(root, title);

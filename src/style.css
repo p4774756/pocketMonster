@@ -1458,6 +1458,39 @@ footer.note {
   letter-spacing: 0.03em;
 }
 
+.pet-morph-line {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 4px;
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+
+.pet-pvp-meta {
+  font-size: 0.7rem;
+  color: var(--muted-2);
+  margin: 0 0 8px;
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+.pet-stage[data-morph="striker"] .pet-sprite-mount--care {
+  filter: drop-shadow(0 0 8px rgba(248, 113, 113, 0.5));
+}
+
+.pet-stage[data-morph="guardian"] .pet-sprite-mount--care {
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.45));
+}
+
+.pet-stage[data-morph="survivor"] .pet-sprite-mount--care {
+  filter: drop-shadow(0 0 8px rgba(192, 132, 252, 0.45));
+}
+
+.pet-stage[data-morph="harmony"] .pet-sprite-mount--care {
+  filter: drop-shadow(0 0 8px rgba(52, 211, 153, 0.45));
+}
+
 .pet-mood {
   font-size: 0.84rem;
   line-height: 1.55;

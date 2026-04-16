@@ -27,7 +27,15 @@ const MP_REGEN_PER_ROUND = 5;
 
 /** @typedef {'strike' | 'guard' | 'charge'} Move */
 
-/** @typedef {{ species: 'volt'|'crystal'|'chicken'|'cat'|'dog', nickname: string, virtAge: number, power: number }} PetSnap */
+/**
+ * @typedef {{
+ *   species: 'volt'|'crystal'|'chicken'|'cat'|'dog',
+ *   nickname: string,
+ *   virtAge: number,
+ *   power: number,
+ *   morphKey?: 'striker'|'guardian'|'survivor'|'harmony'|null,
+ * }} PetSnap
+ */
 
 function defaultPetSnap() {
   return {
@@ -35,6 +43,7 @@ function defaultPetSnap() {
     nickname: "\u73a9\u5bb6",
     virtAge: 18,
     power: 12,
+    morphKey: null,
   };
 }
 
@@ -70,11 +79,20 @@ function parsePetSnap(raw) {
   const power = Number.isFinite(powerNum)
     ? Math.min(100, Math.max(0, Math.floor(powerNum)))
     : 12;
+  const mk = o.morphKey;
+  const morphKey =
+    mk === "striker" ||
+    mk === "guardian" ||
+    mk === "survivor" ||
+    mk === "harmony"
+      ? mk
+      : null;
   return {
     species,
     nickname: nick || "\u73a9\u5bb6",
     virtAge,
     power,
+    morphKey,
   };
 }
 

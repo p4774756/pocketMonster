@@ -2,6 +2,9 @@ export type PetSpecies = "volt" | "crystal" | "chicken" | "cat" | "dog";
 
 export type DeathCause = "old" | "neglect" | "illness";
 
+/** 首次進化分支（僅本機養成；不影響物種）。 */
+export type PetMorphKey = "striker" | "guardian" | "survivor" | "harmony";
+
 export interface PetState {
   species: PetSpecies;
   nickname: string;
@@ -18,6 +21,15 @@ export interface PetState {
   ill: boolean;
   /** Virtual days spent ill (resets when healthy). */
   illDays: number;
+  /** Lifetime virtual days spent ill (for evolution / 「常生病」). */
+  totalIllVirtDays: number;
+  /** Exponential moving average of (hunger+happy+clean+energy)/4 while alive. */
+  careQualityEma: number;
+  /** PvP wins (HP 勝負或對方投降)，自投降／平手不計。 */
+  pvpWins: number;
+  /** 0 = 未進化；1 = 已選定分支（`morphKey`）。 */
+  morphTier: 0 | 1;
+  morphKey: PetMorphKey | null;
   /** Accumulated real hours while critically hungry. */
   starveHours: number;
   alive: boolean;
@@ -54,9 +66,73 @@ const DEFAULT: PetState = {
   virtAge: 22,
   ill: false,
   illDays: 0,
+  totalIllVirtDays: 0,
+  careQualityEma: 82,
+  pvpWins: 0,
+  morphTier: 0,
+  morphKey: null,
   starveHours: 0,
   alive: true,
 };
+
+/** 首次進化最低虛擬日齡（仍須滿足某一分支條件）。 */
+const EVOLVE_MIN_VIRT_AGE = 12;
+
+let pendingMorphToast: string | null = null;
+
+/** 養成畫面首次進化提示（若有則消費為單次字串）。 */
+export function consumeMorphToast(): string | null {
+  const t = pendingMorphToast;
+  pendingMorphToast = null;
+  return t;
+}
+
+function parseMorphKey(raw: unknown): PetMorphKey | null {
+  if (
+    raw === "striker" ||
+    raw === "guardian" ||
+    raw === "survivor" ||
+    raw === "harmony"
+  ) {
+    return raw;
+  }
+  return null;
+}
+
+/** 形態中文名（UI／對戰標籤）。 */
+export function morphLabelZh(key: PetMorphKey): string {
+  if (key === "striker") return "\u9b25\u9b42\u5f62\u614b";
+  if (key === "guardian") return "\u5b88\u8b77\u5f62\u614b";
+  if (key === "survivor") return "\u97cc\u6027\u5f62\u614b";
+  return "\u5747\u8861\u5f62\u614b";
+}
+
+/**
+ * 依養成軌跡選首次分支（優先序：鬥魂 → 守護 → 韌性 → 均衡）。
+ * 門檻為初版平衡，請與 `docs/GAME_RULES.md` 同步敘述。
+ */
+function pickMorphKey(p: PetState): PetMorphKey | null {
+  if (p.morphTier >= 1 || !p.alive || !p.hatched) return null;
+  if (p.virtAge < EVOLVE_MIN_VIRT_AGE) return null;
+  const ema = p.careQualityEma;
+  const illLife = p.totalIllVirtDays;
+  const wins = p.pvpWins;
+  const pw = p.power;
+  const age = p.virtAge;
+  if (wins >= 2 && pw >= 18 && ema >= 38) return "striker";
+  if (ema >= 62 && illLife <= 3.5 && age >= 12) return "guardian";
+  if (illLife >= 5 && ema >= 32) return "survivor";
+  if (age >= 13 && ema >= 44) return "harmony";
+  return null;
+}
+
+export function tryEvolve(p: PetState): PetState {
+  if (p.morphTier >= 1 || !p.alive || !p.hatched) return p;
+  const key = pickMorphKey(p);
+  if (!key) return p;
+  pendingMorphToast = `\u9032\u5316\uff01${morphLabelZh(key)}`;
+  return { ...p, morphTier: 1, morphKey: key };
+}
 
 function clamp(n: number, lo: number, hi: number) {
   return Math.min(hi, Math.max(lo, n));
@@ -110,22 +186,47 @@ function mergeDefaults(raw: Partial<PetState>): PetState {
   const alive = raw.alive === false ? false : true;
   /** Legacy saves omit `hatched`; treat as already born. */
   const hatched = raw.hatched === false ? false : true;
+  const hunger = clamp(Number(raw.hunger) || DEFAULT.hunger, 0, 100);
+  const happy = clamp(Number(raw.happy) || DEFAULT.happy, 0, 100);
+  const clean = clamp(Number(raw.clean) || DEFAULT.clean, 0, 100);
+  const energy = clamp(Number(raw.energy) || DEFAULT.energy, 0, 100);
+  const power = clamp(Number(raw.power) || DEFAULT.power, 0, 100);
+  const careAvgLegacy = (hunger + happy + clean + energy) / 4;
+  const careQualityEma =
+    typeof raw.careQualityEma === "number" && !Number.isNaN(raw.careQualityEma)
+      ? clamp(raw.careQualityEma, 0, 100)
+      : careAvgLegacy;
+  const totalIllVirtDays = clamp(
+    Number(raw.totalIllVirtDays) || 0,
+    0,
+    9999,
+  );
+  const pvpWins = clamp(Number(raw.pvpWins) || 0, 0, 9999);
+  const morphTier = raw.morphTier === 1 ? 1 : 0;
+  let morphKey: PetMorphKey | null =
+    morphTier === 1 ? parseMorphKey(raw.morphKey) : null;
+  if (morphTier === 1 && !morphKey) morphKey = "harmony";
   return {
     species: parseSpecies(raw.species),
     nickname:
       typeof raw.nickname === "string" && raw.nickname.trim().length > 0
         ? raw.nickname.trim().slice(0, 12)
         : DEFAULT.nickname,
-    hunger: clamp(Number(raw.hunger) || DEFAULT.hunger, 0, 100),
-    happy: clamp(Number(raw.happy) || DEFAULT.happy, 0, 100),
-    clean: clamp(Number(raw.clean) || DEFAULT.clean, 0, 100),
-    energy: clamp(Number(raw.energy) || DEFAULT.energy, 0, 100),
-    power: clamp(Number(raw.power) || DEFAULT.power, 0, 100),
+    hunger,
+    happy,
+    clean,
+    energy,
+    power,
     lastTs: Number(raw.lastTs) || Date.now(),
     hatched,
     virtAge,
     ill: alive && Boolean(raw.ill),
     illDays: alive ? clamp(Number(raw.illDays) || 0, 0, 999) : 0,
+    totalIllVirtDays,
+    careQualityEma,
+    pvpWins,
+    morphTier,
+    morphKey,
     starveHours: Math.max(0, Number(raw.starveHours) || 0),
     alive,
     deathCause:
@@ -269,15 +370,25 @@ function applyLifecycleAndDecay(p: PetState): PetState {
     }
   }
 
+  let totalIllVirtDays = p.totalIllVirtDays;
   if (egg) {
     ill = false;
     illDays = 0;
     starveHours = 0;
   } else if (ill) {
     illDays += dAge;
+    totalIllVirtDays = clamp(totalIllVirtDays + dAge, 0, 9999);
   } else {
     illDays = 0;
   }
+
+  const careAvg = (hunger + happy + clean + energy) / 4;
+  const emaAlpha = Math.min(1, hours * 0.25);
+  const careQualityEma = clamp(
+    p.careQualityEma * (1 - emaAlpha) + careAvg * emaAlpha,
+    0,
+    100,
+  );
 
   if (!egg && hunger < STARVE_HUNGER) {
     starveHours += hours;
@@ -290,6 +401,8 @@ function applyLifecycleAndDecay(p: PetState): PetState {
     virtAge,
     ill,
     illDays,
+    totalIllVirtDays,
+    careQualityEma,
     starveHours,
     hunger,
     happy,
@@ -299,7 +412,7 @@ function applyLifecycleAndDecay(p: PetState): PetState {
   };
   live = tryHatchEgg(live);
   if (!live.hatched) {
-    return savePet(live);
+    return savePet(tryEvolve(live));
   }
 
   if (live.virtAge >= OLD_AGE_DEATH) {
@@ -318,7 +431,7 @@ function applyLifecycleAndDecay(p: PetState): PetState {
     return savePet(finalizeDeath(live, "illness", now, live.virtAge));
   }
 
-  return savePet(live);
+  return savePet(tryEvolve(live));
 }
 
 export function applyOfflineDecay(p: PetState): PetState {
@@ -358,6 +471,14 @@ export function savePet(p: PetState): PetState {
   return next;
 }
 
+/** 對戰勝利後呼叫（已排除自投降）；內部會 `loadPet` 並存檔。 */
+export function recordPvpWin(): PetState {
+  const p = loadPet();
+  if (!p.alive) return p;
+  const bumped = { ...p, pvpWins: p.pvpWins + 1 };
+  return savePet(tryEvolve(bumped));
+}
+
 export function petEmoji(species: PetSpecies): string {
   if (species === "crystal") return "\ud83d\udc8e";
   if (species === "chicken") return "\ud83d\udc24";
@@ -386,19 +507,29 @@ export function rollAdoptionProfile(): { species: PetSpecies; hatched: boolean }
 
 export function newAdoptionPetState(): PetState {
   const { species, hatched } = rollAdoptionProfile();
+  const hunger = 88;
+  const happy = 82;
+  const clean = 90;
+  const energy = 92;
+  const careQualityEma = (hunger + happy + clean + energy) / 4;
   return {
     species,
     nickname: petDefaultName(species),
-    hunger: 88,
-    happy: 82,
-    clean: 90,
-    energy: 92,
+    hunger,
+    happy,
+    clean,
+    energy,
     power: hatched ? 5 : 4,
     lastTs: Date.now(),
     hatched,
     virtAge: 0,
     ill: false,
     illDays: 0,
+    totalIllVirtDays: 0,
+    careQualityEma,
+    pvpWins: 0,
+    morphTier: 0,
+    morphKey: null,
     starveHours: 0,
     alive: true,
   };
@@ -488,13 +619,15 @@ export function restPet(p: PetState): PetState {
 export function treatPet(p: PetState): PetState {
   if (!p.alive) return p;
   if (!p.ill) return p;
-  return savePet({
-    ...p,
-    ill: false,
-    illDays: 0,
-    happy: clamp(p.happy + 22, 0, 100),
-    energy: clamp(p.energy + 8, 0, 100),
-  });
+  return savePet(
+    tryEvolve({
+      ...p,
+      ill: false,
+      illDays: 0,
+      happy: clamp(p.happy + 22, 0, 100),
+      energy: clamp(p.energy + 8, 0, 100),
+    }),
+  );
 }
 
 /** 重新認養：隨機物種（貓直接入欄，其餘從蛋開始）。 */
@@ -503,14 +636,14 @@ export function resetNewPet(): PetState {
 }
 
 function saveAndReturn(p: PetState): PetState {
-  return savePet(p);
+  return savePet(tryEvolve(p));
 }
 
 export function renamePet(p: PetState, nickname: string): PetState {
   if (!p.alive) return p;
   const n = nickname.trim().slice(0, 12);
   if (!n) return { ...p };
-  return savePet({ ...p, nickname: n });
+  return savePet(tryEvolve({ ...p, nickname: n }));
 }
 
 export function memorialLine(cause: DeathCause | undefined): string {

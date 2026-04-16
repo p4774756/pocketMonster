@@ -104,5 +104,6 @@ npm run start
 ## 相連文件
 
 - [遊戲規則 `docs/GAME_RULES.md`](docs/GAME_RULES.md)
+- [系統架構圖 `docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - [路線與待辦 `docs/ROADMAP_TASKS.md`](docs/ROADMAP_TASKS.md)
 - [改善備忘 `docs/IMPROVEMENT_BACKLOG.md`](docs/IMPROVEMENT_BACKLOG.md)

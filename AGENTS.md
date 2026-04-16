@@ -110,7 +110,7 @@ npm run start:api   # SERVE_STATIC=0：只跑 API（給 Pages + 分離後端）
 - **畫面與對戰流程**：`src/main.ts`（體積大，可用搜尋 `renderCare`、`renderBattle`、`ensureSocket`）。
 - **對戰平衡與房間生命週期**：`server/index.js`。
 - **樣式**：`src/style.css`。
-- **新精靈／圖示**：遵守 `.cursor/rules/pocket-pet-assets.mdc`；idle 見 `idleSpriteForSpeciesStage`（`src/pet.ts`）；照護姿勢檔名見 **`carePoseFile`**（`src/pet.ts`），由 `src/main.ts` 呼叫；雷系訓練 **`pet-train-volt.png`**、水晶系訓練 **`pet-train-crystal.png`**（其餘共用 `pet-*.png`／貓雞各檔）。**圖鑑**（`renderSpeciesDex`）除成長階段外另列四種照護姿勢示意（`DEX_POSE_STAGE`、狗用 `initDexDogCanvases` 的 `data-dex-pose`）。
+- **新精靈／圖示**：遵守 `.cursor/rules/pocket-pet-assets.mdc`；idle 見 **`idleSpriteForSpeciesStage`**／**`idleSpriteFromSnap`**／**`idleSpriteForPet`**（`src/pet.ts`）；照護姿勢見 **`carePoseFile`**（第三參數可帶 `morphKey`，雷貓用 **`cat-volt-*.png`**）。雷系訓練 **`pet-train-volt.png`**、水晶系 **`pet-train-crystal.png`**（其餘 `pet-*.png`／貓雞各檔）。**圖鑑**（`renderSpeciesDex`）除成長階段外另列四種照護姿勢示意（`DEX_POSE_STAGE`、狗用 `initDexDogCanvases` 的 `data-dex-pose`）。
 
 ## 慣例與注意
 

@@ -17,7 +17,9 @@ import {
   growthLabelForPet,
   growthSpriteScale,
   growthStage,
+  idleSpriteForPet,
   idleSpriteForSpeciesStage,
+  idleSpriteFromSnap,
   isLocalNightHour,
   loadPet,
   memorialLine,
@@ -858,7 +860,9 @@ function renderCare(root: HTMLElement) {
       }, 1700);
       return;
     }
-    spriteEl.src = petAssetUrl(carePoseFile(state.species, pose));
+    spriteEl.src = petAssetUrl(
+      carePoseFile(state.species, pose, state.morphKey),
+    );
     syncSpriteSpecies();
     reactionTimer = domSetTimeout(() => {
       showCareIdleSprite();
@@ -1431,11 +1435,13 @@ function renderBattle(root: HTMLElement) {
   battleFoeSnapshot = null;
   const mySt = growthStage(myPet.virtAge);
   const foeSt = growthStage(foeSnap.virtAge);
-  const youSprite = petAssetUrl(
-    idleSpriteForSpeciesStage(myPet.species, mySt),
-  );
+  const youSprite = petAssetUrl(idleSpriteForPet(myPet));
   const foeSprite = petAssetUrl(
-    idleSpriteForSpeciesStage(foeSnap.species, foeSt),
+    idleSpriteFromSnap(
+      foeSnap.species,
+      foeSnap.virtAge,
+      foeSnap.morphKey,
+    ),
   );
 
   root.replaceChildren(

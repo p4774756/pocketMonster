@@ -54,7 +54,7 @@
 - **統計欄位**：`pvpWins`（勝場，平手與**自己投降**不計；對方投降或一般勝利 +1）、`totalIllVirtDays`（累積處於生病狀態的虛擬日）、`careQualityEma`（四維狀態均值的指數移動平均，照護品質指標）。
 - **貓、狗**（`pickMorphKey`／`pickCatDogElementMorph`／`isDoodooMorphCandidate`，實作見 `src/pet.ts`）：
   - 虛擬日齡達 **12** 起，若長期照護過差（低 `careQualityEma`、高累積生病虛擬日、清潔／飽食／心情偏低等），可進化為 **大便怪**（`morphKey` = `doodoo`）；外觀以 **Canvas** 繪製（非 PNG）。
-  - 虛擬日齡滿 **13** 且未成為大便怪時，依訓練、清潔、心情與整體照護決定 **雷屬**（`cat_volt`／`dog_volt`）、**水屬**（`cat_aqua`／`dog_aqua`）或 **草屬**（`cat_flora`／`dog_flora`）。貓沿用 idle／照護 PNG 並以畫面色光區分屬性；狗在既有 Canvas 狗像上加屬性色點裝飾。
+  - 虛擬日齡滿 **13** 且未成為大便怪時，依訓練、清潔、心情與整體照護決定 **雷屬**（`cat_volt`／`dog_volt`）、**水屬**（`cat_aqua`／`dog_aqua`）或 **草屬**（`cat_flora`／`dog_flora`）。**雷貓**（`cat_volt`）使用專用立繪 **`public/pets/cat-volt-idle-s0.png`～`s4.png`** 與照護 **`cat-volt-eat.png`／`train`／`rest`／`clean.png`**（見 `idleSpriteFromSnap`／`carePoseFile`）；水／草貓仍用一般 `cat-*.png` 並以畫面色光區分。**狗**全程 **Canvas** 繪製，屬性以 Canvas 色點裝飾（`dog_*`）。
 - **雷系／水晶系／雞**（非貓狗）：維持下列分支優先序（未達門檻則不進化）：
   1. **鬥魂（striker）**：勝場 ≥ **2**、訓練 `power` ≥ **18**、且 `careQualityEma` ≥ **38**。
   2. **守護（guardian）**：`careQualityEma` ≥ **62**、累積生病虛擬日 ≤ **3.5**、虛擬日齡 ≥ **12**。

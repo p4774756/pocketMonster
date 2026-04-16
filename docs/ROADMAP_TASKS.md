@@ -5,7 +5,7 @@
 
 **與倉庫同步**：實作進度以程式為準；**版號**見根目錄 `package.json`（頂欄與後端 `/version` 同源）。本檔勾選由維護者在里程碑完成時更新。
 
-**進度摘要（請隨版本更新此段）**：**v0.3 進化核心**已擴充：貓／狗屬性鍵與 `doodoo` 大便怪 Canvas、`lightsOn` 與夜間結算（`GAME_RULES.md` §1.7～1.8）；**v0.3 其餘**（戰鬥 log、README、server 模組化、形態專屬全套替換圖）仍為待辦。
+**進度摘要（請隨版本更新此段）**：**v0.3 進化核心**已擴充：貓／狗屬性鍵、`cat_volt` 專用 PNG、`doodoo` 大便怪 Canvas、狗 Canvas、`lightsOn` 與夜間結算（`GAME_RULES.md` §1.7～1.8）；**v0.3 其餘**（戰鬥 log、README、server 模組化、水／草貓專屬圖等）仍為待辦。
 
 ---
 
@@ -18,7 +18,7 @@
 - [x] **觸發時機**：生命週期結算（`applyLifecycleAndDecay`）與照護／對戰結算後呼叫 `tryEvolve`；勝場僅在合理勝利結局遞增（排除自投降、平手）。
 - [x] **玩家回饋**：養成畫面顯示形態名稱、首次進化 toast；可選 `data-morph` 樣式區分。
 - [x] **對戰展示**：對手快照帶可選 `morphKey`，對戰頭像旁顯示形態（`server/index.js` `parsePetSnap`、客戶端 `battlePetPayload`）。
-- [ ] **分支美術**：依形態替換或疊加 idle／姿勢圖（`public/pets/`、`idleSpriteForSpeciesStage` 擴充或 hue）；換圖後跑 `npm run optimize:pets`。
+- [~] **分支美術**：`cat_volt` 已專用 `cat-volt-*.png`；其餘分支仍 hue／疊加或待替換圖；換圖後跑 `npm run optimize:pets`。
 - [x] **規則敘述**：進化門檻與欄位已寫入 `docs/GAME_RULES.md` 第 1.7 節（與 `src/pet.ts` 常數／`pickMorphKey` 對齊）。
 - [ ] **數值平衡**：依試玩回饋調整 `EVOLVE_MIN_VIRT_AGE`、`pickMorphKey` 閾值等（改動時須同步 `GAME_RULES.md` §1.7）。
 

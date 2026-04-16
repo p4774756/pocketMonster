@@ -140,13 +140,16 @@ export function careUsesPoopCanvas(p: PetState): boolean {
   );
 }
 
-/** 對戰／養成：貓屬性進化給 DOM `data-cat-element`。 */
+/**
+ * 對戰／養成：貓水／草屬給 DOM `data-cat-element` 做色光。
+ * `cat_volt` 使用專用 `cat-volt-*.png` 立繪，不疊濾鏡。
+ */
 export function catElementKeyFromMorph(
   species: PetSpecies,
   k: PetMorphKey | null,
 ): "volt" | "aqua" | "flora" | null {
   if (species !== "cat") return null;
-  if (k === "cat_volt") return "volt";
+  if (k === "cat_volt") return null;
   if (k === "cat_aqua") return "aqua";
   if (k === "cat_flora") return "flora";
   return null;
@@ -275,7 +278,11 @@ export function speciesUsesCanvasArt(species: PetSpecies): boolean {
 
 export type CarePose = "eat" | "train" | "rest" | "clean";
 
-export function carePoseFile(species: PetSpecies, pose: CarePose): string {
+export function carePoseFile(
+  species: PetSpecies,
+  pose: CarePose,
+  morphKey: PetMorphKey | null = null,
+): string {
   const suf =
     pose === "eat"
       ? "eat"
@@ -284,6 +291,8 @@ export function carePoseFile(species: PetSpecies, pose: CarePose): string {
         : pose === "rest"
           ? "rest"
           : "clean";
+  if (species === "cat" && morphKey === "cat_volt")
+    return `cat-volt-${suf}.png`;
   if (species === "cat") return `cat-${suf}.png`;
   if (species === "chicken") return `chicken-${suf}.png`;
   if (species === "volt" && pose === "train") return "pet-train-volt.png";
@@ -418,6 +427,27 @@ export function idleSpriteForSpeciesStage(
   return `pet-idle-s${stage}.png`;
 }
 
+/**
+ * 養成／對戰頭像：已進化雷貓用 `cat-volt-idle-s*.png`，其餘同 `idleSpriteForSpeciesStage`。
+ * `morphKey` 傳 `null` 表示未進化或無此分支。
+ */
+export function idleSpriteFromSnap(
+  species: PetSpecies,
+  virtAge: number,
+  morphKey: PetMorphKey | null,
+): string {
+  const st = growthStage(virtAge);
+  if (species === "cat" && morphKey === "cat_volt")
+    return `cat-volt-idle-s${st}.png`;
+  return idleSpriteForSpeciesStage(species, st);
+}
+
+/** 目前寵物 idle 檔名（不含蛋）。 */
+export function idleSpriteForPet(p: PetState): string {
+  const mk = p.morphTier >= 1 ? p.morphKey : null;
+  return idleSpriteFromSnap(p.species, p.virtAge, mk);
+}
+
 /** 舊版怪獸 idle（僅 volt 檔名）；請優先使用 `idleSpriteForSpeciesStage`。 */
 export function idleSpriteForStage(stage: 0 | 1 | 2 | 3 | 4): string {
   return idleSpriteForSpeciesStage("volt", stage);
@@ -432,7 +462,7 @@ export function eggSpriteForSpecies(species: PetSpecies): string {
 /** Idle image on the care screen (egg until hatched). */
 export function careIdleSpriteFile(p: PetState): string {
   if (p.alive && !p.hatched) return eggSpriteForSpecies(p.species);
-  return idleSpriteForSpeciesStage(p.species, growthStage(p.virtAge));
+  return idleSpriteForPet(p);
 }
 
 export function growthLabelForPet(p: PetState): string {

@@ -1232,6 +1232,16 @@ footer.note {
   line-height: 1.5;
 }
 
+.dex-volt-block {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(148, 163, 184, 0.28);
+}
+
+.dex-volt-block .dex-section-heading:first-of-type {
+  margin-top: 0;
+}
+
 .dex-section-heading {
   font-size: 0.72rem;
   font-weight: 700;

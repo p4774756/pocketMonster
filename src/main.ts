@@ -9,6 +9,8 @@ import {
   catElementKeyFromMorph,
   cleanPet,
   consumeMorphToast,
+  dexCatVoltCarePoseFile,
+  dexCatVoltIdleFile,
   dogElementKeyFromMorph,
   eggSpriteForSpecies,
   feed,
@@ -196,6 +198,13 @@ const UI = {
     "\u5f9e\u6696\u967d\u86cb\u7834\u6bbc\u5f8c\u70ba\u96de\u5bf6\u9020\u578b\u3002",
   dexBlurbCat:
     "\u8a8d\u990a\u6642\u5df2\u70ba\u5c0f\u8c93\uff0c\u7121\u86cb\u968e\u6bb5\u3002",
+  dexCatVoltSection:
+    "\u96f7\u5c6c\u9032\u5316\uff08\u793a\u610f\uff09",
+  dexCatVoltIntro:
+    "\u990a\u6210\u9032\u5316\u70ba\u96f7\u5c6c\u5206\u652f\u6642\u4f7f\u7528\u5c08\u7528 PNG\uff08\u6a94\u540d\u4ee5 cat-volt-\u958b\u982d\uff09\uff0c\u8207\u4e0a\u65b9\u4e00\u822c\u8c93\u4e26\u5217\u4f9b\u53c3\u8003\u3002",
+  dexCatVoltPoseSection: "\u96f7\u8c93\u7167\u8b77\u59ff\u52e2",
+  dexCatVoltPoseNote:
+    "\u540c\u6a23\u5c0d\u61c9\u990a\u6210\u56db\u9375\uff1b\u59ff\u52e2\u4ee5\u9752\u5c11\u5e74\u671f\u9ad4\u578b\u793a\u610f\u3002",
   dexBlurbDog:
     "\u8a8d\u990a\u6642\u5df2\u70ba\u5c0f\u72d7\uff0c\u7121\u86cb\u968e\u6bb5\uff1b\u7cbe\u9748\u70ba\u524d\u7aef Canvas \u50cf\u7d20\u7e6a\u88fd\uff08\u7121 PNG\uff09\u3002",
   backToPet: "\u56de\u5230\u6211\u7684\u5925\u4f34",
@@ -558,6 +567,34 @@ function dexEggCardHtml(species: PetSpecies): string {
   `;
 }
 
+function dexCatVoltStageCardHtml(stage: 0 | 1 | 2 | 3 | 4): string {
+  const scale = growthSpriteScale(stage);
+  const senior = stage === 4 ? " dex-stage-card--senior" : "";
+  const file = dexCatVoltIdleFile(stage);
+  return `
+    <div class="dex-stage-card${senior}">
+      <div class="dex-sprite-wrap">
+        <img class="dex-sprite" alt="" width="96" height="96" decoding="async" src="${petAssetUrl(file)}" style="transform: scale(${scale});" />
+      </div>
+      <span class="dex-stage-label">${growthLabel(stage)}</span>
+    </div>
+  `;
+}
+
+function dexCatVoltPoseCardHtml(pose: CarePose): string {
+  const scale = growthSpriteScale(DEX_POSE_STAGE);
+  const label = dexPoseLabel(pose);
+  const file = dexCatVoltCarePoseFile(pose);
+  return `
+    <div class="dex-pose-card">
+      <div class="dex-sprite-wrap dex-sprite-wrap--pose">
+        <img class="dex-sprite" alt="" width="96" height="96" decoding="async" src="${petAssetUrl(file)}" style="transform: scale(${scale}); transform-origin: center 70%;" />
+      </div>
+      <span class="dex-pose-label">${label}</span>
+    </div>
+  `;
+}
+
 function dexPoseCardHtml(species: PetSpecies, pose: CarePose): string {
   const scale = growthSpriteScale(DEX_POSE_STAGE);
   const label = dexPoseLabel(pose);
@@ -596,6 +633,27 @@ function dexSpeciesBlockHtml(species: PetSpecies): string {
       : dexJoinWithArrows([dexEggCardHtml(species), ...stages]);
   const poseParts = DEX_POSE_ORDER.map((pose) => dexPoseCardHtml(species, pose));
   const poseTrack = dexJoinWithArrows(poseParts);
+  const catVoltDex =
+    species === "cat"
+      ? `
+      <div class="dex-volt-block">
+        <h4 class="dex-section-heading">${UI.dexCatVoltSection}</h4>
+        <p class="dex-species-intro">${escapeHtml(UI.dexCatVoltIntro)}</p>
+        <div class="dex-evolution-track">
+          ${dexJoinWithArrows(
+            ([0, 1, 2, 3, 4] as const).map((st) => dexCatVoltStageCardHtml(st)),
+          )}
+        </div>
+        <h4 class="dex-section-heading">${UI.dexCatVoltPoseSection}</h4>
+        <p class="dex-pose-note">${UI.dexCatVoltPoseNote}</p>
+        <div class="dex-pose-track">
+          ${dexJoinWithArrows(
+            DEX_POSE_ORDER.map((pose) => dexCatVoltPoseCardHtml(pose)),
+          )}
+        </div>
+      </div>
+    `
+      : "";
   return `
     <section class="dex-species-block" aria-label="${escapeHtml(name)}">
       <h3 class="dex-species-title"><span class="dex-species-emoji">${emoji}</span> ${escapeHtml(name)}</h3>
@@ -609,6 +667,7 @@ function dexSpeciesBlockHtml(species: PetSpecies): string {
       <div class="dex-pose-track">
         ${poseTrack}
       </div>
+      ${catVoltDex}
     </section>
   `;
 }

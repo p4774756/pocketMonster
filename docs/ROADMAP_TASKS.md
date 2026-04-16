@@ -5,7 +5,7 @@
 
 **與倉庫同步**：實作進度以程式為準；**版號**見根目錄 `package.json`（頂欄與後端 `/version` 同源）。本檔勾選由維護者在里程碑完成時更新。
 
-**進度摘要（請隨版本更新此段）**：**v0.3 進化核心**已擴充：貓／狗屬性鍵、`cat_volt` 專用 PNG、`doodoo` 大便怪 Canvas、狗 Canvas、`lightsOn` 與夜間結算（`GAME_RULES.md` §1.7～1.8）；**v0.3 其餘**（戰鬥 log、README、server 模組化、水／草貓專屬圖等）仍為待辦。
+**進度摘要（請隨版本更新此段）**：**v0.3 進化核心**已擴充：貓／狗屬性鍵、`cat_volt` 專用 PNG、圖鑑雷貓示意列、`doodoo` 大便怪 Canvas、狗 Canvas、`lightsOn` 與夜間結算（`GAME_RULES.md` §1.7～1.8）；**v0.3 其餘**（戰鬥 log、README、server 模組化、水／草貓專屬圖等）仍為待辦。
 
 ---
 

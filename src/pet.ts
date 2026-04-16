@@ -300,6 +300,16 @@ export function carePoseFile(
   return `pet-${suf}.png`;
 }
 
+/** 圖鑑：雷屬進化貓 idle（階段 0…4 與養成體型對齊）。 */
+export function dexCatVoltIdleFile(stage: 0 | 1 | 2 | 3 | 4): string {
+  return `cat-volt-idle-s${stage}.png`;
+}
+
+/** 圖鑑：雷屬進化貓照護姿勢。 */
+export function dexCatVoltCarePoseFile(pose: CarePose): string {
+  return carePoseFile("cat", pose, "cat_volt");
+}
+
 function mergeDefaults(raw: Partial<PetState>): PetState {
   const legacy =
     raw.virtAge === undefined &&

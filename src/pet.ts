@@ -141,16 +141,15 @@ export function careUsesPoopCanvas(p: PetState): boolean {
 }
 
 /**
- * 對戰／養成：貓水／草屬給 DOM `data-cat-element` 做色光。
- * `cat_volt` 使用專用 `cat-volt-*.png` 立繪，不疊濾鏡。
+ * 對戰／養成：僅草屬貓疊 DOM `data-cat-element` 色光。
+ * `cat_volt`／`cat_aqua` 使用專用 PNG 立繪，不疊濾鏡。
  */
 export function catElementKeyFromMorph(
   species: PetSpecies,
   k: PetMorphKey | null,
 ): "volt" | "aqua" | "flora" | null {
   if (species !== "cat") return null;
-  if (k === "cat_volt") return null;
-  if (k === "cat_aqua") return "aqua";
+  if (k === "cat_volt" || k === "cat_aqua") return null;
   if (k === "cat_flora") return "flora";
   return null;
 }
@@ -293,6 +292,8 @@ export function carePoseFile(
           : "clean";
   if (species === "cat" && morphKey === "cat_volt")
     return `cat-volt-${suf}.png`;
+  if (species === "cat" && morphKey === "cat_aqua")
+    return `cat-aqua-${suf}.png`;
   if (species === "cat") return `cat-${suf}.png`;
   if (species === "chicken") return `chicken-${suf}.png`;
   if (species === "volt" && pose === "train") return "pet-train-volt.png";
@@ -308,6 +309,16 @@ export function dexCatVoltIdleFile(stage: 0 | 1 | 2 | 3 | 4): string {
 /** 圖鑑：雷屬進化貓照護姿勢。 */
 export function dexCatVoltCarePoseFile(pose: CarePose): string {
   return carePoseFile("cat", pose, "cat_volt");
+}
+
+/** 圖鑑：水屬進化貓 idle。 */
+export function dexCatAquaIdleFile(stage: 0 | 1 | 2 | 3 | 4): string {
+  return `cat-aqua-idle-s${stage}.png`;
+}
+
+/** 圖鑑：水屬進化貓照護姿勢。 */
+export function dexCatAquaCarePoseFile(pose: CarePose): string {
+  return carePoseFile("cat", pose, "cat_aqua");
 }
 
 function mergeDefaults(raw: Partial<PetState>): PetState {
@@ -438,7 +449,7 @@ export function idleSpriteForSpeciesStage(
 }
 
 /**
- * 養成／對戰頭像：已進化雷貓用 `cat-volt-idle-s*.png`，其餘同 `idleSpriteForSpeciesStage`。
+ * 養成／對戰頭像：雷／水屬貓用 `cat-volt-idle-s*`／`cat-aqua-idle-s*`，其餘同 `idleSpriteForSpeciesStage`。
  * `morphKey` 傳 `null` 表示未進化或無此分支。
  */
 export function idleSpriteFromSnap(
@@ -449,6 +460,8 @@ export function idleSpriteFromSnap(
   const st = growthStage(virtAge);
   if (species === "cat" && morphKey === "cat_volt")
     return `cat-volt-idle-s${st}.png`;
+  if (species === "cat" && morphKey === "cat_aqua")
+    return `cat-aqua-idle-s${st}.png`;
   return idleSpriteForSpeciesStage(species, st);
 }
 

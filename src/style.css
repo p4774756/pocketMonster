@@ -1232,13 +1232,13 @@ footer.note {
   line-height: 1.5;
 }
 
-.dex-volt-block {
+.dex-morph-subdex {
   margin-top: 18px;
   padding-top: 14px;
   border-top: 1px solid rgba(148, 163, 184, 0.28);
 }
 
-.dex-volt-block .dex-section-heading:first-of-type {
+.dex-morph-subdex .dex-section-heading:first-of-type {
   margin-top: 0;
 }
 

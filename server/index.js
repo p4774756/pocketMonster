@@ -33,7 +33,7 @@ const MP_REGEN_PER_ROUND = 5;
  *   nickname: string,
  *   virtAge: number,
  *   power: number,
- *   morphKey?: 'striker'|'guardian'|'survivor'|'harmony'|'cat_volt'|'cat_aqua'|'cat_flora'|'dog_volt'|'dog_aqua'|'dog_flora'|'doodoo'|null,
+ *   morphKey?: 'striker'|'guardian'|'survivor'|'harmony'|'cat_volt'|'cat_aqua'|'cat_flora'|'dog_volt'|'dog_aqua'|'dog_pyro'|'dog_tox'|'doodoo'|null,
  * }} PetSnap
  */
 
@@ -80,7 +80,8 @@ function parsePetSnap(raw) {
     ? Math.min(100, Math.max(0, Math.floor(powerNum)))
     : 12;
   const mk = o.morphKey;
-  const morphKey =
+  /** @type {'striker'|'guardian'|'survivor'|'harmony'|'cat_volt'|'cat_aqua'|'cat_flora'|'dog_volt'|'dog_aqua'|'dog_pyro'|'dog_tox'|'doodoo'|null} */
+  let morphKey =
     mk === "striker" ||
     mk === "guardian" ||
     mk === "survivor" ||
@@ -90,10 +91,12 @@ function parsePetSnap(raw) {
     mk === "cat_flora" ||
     mk === "dog_volt" ||
     mk === "dog_aqua" ||
-    mk === "dog_flora" ||
+    mk === "dog_pyro" ||
+    mk === "dog_tox" ||
     mk === "doodoo"
       ? mk
       : null;
+  if (mk === "dog_flora") morphKey = "dog_pyro";
   return {
     species,
     nickname: nick || "\u73a9\u5bb6",

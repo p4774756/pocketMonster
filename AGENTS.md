@@ -74,7 +74,7 @@ npm run dev
 
 **Client → Server**
 
-- `create_room({ pet: { species, nickname, virtAge, power, morphKey? }, roomTitle? }, ack)` — `ack({ ok, roomCode, roomTitle })`；`roomTitle` 為伺服器裁切後的展示名（最多 24 字，可空字串）。舊版只傳 `ack` 仍相容。`pet` 供對手顯示與**對戰 MP 上限**（`power` 0～100，缺省伺服器以 12 計）。`morphKey` 選填：`striker`／`guardian`／`survivor`／`harmony`／`cat_volt`／`cat_aqua`／`cat_flora`／`dog_volt`／`dog_aqua`／`dog_flora`／`doodoo`，供對戰頭像旁形態字樣。
+- `create_room({ pet: { species, nickname, virtAge, power, morphKey? }, roomTitle? }, ack)` — `ack({ ok, roomCode, roomTitle })`；`roomTitle` 為伺服器裁切後的展示名（最多 24 字，可空字串）。舊版只傳 `ack` 仍相容。`pet` 供對手顯示與**對戰 MP 上限**（`power` 0～100，缺省伺服器以 12 計）。`morphKey` 選填：`striker`／`guardian`／`survivor`／`harmony`／`cat_volt`／`cat_aqua`／`cat_flora`／`dog_volt`／`dog_aqua`／`dog_pyro`／`dog_tox`／`doodoo`，供對戰頭像旁形態字樣（舊版 `dog_flora` 伺服器會視為 `dog_pyro`）。
 - `join_room({ roomCode, pet: { species, nickname, virtAge, power, morphKey? } }, ack)` — `ack({ ok, error? })`；建議一律帶 `pet`。
 - `list_open_rooms({}, ack)` — 成功：`ack({ ok: true, rooms })`；`rooms` 為最多 40 筆 `{ roomCode, roomTitle, hostNickname, hostSpecies, created }`（僅「房主已連線、尚無訪客」且排除呼叫端自己開的房）。**節流**：同一連線 **1 秒內超過 10 次** 回 `ack({ ok: false, error: "too_fast" })`。
 - `choose_move({ move })` — `move`: `"strike" | "guard" | "charge"`
@@ -110,7 +110,7 @@ npm run start:api   # SERVE_STATIC=0：只跑 API（給 Pages + 分離後端）
 - **畫面與對戰流程**：`src/main.ts`（體積大，可用搜尋 `renderCare`、`renderBattle`、`ensureSocket`）。
 - **對戰平衡與房間生命週期**：`server/index.js`。
 - **樣式**：`src/style.css`。
-- **新精靈／圖示**：遵守 `.cursor/rules/pocket-pet-assets.mdc`；idle 見 **`idleSpriteForSpeciesStage`**／**`idleSpriteFromSnap`**／**`idleSpriteForPet`**（`src/pet.ts`）；照護姿勢見 **`carePoseFile`**（第三參數可帶 `morphKey`，雷貓 **`cat-volt-*.png`**、水貓 **`cat-aqua-*.png`**）。雷系訓練 **`pet-train-volt.png`**、水晶系 **`pet-train-crystal.png`**（其餘 `pet-*.png`／貓雞各檔）。**圖鑑**（`renderSpeciesDex`）除成長階段外另列四種照護姿勢示意（`DEX_POSE_STAGE`、狗用 `initDexDogCanvases` 的 `data-dex-pose`）；**貓**區塊另含 **雷屬（`cat_volt`）** 與 **水屬（`cat_aqua`）** 成長列與四姿勢示意（`dexCatVoltIdleFile`／`dexCatVoltCarePoseFile`、`dexCatAquaIdleFile`／`dexCatAquaCarePoseFile`）。
+- **新精靈／圖示**：遵守 `.cursor/rules/pocket-pet-assets.mdc`；idle 見 **`idleSpriteForSpeciesStage`**／**`idleSpriteFromSnap`**／**`idleSpriteForPet`**（`src/pet.ts`）；照護姿勢見 **`carePoseFile`**（第三參數可帶 `morphKey`，雷貓 **`cat-volt-*.png`**、水貓 **`cat-aqua-*.png`**）。雷系訓練 **`pet-train-volt.png`**、水晶系 **`pet-train-crystal.png`**（其餘 `pet-*.png`／貓雞各檔）。**圖鑑**（`renderSpeciesDex`）除成長階段外另列四種照護姿勢示意（`DEX_POSE_STAGE`、狗用 `initDexDogCanvases` 的 `data-dex-pose`）；**貓**區塊另含 **雷／水** 專用立繪成長列與四姿勢示意；**狗**區塊另含 **雷／水／火／毒** 四屬 Canvas 示意（`data-dex-dog-element`）。
 
 ## 慣例與注意
 

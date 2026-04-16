@@ -4,7 +4,7 @@ export type DeathCause = "old" | "neglect" | "illness";
 
 /**
  * 首次進化分支（僅本機養成；不影響物種）。
- * 貓／狗：`cat_*`／`dog_*` 為屬性分支，`doodoo` 為照護過差的大便怪；其餘物種仍為四種作戰風格鍵。
+ * 貓：`cat_volt`／`cat_aqua`／`cat_flora`；狗：`dog_volt`／`dog_aqua`／`dog_pyro`／`dog_tox`；`doodoo` 為照護過差的大便怪；其餘物種仍為四種作戰風格鍵。
  */
 export type PetMorphKey =
   | "striker"
@@ -16,8 +16,12 @@ export type PetMorphKey =
   | "cat_flora"
   | "dog_volt"
   | "dog_aqua"
-  | "dog_flora"
+  | "dog_pyro"
+  | "dog_tox"
   | "doodoo";
+
+/** 狗 Canvas 屬性光點（與 `canvasDog` 裝飾層一致）。 */
+export type DogCanvasElementKey = "volt" | "aqua" | "pyro" | "tox";
 
 export interface PetState {
   species: PetSpecies;
@@ -115,11 +119,14 @@ function parseMorphKey(raw: unknown): PetMorphKey | null {
     raw === "cat_flora" ||
     raw === "dog_volt" ||
     raw === "dog_aqua" ||
-    raw === "dog_flora" ||
+    raw === "dog_pyro" ||
+    raw === "dog_tox" ||
     raw === "doodoo"
   ) {
     return raw;
   }
+  /** 舊版存檔：狗「草」分支已改為火／毒四屬性制，載入時視為火。 */
+  if (raw === "dog_flora") return "dog_pyro";
   return null;
 }
 
@@ -157,10 +164,11 @@ export function catElementKeyFromMorph(
 /** 狗 Canvas 屬性裝飾鍵。 */
 export function dogElementKeyFromMorph(
   k: PetMorphKey | null,
-): "volt" | "aqua" | "flora" | null {
+): DogCanvasElementKey | null {
   if (k === "dog_volt") return "volt";
   if (k === "dog_aqua") return "aqua";
-  if (k === "dog_flora") return "flora";
+  if (k === "dog_pyro") return "pyro";
+  if (k === "dog_tox") return "tox";
   return null;
 }
 
@@ -174,8 +182,9 @@ export function morphLabelZh(key: PetMorphKey): string {
     return "\u96f7\u5c6c\u9032\u5316";
   if (key === "cat_aqua" || key === "dog_aqua")
     return "\u6c34\u5c6c\u9032\u5316";
-  if (key === "cat_flora" || key === "dog_flora")
-    return "\u8349\u5c6c\u9032\u5316";
+  if (key === "cat_flora") return "\u8349\u5c6c\u9032\u5316";
+  if (key === "dog_pyro") return "\u706b\u5c6c\u9032\u5316";
+  if (key === "dog_tox") return "\u6bd2\u5c6c\u9032\u5316";
   return "\u5927\u4fbf\u602a";
 }
 
@@ -191,21 +200,43 @@ function isDoodooMorphCandidate(p: PetState): boolean {
   );
 }
 
-function pickCatDogElementMorph(p: PetState): PetMorphKey {
-  const pref = p.species === "cat" ? "cat_" : "dog_";
+/** 貓：雷／水／草（與一般 `cat-*.png` + 草屬色光）。 */
+function pickCatElementMorph(p: PetState): PetMorphKey {
   const ema = p.careQualityEma;
   const illLife = p.totalIllVirtDays;
-  if (p.power >= 21 && ema >= 34) return `${pref}volt` as PetMorphKey;
-  if (p.clean >= 58 && illLife <= 4.5 && ema >= 35)
-    return `${pref}aqua` as PetMorphKey;
-  if (p.happy >= 60 && p.hunger >= 46 && ema >= 36)
-    return `${pref}flora` as PetMorphKey;
+  if (p.power >= 21 && ema >= 34) return "cat_volt";
+  if (p.clean >= 58 && illLife <= 4.5 && ema >= 35) return "cat_aqua";
+  if (p.happy >= 60 && p.hunger >= 46 && ema >= 36) return "cat_flora";
   const v = p.power * 1.15 + p.pvpWins * 2.8;
   const a = p.clean * 1.08 + (100 - illLife) * 0.12;
   const f = p.happy * 1.05 + p.hunger * 0.22;
-  if (v >= a && v >= f) return `${pref}volt` as PetMorphKey;
-  if (a >= f) return `${pref}aqua` as PetMorphKey;
-  return `${pref}flora` as PetMorphKey;
+  if (v >= a && v >= f) return "cat_volt";
+  if (a >= f) return "cat_aqua";
+  return "cat_flora";
+}
+
+/** 狗：Canvas 雷／水／火／毒四屬光點。 */
+function pickDogElementMorph(p: PetState): PetMorphKey {
+  const ema = p.careQualityEma;
+  const illLife = p.totalIllVirtDays;
+  if (p.power >= 21 && ema >= 34) return "dog_volt";
+  if (p.clean >= 58 && illLife <= 4.5 && ema >= 35) return "dog_aqua";
+  if (p.happy >= 58 && p.energy >= 50 && ema >= 36) return "dog_pyro";
+  if (illLife >= 6.5 && ema >= 30 && ema <= 50 && p.clean <= 54)
+    return "dog_tox";
+  const v = p.power * 1.15 + p.pvpWins * 2.8;
+  const a = p.clean * 1.08 + (100 - illLife) * 0.12;
+  const py = p.happy * 1.05 + p.energy * 0.22;
+  const tx = illLife * 1.35 + (100 - p.clean) * 0.3 + Math.min(p.power, 24) * 0.25;
+  const max = Math.max(v, a, py, tx);
+  if (max === v) return "dog_volt";
+  if (max === a) return "dog_aqua";
+  if (max === py) return "dog_pyro";
+  return "dog_tox";
+}
+
+function pickCatDogElementMorph(p: PetState): PetMorphKey {
+  return p.species === "cat" ? pickCatElementMorph(p) : pickDogElementMorph(p);
 }
 
 /**
@@ -360,7 +391,7 @@ function mergeDefaults(raw: Partial<PetState>): PetState {
       species === "cat"
         ? "cat_flora"
         : species === "dog"
-          ? "dog_flora"
+          ? "dog_aqua"
           : "harmony";
   }
   const lightsOn = raw.lightsOn === false ? false : true;
@@ -829,25 +860,36 @@ export function moodLine(p: PetState): string {
       mk === "cat_aqua" ||
       mk === "dog_aqua" ||
       mk === "cat_flora" ||
-      mk === "dog_flora"
+      mk === "dog_pyro" ||
+      mk === "dog_tox"
     ) {
       const eLines =
-        mk.endsWith("volt") || mk === "striker"
+        mk.endsWith("volt")
           ? [
               "\u8eab\u9ad4\u88e1\u6709\u5c0f\u5c0f\u96fb\u6d41\u5728\u8dd1\uff01",
               "\u96f7\u96f2\u5473\u7684\u4e00\u5929\u958b\u59cb\u56c9\u3002",
             ]
-          : mk.endsWith("aqua") || mk === "guardian"
+          : mk.endsWith("aqua")
             ? [
                 "\u6e05\u723d\u7684\u611f\u89ba\uff0c\u60f3\u53bb\u73a9\u6c34\u3002",
                 "\u6ce1\u6ce1\u5fc3\u60c5\uff0c\u6d17\u500b\u6fa1\u66f4\u8212\u670d\u3002",
               ]
-            : mk.endsWith("flora") || mk === "harmony"
+            : mk === "cat_flora"
               ? [
                   "\u8349\u539f\u7684\u98a8\u5439\u904e\u8033\u908a\u3002",
                   "\u5fc3\u60c5\u8edf\u8edf\u7684\uff0c\u60f3\u66ec\u66ec\u592a\u967d\u3002",
                 ]
-              : [];
+              : mk.endsWith("pyro")
+                ? [
+                    "\u9ad4\u6eab\u6162\u6162\u5347\u8d77\u4f86\u4e86\uff0c\u60f3\u5954\u8dd1\u4e00\u5708\uff01",
+                    "\u5fc3\u88e1\u6709\u4e00\u5c0f\u5718\u706b\u5728\u8df3\u3002",
+                  ]
+                : mk.endsWith("tox")
+                  ? [
+                      "\u5634\u88e1\u6709\u9ede\u82e6\u82e6\u7684\u2026\u4f46\u9084\u633a\u9177\u7684\u3002",
+                      "\u8eab\u908a\u7a7a\u6c23\u597d\u6c89\uff0c\u537b\u53c8\u5f88\u5b89\u5fc3\u3002",
+                    ]
+                  : [];
       if (eLines.length)
         return pickMoodLine(seedBase + mk.charCodeAt(2), eLines);
     }

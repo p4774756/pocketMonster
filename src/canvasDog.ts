@@ -2,7 +2,7 @@
  * 狗物種：Canvas 像素格繪製（無 PNG），供養成／對戰／圖鑑共用。
  * 邏輯座標為 32×32 格，再依 cssSize 換算為實際像素。
  */
-import type { CarePose } from "./pet";
+import type { CarePose, DogCanvasElementKey } from "./pet";
 
 const COL = {
   fur: "#c9956b",
@@ -163,14 +163,14 @@ function drawDogClean(
   cellR(ctx, 22, 9, 1.5, 1.5, COL.spark, cell);
 }
 
-/** 屬性進化時狗身 Canvas 小色塊／光點裝飾（與 `PetMorphKey` 的 `dog_*` 對應）。 */
-export type DogElementAccent = "volt" | "aqua" | "flora" | null;
+/** 屬性進化時狗身 Canvas 小色塊／光點裝飾（雷／水／火／毒）。 */
+export type DogElementAccent = DogCanvasElementKey | null;
 
 function drawDogElementAccent(
   ctx: CanvasRenderingContext2D,
   cell: number,
   stage: 0 | 1 | 2 | 3 | 4,
-  accent: "volt" | "aqua" | "flora",
+  accent: DogCanvasElementKey,
 ) {
   const g = stageGrow(stage);
   if (accent === "volt") {
@@ -181,10 +181,14 @@ function drawDogElementAccent(
     cellR(ctx, g.hx + 0.5, g.hy + 1.2, 2, 2, "#38bdf8", cell);
     cellR(ctx, g.hx + g.hw - 2, g.hy + 2, 2, 2, "#0ea5e9", cell);
     cellR(ctx, g.bx + 1, 19.5, 2, 1.5, "#7dd3fc", cell);
+  } else if (accent === "pyro") {
+    cellR(ctx, g.hx + 1.5, g.hy + 0.5, 2, 2, "#fb923c", cell);
+    cellR(ctx, g.hx + g.hw - 1.5, g.hy + 1.2, 1.8, 1.8, "#f97316", cell);
+    cellR(ctx, g.bx + g.bw * 0.55, 19.2, 2, 2, "#ea580c", cell);
   } else {
-    cellR(ctx, g.hx + 2, g.hy + 6.5, 2, 1.5, "#4ade80", cell);
-    cellR(ctx, g.hx + g.hw - 3, g.hy + 5.5, 2.5, 1.8, "#22c55e", cell);
-    cellR(ctx, g.bx + g.bw * 0.2, 20, 2, 2, "#86efac", cell);
+    cellR(ctx, g.hx + 2.2, g.hy + 5.8, 1.6, 1.6, "#c084fc", cell);
+    cellR(ctx, g.hx + g.hw - 2.5, g.hy + 6.2, 2, 1.5, "#22c55e", cell);
+    cellR(ctx, g.bx + 0.6, 21.5, 1.8, 1.5, "#a855f7", cell);
   }
 }
 
@@ -193,7 +197,7 @@ export type DogCanvasOptions = {
   hatched: boolean;
   stage: 0 | 1 | 2 | 3 | 4;
   pose?: CarePose | null;
-  /** 狗屬性進化（雷／水／草）時的裝飾層 */
+  /** 狗屬性進化（雷／水／火／毒）時的裝飾層 */
   elementAccent?: DogElementAccent;
 };
 
@@ -226,12 +230,12 @@ export function renderDogCanvas(
   else if (pose === "clean") drawDogClean(ctx, cell, st);
   else drawDogIdle(ctx, cell, st);
   const acc = options.elementAccent;
-  if (acc === "volt" || acc === "aqua" || acc === "flora") {
+  if (acc === "volt" || acc === "aqua" || acc === "pyro" || acc === "tox") {
     drawDogElementAccent(ctx, cell, st, acc);
   }
 }
 
-/** 圖鑑掛載：`data-dex-dog` — `egg` | 其他；`data-stage` 0…4；可選 `data-dex-pose` = eat|train|rest|clean */
+/** 圖鑑掛載：`data-dex-dog` — `egg` | 其他；`data-stage` 0…4；可選 `data-dex-pose`；可選 `data-dex-dog-element` = volt|aqua|pyro|tox */
 export function initDexDogCanvases(root: HTMLElement): void {
   root.querySelectorAll<HTMLCanvasElement>("[data-dex-dog]").forEach((cv) => {
     const kind = cv.dataset.dexDog;
@@ -244,11 +248,17 @@ export function initDexDogCanvases(root: HTMLElement): void {
         pr === "eat" || pr === "train" || pr === "rest" || pr === "clean"
           ? pr
           : null;
+      const el = cv.dataset.dexDogElement;
+      const elementAccent: DogCanvasElementKey | undefined =
+        el === "volt" || el === "aqua" || el === "pyro" || el === "tox"
+          ? el
+          : undefined;
       renderDogCanvas(cv, {
         cssSize: 96,
         hatched: true,
         stage: st >= 0 && st <= 4 ? st : 0,
         pose,
+        elementAccent,
       });
     }
   });

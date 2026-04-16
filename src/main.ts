@@ -13,6 +13,7 @@ import {
   dexCatAquaIdleFile,
   dexCatVoltCarePoseFile,
   dexCatVoltIdleFile,
+  type DogCanvasElementKey,
   dogElementKeyFromMorph,
   eggSpriteForSpecies,
   feed,
@@ -215,7 +216,26 @@ const UI = {
   dexCatAquaPoseNote:
     "\u540c\u6a23\u5c0d\u61c9\u990a\u6210\u56db\u9375\uff1b\u59ff\u52e2\u4ee5\u9752\u5c11\u5e74\u671f\u9ad4\u578b\u793a\u610f\u3002",
   dexBlurbDog:
-    "\u8a8d\u990a\u6642\u5df2\u70ba\u5c0f\u72d7\uff0c\u7121\u86cb\u968e\u6bb5\uff1b\u7cbe\u9748\u70ba\u524d\u7aef Canvas \u50cf\u7d20\u7e6a\u88fd\uff08\u7121 PNG\uff09\u3002",
+    "\u8a8d\u990a\u6642\u5df2\u70ba\u5c0f\u72d7\uff0c\u7121\u86cb\u968e\u6bb5\uff1b\u7cbe\u9748\u70ba\u524d\u7aef Canvas \u50cf\u7d20\u7e6a\u88fd\uff08\u7121 PNG\uff09\u3002\u9032\u5316\u70ba\u96f7\uff0f\u6c34\uff0f\u706b\uff0f\u6bd2\u5c6c\u6642\u8eab\u4e0a\u6703\u591a\u4e00\u5c64\u5c6c\u6027\u5149\u9ede\u88dd\u98fe\u3002",
+  dexDogVoltSection:
+    "\u96f7\u5c6c\u9032\u5316\uff08\u72d7\u3001\u793a\u610f\uff09",
+  dexDogVoltIntro:
+    "\u9032\u5316\u70ba dog_volt \u6642\uff0cCanvas \u96f7\u7cfb\u9ec3\u8272\u5149\u9ede\u3002",
+  dexDogAquaSection:
+    "\u6c34\u5c6c\u9032\u5316\uff08\u72d7\u3001\u793a\u610f\uff09",
+  dexDogAquaIntro:
+    "\u9032\u5316\u70ba dog_aqua \u6642\uff0cCanvas \u6c34\u7cfb\u85cd\u9752\u5149\u9ede\u3002",
+  dexDogPyroSection:
+    "\u706b\u5c6c\u9032\u5316\uff08\u72d7\u3001\u793a\u610f\uff09",
+  dexDogPyroIntro:
+    "\u9032\u5316\u70ba dog_pyro \u6642\uff0cCanvas \u706b\u7cfb\u6a58\u8d64\u5149\u9ede\u3002",
+  dexDogToxSection:
+    "\u6bd2\u5c6c\u9032\u5316\uff08\u72d7\u3001\u793a\u610f\uff09",
+  dexDogToxIntro:
+    "\u9032\u5316\u70ba dog_tox \u6642\uff0cCanvas \u6bd2\u7cfb\u7d2b\uff0f\u7da0\u8272\u5149\u9ede\u3002",
+  dexDogMorphPoseSection: "\u7167\u8b77\u59ff\u52e2\uff08\u8a72\u5c6c\u793a\u610f\uff09",
+  dexDogMorphPoseNote:
+    "\u540c\u6a23\u5c0d\u61c9\u990a\u6210\u56db\u9375\uff1b\u59ff\u52e2\u4ee5\u9752\u5c11\u5e74\u671f\u9ad4\u578b\u793a\u610f\u3002",
   backToPet: "\u56de\u5230\u6211\u7684\u5925\u4f34",
   restartAdopt: "\u91cd\u65b0\u8a8d\u990a",
   confirmRestartAdopt:
@@ -371,7 +391,8 @@ function normalizeBattleFoe(raw: {
     mk === "cat_flora" ||
     mk === "dog_volt" ||
     mk === "dog_aqua" ||
-    mk === "dog_flora" ||
+    mk === "dog_pyro" ||
+    mk === "dog_tox" ||
     mk === "doodoo"
       ? mk
       : null;
@@ -632,6 +653,66 @@ function dexCatAquaPoseCardHtml(pose: CarePose): string {
   `;
 }
 
+function dexDogElementStageCardHtml(
+  element: DogCanvasElementKey,
+  stage: 0 | 1 | 2 | 3 | 4,
+): string {
+  const scale = growthSpriteScale(stage);
+  const senior = stage === 4 ? " dex-stage-card--senior" : "";
+  return `
+    <div class="dex-stage-card${senior}">
+      <div class="dex-sprite-wrap">
+        <canvas class="dex-sprite dex-dog-canvas" width="96" height="96" data-dex-dog="idle" data-dex-dog-element="${element}" data-stage="${stage}" style="transform: scale(${scale});"></canvas>
+      </div>
+      <span class="dex-stage-label">${growthLabel(stage)}</span>
+    </div>
+  `;
+}
+
+function dexDogElementPoseCardHtml(
+  element: DogCanvasElementKey,
+  pose: CarePose,
+): string {
+  const scale = growthSpriteScale(DEX_POSE_STAGE);
+  const label = dexPoseLabel(pose);
+  return `
+    <div class="dex-pose-card">
+      <div class="dex-sprite-wrap dex-sprite-wrap--pose">
+        <canvas class="dex-sprite dex-dog-canvas" width="96" height="96" data-dex-dog="pose" data-dex-pose="${pose}" data-dex-dog-element="${element}" data-stage="${DEX_POSE_STAGE}" style="transform: scale(${scale}); transform-origin: center 70%;"></canvas>
+      </div>
+      <span class="dex-pose-label">${label}</span>
+    </div>
+  `;
+}
+
+function dexDogMorphSubdexBlockHtml(
+  element: DogCanvasElementKey,
+  section: string,
+  intro: string,
+): string {
+  return `
+      <div class="dex-morph-subdex">
+        <h4 class="dex-section-heading">${section}</h4>
+        <p class="dex-species-intro">${escapeHtml(intro)}</p>
+        <div class="dex-evolution-track">
+          ${dexJoinWithArrows(
+            ([0, 1, 2, 3, 4] as const).map((st) =>
+              dexDogElementStageCardHtml(element, st),
+            ),
+          )}
+        </div>
+        <h4 class="dex-section-heading">${UI.dexDogMorphPoseSection}</h4>
+        <p class="dex-pose-note">${UI.dexDogMorphPoseNote}</p>
+        <div class="dex-pose-track">
+          ${dexJoinWithArrows(
+            DEX_POSE_ORDER.map((pose) =>
+              dexDogElementPoseCardHtml(element, pose),
+            ),
+          )}
+        </div>
+      </div>`;
+}
+
 function dexPoseCardHtml(species: PetSpecies, pose: CarePose): string {
   const scale = growthSpriteScale(DEX_POSE_STAGE);
   const label = dexPoseLabel(pose);
@@ -707,6 +788,15 @@ function dexSpeciesBlockHtml(species: PetSpecies): string {
       </div>
     `
       : "";
+  const dogMorphSubdexes =
+    species === "dog"
+      ? `
+      ${dexDogMorphSubdexBlockHtml("volt", UI.dexDogVoltSection, UI.dexDogVoltIntro)}
+      ${dexDogMorphSubdexBlockHtml("aqua", UI.dexDogAquaSection, UI.dexDogAquaIntro)}
+      ${dexDogMorphSubdexBlockHtml("pyro", UI.dexDogPyroSection, UI.dexDogPyroIntro)}
+      ${dexDogMorphSubdexBlockHtml("tox", UI.dexDogToxSection, UI.dexDogToxIntro)}
+    `
+      : "";
   return `
     <section class="dex-species-block" aria-label="${escapeHtml(name)}">
       <h3 class="dex-species-title"><span class="dex-species-emoji">${emoji}</span> ${escapeHtml(name)}</h3>
@@ -721,6 +811,7 @@ function dexSpeciesBlockHtml(species: PetSpecies): string {
         ${poseTrack}
       </div>
       ${catMorphSubdexes}
+      ${dogMorphSubdexes}
     </section>
   `;
 }

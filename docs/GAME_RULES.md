@@ -54,7 +54,7 @@
 - **統計欄位**：`pvpWins`（勝場，平手與**自己投降**不計；對方投降或一般勝利 +1）、`totalIllVirtDays`（累積處於生病狀態的虛擬日）、`careQualityEma`（四維狀態均值的指數移動平均，照護品質指標）。
 - **貓、狗**（`pickMorphKey`／`pickCatDogElementMorph`／`isDoodooMorphCandidate`，實作見 `src/pet.ts`）：
   - 虛擬日齡達 **12** 起，若長期照護過差（低 `careQualityEma`、高累積生病虛擬日、清潔／飽食／心情偏低等），可進化為 **大便怪**（`morphKey` = `doodoo`）；外觀以 **Canvas** 繪製（非 PNG）。
-  - 虛擬日齡滿 **13** 且未成為大便怪時，依訓練、清潔、心情與整體照護決定 **雷屬**（`cat_volt`／`dog_volt`）、**水屬**（`cat_aqua`／`dog_aqua`）或 **草屬**（`cat_flora`／`dog_flora`）。**雷貓**（`cat_volt`）使用專用立繪 **`public/pets/cat-volt-idle-s0.png`～`s4.png`** 與照護 **`cat-volt-eat.png`／`train`／`rest`／`clean.png`**；**水貓**（`cat_aqua`）使用專用立繪 **`cat-aqua-idle-s0.png`～`s4.png`** 與照護 **`cat-aqua-eat.png`／`train`／`rest`／`clean.png`**（見 `idleSpriteFromSnap`／`carePoseFile`）；**草貓**（`cat_flora`）仍用一般 `cat-*.png` 並以畫面色光區分。**狗**全程 **Canvas** 繪製，屬性以 Canvas 色點裝飾（`dog_*`）。
+  - 虛擬日齡滿 **13** 且未成為大便怪時，依訓練、清潔、心情、體力與整體照護決定屬性分支：**貓**為 **雷**（`cat_volt`）、**水**（`cat_aqua`）、**草**（`cat_flora`）；**狗**為 **雷**（`dog_volt`）、**水**（`dog_aqua`）、**火**（`dog_pyro`）、**毒**（`dog_tox`）。**雷貓**／**水貓**使用專用立繪 **`cat-volt-*`／`cat-aqua-*`**（見 `idleSpriteFromSnap`／`carePoseFile`）；**草貓**仍用一般 `cat-*.png` 並以畫面色光區分。**狗**全程 **Canvas** 繪製，四屬以 **`canvasDog`** 小色點／光點裝飾（`dogElementKeyFromMorph`）。
 - **雷系／水晶系／雞**（非貓狗）：維持下列分支優先序（未達門檻則不進化）：
   1. **鬥魂（striker）**：勝場 ≥ **2**、訓練 `power` ≥ **18**、且 `careQualityEma` ≥ **38**。
   2. **守護（guardian）**：`careQualityEma` ≥ **62**、累積生病虛擬日 ≤ **3.5**、虛擬日齡 ≥ **12**。
@@ -77,7 +77,7 @@
 1. **房主**建立房間取得 **4 碼房間碼**（系統隨機，用於加入）；可選填 **房間名稱**（僅展示，最多 24 字），大廳公開清單與等待畫面會顯示；亦可用 **骰子** 隨機填入趣味名稱。**訪客**仍須以 **房間碼** 加入（名稱不能代替房碼）。
 2. **可加入房間清單**：大廳會向伺服器拉取 `list_open_rooms`；當有人**開房**、**加入**（房間從等待變對戰）、**房關閉**或**訪客斷線**（房主回到可加入狀態）時，伺服器會廣播 **`open_rooms_changed`**（短防抖合併），客戶端自動再拉清單；仍可手動「刷新清單」。**節流**：同一 Socket **1 秒內超過 10 次** `list_open_rooms` 會失敗（防刷），介面會提示稍後再試。
 3. 雙方連上後開始對戰；斷線、投降、結算規則由伺服器處理（見 `server/index.js`）。
-4. **對戰外觀與結算用快照**：開房與加入時，客戶端會上傳目前寵物的 **`species` / `nickname` / `virtAge` / `power`（訓練值，0～100）**；若已進化可選送 **`morphKey`**（`striker`／`guardian`／`survivor`／`harmony`／`cat_volt`／`cat_aqua`／`cat_flora`／`dog_volt`／`dog_aqua`／`dog_flora`／`doodoo`）。伺服器在 **`linked`** 事件裡把對手的這組資料給另一方，對戰畫面用來顯示**正確精靈**、**對方暱稱**與形態字樣。`power` 會換算戰鬥 **MP 上限**（見第 2.5 節）；舊版客戶端未送 `power` 時伺服器以 **12** 視同；未送 `morphKey` 則視為無形態標記。
+4. **對戰外觀與結算用快照**：開房與加入時，客戶端會上傳目前寵物的 **`species` / `nickname` / `virtAge` / `power`（訓練值，0～100）**；若已進化可選送 **`morphKey`**（`striker`／`guardian`／`survivor`／`harmony`／`cat_volt`／`cat_aqua`／`cat_flora`／`dog_volt`／`dog_aqua`／`dog_pyro`／`dog_tox`／`doodoo`）。伺服器在 **`linked`** 事件裡把對手的這組資料給另一方，對戰畫面用來顯示**正確精靈**、**對方暱稱**與形態字樣。`power` 會換算戰鬥 **MP 上限**（見第 2.5 節）；舊版客戶端未送 `power` 時伺服器以 **12** 視同；未送 `morphKey` 則視為無形態標記。
 
 ### 2.2 參戰條件
 
@@ -158,6 +158,7 @@
 | 自託管字型子集 | `src/fonts.css`（`@fontsource/dm-sans`、`@fontsource/jetbrains-mono`） |
 | 寵物 PNG 批次壓縮 | `scripts/optimize-pet-pngs.mjs`（`npm run optimize:pets`） |
 | 圖鑑雷／水貓示意 | `src/main.ts` 貓物種區塊內嵌「雷屬進化」「水屬進化」列（`dexCatVoltIdleFile`／`dexCatVoltCarePoseFile`、`dexCatAquaIdleFile`／`dexCatAquaCarePoseFile`，`src/pet.ts`） |
+| 圖鑑狗四屬示意 | `src/main.ts` 狗物種區塊內嵌雷／水／火／毒四列（`data-dex-dog-element`，`src/canvasDog.ts`） |
 | 對戰結算、房間、計時 | `server/index.js` |
 | 專案架構給 agent | `AGENTS.md` |
 | 產品路線與任務勾選 | `docs/ROADMAP_TASKS.md`（與 `docs/IMPROVEMENT_BACKLOG.md` 互補） |

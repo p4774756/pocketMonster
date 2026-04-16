@@ -75,7 +75,7 @@ npm run dev
 
 **Client → Server**
 
-- `create_room({ pet: { species, nickname, virtAge, power, morphKey?, playerTag? }, roomTitle? }, ack)` — `ack({ ok, roomCode, roomTitle })`；`roomTitle` 為伺服器裁切後的展示名（最多 24 字，可空字串）。舊版只傳 `ack` 仍相容。`pet` 供對手顯示與**對戰 MP 上限**（`power` 0～100，缺省伺服器以 12 計）。`morphKey` 選填：`striker`／`guardian`／`survivor`／`harmony`／`cat_volt`／`cat_aqua`／`cat_flora`／`dog_volt`／`dog_aqua`／`dog_pyro`／`dog_tox`／`doodoo`，供對戰頭像旁形態字樣（舊版 `dog_flora` 伺服器會視為 `dog_pyro`）。`playerTag` 選填：伺服器正規化後長度 **4～10** 且字元在允許集內才會保存並轉發，否則視同未提供（匿名辨識用，非帳號）。
+- `create_room({ pet: { species, nickname, virtAge, power, morphKey?, playerTag? }, roomTitle? }, ack)` — `ack({ ok, roomCode, roomTitle })`；`roomTitle` 為伺服器裁切後的展示名（最多 24 字，可空字串）。舊版只傳 `ack` 仍相容。`pet` 供對手顯示與**對戰 MP 上限**（`power` 0～100，缺省伺服器以 12 計）。`morphKey` 選填：`striker`／`guardian`／`survivor`／`harmony`／`cat_volt`／`cat_aqua`／`cat_flora`／`dog_volt`／`dog_aqua`／`dog_pyro`／`dog_tox`／`doodoo`，供對戰頭像旁形態字樣（舊版 `dog_flora` 伺服器會視為 `dog_pyro`）。`playerTag` 選填：伺服器僅接受 **恰好四位數字**（0～9）才會保存並轉發，否則視同未提供（匿名辨識用，非帳號）。
 - `join_room({ roomCode, pet: { species, nickname, virtAge, power, morphKey?, playerTag? } }, ack)` — `ack({ ok, error? })`；建議一律帶 `pet`。
 - `list_open_rooms({}, ack)` — 成功：`ack({ ok: true, rooms })`；`rooms` 為最多 40 筆 `{ roomCode, roomTitle, hostNickname, hostSpecies, created, hostPlayerTag? }`（僅「房主已連線、尚無訪客」且排除呼叫端自己開的房）。`hostPlayerTag` 為房主 `pet.playerTag`（若有且通過伺服器驗證）。**節流**：同一連線 **1 秒內超過 10 次** 回 `ack({ ok: false, error: "too_fast" })`。
 - `choose_move({ move })` — `move`: `"strike" | "guard" | "charge"`

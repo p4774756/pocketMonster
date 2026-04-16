@@ -28,6 +28,8 @@ const MP_REGEN_PER_ROUND = 5;
 /** @typedef {'strike' | 'guard' | 'charge'} Move */
 
 /**
+ * `playerTag` 若存在則為恰好四位數字（0000–9999）。
+ *
  * @typedef {{
  *   species: 'volt'|'crystal'|'chicken'|'cat'|'dog',
  *   nickname: string,
@@ -101,11 +103,8 @@ function parsePetSnap(raw) {
   let playerTag = null;
   const ptRaw = o.playerTag;
   if (typeof ptRaw === "string") {
-    const t = ptRaw
-      .toUpperCase()
-      .replace(/[^A-HJ-NP-Z2-9]/g, "")
-      .slice(0, 10);
-    if (t.length >= 4) playerTag = t;
+    const t = String(ptRaw).replace(/\D/g, "").slice(0, 4);
+    if (t.length === 4) playerTag = t;
   }
   return {
     species,

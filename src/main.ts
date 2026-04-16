@@ -6,6 +6,7 @@ import {
   friendTagSet,
   getOrCreatePlayerTag,
   isFriendTag,
+  isValidPlayerTag,
   loadFriendBookmarks,
   normalizePlayerTag,
   removeFriendBookmark,
@@ -240,12 +241,12 @@ const UI = {
   socialFriendsHint:
     "\u50c5\u5b58\u5728\u6b64\u700f\u89bd\u5668\uff1b\u8a18\u9304\u5c0d\u624b\u7684\u5c0d\u6230\u4ee3\u865f\u8207\u986f\u793a\u540d\uff0c\u4e0d\u7b49\u65bc\u5e33\u865f\u6216\u597d\u53cb\u78ba\u8a8d\u3002",
   socialFriendNamePh: "\u986f\u793a\u540d\u7a31\uff08\u5982\u5c0f\u660e\uff09",
-  socialFriendTagPh: "\u5c0d\u624b\u4ee3\u865f",
+  socialFriendTagPh: "\u5c0d\u624b\u4ee3\u865f\uff084\u4f4d\u6578\u5b57\uff09",
   socialAddFriend: "\u52a0\u5165",
   socialRemoveFriend: "\u79fb\u9664",
   socialFriendEmpty: "\u5c1a\u7121\u7d00\u9304",
   socialAddDup: "\u5df2\u6709\u9019\u500b\u4ee3\u865f",
-  socialAddInvalid: "\u4ee3\u865f\u683c\u5f0f\u4e0d\u5c0d\uff084\u301c10 \u500b\u5927\u5beb\u82f1\u6578\uff0c\u4e0d\u542b I\u3001O\u30010\u30011\u3001L\uff09",
+  socialAddInvalid: "\u4ee3\u865f\u683c\u5f0f\u4e0d\u5c0d\uff08\u8acb\u8f38\u5165 4 \u500b\u6578\u5b57 0\u301c9\uff09",
   socialAddEmptyName: "\u8acb\u586b\u986f\u793a\u540d\u7a31",
   socialFoeFriendBtn: "\u52a0\u5c0d\u624b\u70ba\u597d\u53cb",
   socialFoeFriendAdded: "\u5df2\u52a0\u5165\u597d\u53cb\u5099\u5fd8",
@@ -480,7 +481,7 @@ function normalizeBattleFoe(raw: {
   const pt = raw.playerTag;
   if (typeof pt === "string") {
     const t = normalizePlayerTag(pt);
-    if (t.length >= 4 && t.length <= 10) playerTag = t;
+    if (isValidPlayerTag(t)) playerTag = t;
   }
   return { species, nickname, virtAge, power, morphKey, playerTag };
 }
@@ -1493,7 +1494,7 @@ function renderLobby(
         <p class="hub-social-hint hub-social-hint--sub">${UI.socialMyTagHint}</p>
         <div class="hub-friends-add row">
           <input class="field" id="friend-label-input" maxlength="12" autocomplete="off" placeholder="${UI.socialFriendNamePh}" />
-          <input class="field friend-tag-field" id="friend-tag-input" maxlength="10" autocomplete="off" placeholder="${UI.socialFriendTagPh}" />
+          <input class="field friend-tag-field" id="friend-tag-input" maxlength="4" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="${UI.socialFriendTagPh}" />
           <button type="button" class="btn btn-secondary" id="btn-add-friend">${UI.socialAddFriend}</button>
         </div>
         <ul class="hub-friends-list" id="hub-friends-list"></ul>

@@ -3,49 +3,41 @@
  * 非帳號系統：無法保證代號全域唯一，僅供約戰辨識與備忘。
  */
 
-const TAG_STORAGE = "pocketPet_playerTag_v1";
+/** v2：四位數字代號（與舊版英數代號分開儲存，避免格式混用）。 */
+const TAG_STORAGE = "pocketPet_playerTag_v2";
 const FRIENDS_STORAGE = "pocketPet_friends_v1";
 
-const TAG_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
 export type FriendBookmark = {
-  /** 對方的對戰代號（大寫英數） */
+  /** 對方的對戰代號（四位數字） */
   tag: string;
   /** 你為對方取的顯示名 */
   label: string;
 };
 
-function randomTag8(): string {
-  let s = "";
-  for (let i = 0; i < 8; i++) {
-    s += TAG_CHARS[Math.floor(Math.random() * TAG_CHARS.length)];
-  }
-  return s;
-}
-
-/** 正規化並檢查是否為允許字元（不含易混淆 I、O、0、1、L）。 */
+/** 只保留數字，最多四位（供輸入正規化）。 */
 export function normalizePlayerTag(raw: string): string {
   return String(raw || "")
-    .toUpperCase()
-    .replace(/[^A-HJ-NP-Z2-9]/g, "");
+    .replace(/\D/g, "")
+    .slice(0, 4);
 }
 
 export function isValidPlayerTag(tag: string): boolean {
-  const t = normalizePlayerTag(tag);
-  return t.length >= 4 && t.length <= 10;
+  return /^\d{4}$/.test(normalizePlayerTag(tag));
 }
 
-/** 讀取或建立本機對戰代號（8 字）。 */
+function randomTag4Digits(): string {
+  return String(Math.floor(Math.random() * 10000)).padStart(4, "0");
+}
+
+/** 讀取或建立本機對戰代號（四位數字，0000～9999）。 */
 export function getOrCreatePlayerTag(): string {
   try {
     const prev = localStorage.getItem(TAG_STORAGE);
-    if (prev && isValidPlayerTag(prev) && normalizePlayerTag(prev).length === 8) {
-      return normalizePlayerTag(prev);
-    }
+    if (prev && isValidPlayerTag(prev)) return normalizePlayerTag(prev);
   } catch {
     /* ignore */
   }
-  const tag = randomTag8();
+  const tag = randomTag4Digits();
   try {
     localStorage.setItem(TAG_STORAGE, tag);
   } catch {
@@ -63,9 +55,7 @@ export function loadFriendBookmarks(): FriendBookmark[] {
     const out: FriendBookmark[] = [];
     for (const row of arr) {
       if (!row || typeof row !== "object") continue;
-      const tag = normalizePlayerTag(
-        String((row as FriendBookmark).tag || ""),
-      );
+      const tag = normalizePlayerTag(String((row as FriendBookmark).tag || ""));
       const label = String((row as FriendBookmark).label || "")
         .trim()
         .slice(0, 12);

@@ -203,6 +203,8 @@ const UI = {
   roomTitleRandomAria: "\u96a8\u6a5f\u623f\u9593\u540d\u7a31",
   roomDisplayNameLabel: "\u623f\u9593\u540d\u7a31",
   roomPlaceholder: "\u623f\u9593\u78bc",
+  roomCodeInvalid:
+    "\u623f\u9593\u78bc\u8acb\u8f38\u5165 3 \u500b\u6578\u5b57\uff080\u301c9\uff09",
   waitConnect: "\u7b49\u5f85\u5c0d\u65b9\u63a5\u4e0a\u9023\u7dda\u2026",
   syncing: "\u9023\u7dda\u540c\u6b65\u4e2d\u2026",
   roomCodeLabel: "\u623f\u9593\u78bc",
@@ -367,6 +369,15 @@ const UI = {
 };
 
 const socketServerUrl = (import.meta.env.VITE_SOCKET_URL || "").replace(/\/$/, "");
+
+/** 房間碼位數（與 `server/index.js` 的 `makeRoomCode`／`join_room` 一致）。 */
+const ROOM_CODE_LEN = 3;
+
+function normalizeRoomCodeInput(raw: string): string {
+  const d = String(raw || "").replace(/\D/g, "").slice(0, ROOM_CODE_LEN);
+  if (d.length === 0) return "";
+  return d.padStart(ROOM_CODE_LEN, "0");
+}
 
 let socket: Socket | null = null;
 let tickTimer: number | null = null;
@@ -1511,7 +1522,7 @@ function renderLobby(
       <div class="row stack-gap-md">
         <button type="button" class="btn btn-primary" id="btn-host">${UI.createHost}</button>
       </div>
-      <input class="field" id="room-input" maxlength="4" autocomplete="off" placeholder="${UI.roomPlaceholder}" />
+      <input class="field" id="room-input" maxlength="3" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="${UI.roomPlaceholder}" />
       <div class="row mt-gap">
         <button type="button" class="btn btn-secondary" id="btn-join">${UI.join}</button>
       </div>
@@ -1574,9 +1585,9 @@ function renderLobby(
   if (opts?.lockForAutoJoin) setLobbyBusy(true);
 
   const attemptJoinRoom = (code: string) => {
-    const c = code.trim().toUpperCase();
-    if (c.length !== 4) {
-      toast.textContent = UI.roomPlaceholder;
+    const c = normalizeRoomCodeInput(code.trim());
+    if (c.length !== ROOM_CODE_LEN) {
+      toast.textContent = UI.roomCodeInvalid;
       toast.classList.remove("hidden");
       return;
     }
@@ -2543,8 +2554,8 @@ function boot() {
   mountFeedbackButton();
   const root = $("#view-root");
   const params = new URLSearchParams(location.search);
-  const preJoin = params.get("join")?.toUpperCase().trim();
-  if (preJoin && preJoin.length === 4) {
+  const preJoin = normalizeRoomCodeInput(params.get("join") || "");
+  if (preJoin.length === ROOM_CODE_LEN) {
     renderLobby(root, { lockForAutoJoin: true });
     window.setTimeout(() => {
       const input = document.getElementById("room-input") as HTMLInputElement | null;

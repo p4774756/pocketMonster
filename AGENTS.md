@@ -7,7 +7,7 @@
 ## 專案是什麼
 
 - **電子寵物養成**：狀態存在瀏覽器 `localStorage`（鍵名等見 `src/pet.ts`），含飢餓、心情、清潔、體力、訓練、虛擬日齡、生病與死亡等邏輯；並含**首次進化形態**（`morphTier`／`morphKey`）、勝場與照護／生病累積統計（見 `docs/GAME_RULES.md` 第 1.7 節）。
-- **匿名連線對戰**：兩人透過 **房間碼** 配對，**Socket.IO** 同步回合制戰鬥（出招、超時自動出招、投降、斷線處理）。
+- **匿名連線對戰**：兩人透過 **三位數字房間碼**（000～999）配對，**Socket.IO** 同步回合制戰鬥（出招、超時自動出招、投降、斷線處理）。
 
 前端為 **Vite + TypeScript** 單頁應用；後端為 **Node（ESM）+ Express + socket.io** 的單檔伺服器。
 
@@ -75,8 +75,8 @@ npm run dev
 
 **Client → Server**
 
-- `create_room({ pet: { species, nickname, virtAge, power, morphKey?, playerTag? }, roomTitle? }, ack)` — `ack({ ok, roomCode, roomTitle })`；`roomTitle` 為伺服器裁切後的展示名（最多 24 字，可空字串）。舊版只傳 `ack` 仍相容。`pet` 供對手顯示與**對戰 MP 上限**（`power` 0～100，缺省伺服器以 12 計）。`morphKey` 選填：`striker`／`guardian`／`survivor`／`harmony`／`cat_volt`／`cat_aqua`／`cat_flora`／`dog_volt`／`dog_aqua`／`dog_pyro`／`dog_tox`／`doodoo`，供對戰頭像旁形態字樣（舊版 `dog_flora` 伺服器會視為 `dog_pyro`）。`playerTag` 選填：伺服器僅接受 **恰好四位數字**（0～9）才會保存並轉發，否則視同未提供（匿名辨識用，非帳號）。
-- `join_room({ roomCode, pet: { species, nickname, virtAge, power, morphKey?, playerTag? } }, ack)` — `ack({ ok, error? })`；建議一律帶 `pet`。
+- `create_room({ pet: { species, nickname, virtAge, power, morphKey?, playerTag? }, roomTitle? }, ack)` — `ack({ ok, roomCode, roomTitle })`；`roomCode` 為伺服器產生的 **三位數字字串**（000～999）。`roomTitle` 為伺服器裁切後的展示名（最多 24 字，可空字串）。舊版只傳 `ack` 仍相容。`pet` 供對手顯示與**對戰 MP 上限**（`power` 0～100，缺省伺服器以 12 計）。`morphKey` 選填：`striker`／`guardian`／`survivor`／`harmony`／`cat_volt`／`cat_aqua`／`cat_flora`／`dog_volt`／`dog_aqua`／`dog_pyro`／`dog_tox`／`doodoo`，供對戰頭像旁形態字樣（舊版 `dog_flora` 伺服器會視為 `dog_pyro`）。`playerTag` 選填：伺服器僅接受 **恰好四位數字**（0～9）才會保存並轉發，否則視同未提供（匿名辨識用，非帳號）。
+- `join_room({ roomCode, pet: { species, nickname, virtAge, power, morphKey?, playerTag? } }, ack)` — `ack({ ok, error? })`；`roomCode` 為 **恰好三位數字**（不足位數左側補 0，例如 `42` 與 `042` 相同）；格式不符時 `ok: false`（`error` 可為「房間碼格式不對」）。建議一律帶 `pet`。
 - `list_open_rooms({}, ack)` — 成功：`ack({ ok: true, rooms })`；`rooms` 為最多 40 筆 `{ roomCode, roomTitle, hostNickname, hostSpecies, created, hostPlayerTag? }`（僅「房主已連線、尚無訪客」且排除呼叫端自己開的房）。`hostPlayerTag` 為房主 `pet.playerTag`（若有且通過伺服器驗證）。**節流**：同一連線 **1 秒內超過 10 次** 回 `ack({ ok: false, error: "too_fast" })`。
 - `choose_move({ move })` — `move`: `"strike" | "guard" | "charge"`
 - `battle_emote({ key })` — 對戰中預設快捷語；`key` 須為伺服器白名單（與 `src/main.ts` 的 `BATTLE_EMOTE_IDS` 一致，見 `docs/GAME_RULES.md` **§2.9**）。僅在房間已進入戰鬥且雙方在場時有效；約 **2.2 秒** 節流。

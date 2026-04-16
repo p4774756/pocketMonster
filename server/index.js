@@ -206,13 +206,15 @@ if (serveStatic) {
   app.use(express.static(dist));
 }
 
+/** 房間碼：三位數字 000～999（與前端 `ROOM_CODE_LEN` 一致）。 */
+function normalizeRoomCode(raw) {
+  const d = String(raw ?? "").replace(/\D/g, "").slice(0, 3);
+  if (d.length === 0) return "";
+  return d.padStart(3, "0");
+}
+
 function makeRoomCode() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let s = "";
-  for (let i = 0; i < 4; i++) {
-    s += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return s;
+  return String(Math.floor(Math.random() * 1000)).padStart(3, "0");
 }
 
 /** @type {Map<string, { created: number, hostId: string, guestId?: string, battle?: Battle, roomTitle?: string }>} */
@@ -572,9 +574,15 @@ io.on("connection", (socket) => {
 
   socket.on("join_room", (payload, ack) => {
     pruneStaleRooms();
-    const code = String(payload?.roomCode || "")
-      .toUpperCase()
-      .trim();
+    const code = normalizeRoomCode(payload?.roomCode);
+    if (code.length !== 3) {
+      if (typeof ack === "function")
+        ack({
+          ok: false,
+          error: "\u623f\u9593\u78bc\u683c\u5f0f\u4e0d\u5c0d",
+        });
+      return;
+    }
     const r = rooms.get(code);
     if (!r) {
       if (typeof ack === "function")

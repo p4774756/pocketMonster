@@ -57,7 +57,7 @@
   2. **守護（guardian）**：`careQualityEma` ≥ **62**、累積生病虛擬日 ≤ **3.5**、虛擬日齡 ≥ **12**。
   3. **韌性（survivor）**：累積生病虛擬日 ≥ **5**、且 `careQualityEma` ≥ **32**。
   4. **均衡（harmony）**：虛擬日齡 ≥ **13**、且 `careQualityEma` ≥ **44**。
-- **美術**：首版沿用原 idle／姿勢圖，僅以 UI 字樣與養成畫面外圈色調區分；日後可替換形態專屬精靈圖。
+- **美術**：首版沿用原 idle／姿勢圖，僅以 UI 字樣與養成畫面外圈色調區分；日後可替換形態專屬精靈圖。雷系／水晶系**訓練**姿勢分別使用 `public/pets/pet-train-volt.png`、`pet-train-crystal.png`（與各自 idle 外觀一致）；其餘照護檔名見 `carePoseFile`（`src/pet.ts`）。
 
 ---
 

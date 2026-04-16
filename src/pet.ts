@@ -169,6 +169,8 @@ export function carePoseFile(species: PetSpecies, pose: CarePose): string {
           : "clean";
   if (species === "cat") return `cat-${suf}.png`;
   if (species === "chicken") return `chicken-${suf}.png`;
+  if (species === "volt" && pose === "train") return "pet-train-volt.png";
+  if (species === "crystal" && pose === "train") return "pet-train-crystal.png";
   return `pet-${suf}.png`;
 }
 
@@ -307,7 +309,7 @@ export function careIdleSpriteFile(p: PetState): string {
 }
 
 export function growthLabelForPet(p: PetState): string {
-  if (p.alive && !p.hatched) return "\u536f\u5316\u4e2d";
+  if (p.alive && !p.hatched) return "\u5b75\u5316\u4e2d";
   return growthLabel(growthStage(p.virtAge));
 }
 

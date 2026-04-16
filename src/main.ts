@@ -169,7 +169,15 @@ const UI = {
   openSpeciesDex: "\u5925\u4f34\u5716\u9451",
   dexTitle: "\u5925\u4f34\u5716\u9451",
   dexSubtitle:
-    "\u5404\u7269\u7a2e\u6210\u9577\u968e\u6bb5\u5c55\u793a\uff08\u865b\u64ec\u65e5\u9f61\u5230\u9054\u5c0d\u61c9\u968e\u6bb5\u6642\u7684\u5916\u89c0\uff09\u3002\u7bad\u982d\u8868\u793a\u6642\u9593\u9032\u7a0b\u65b9\u5411\u3002",
+    "\u5404\u7269\u7a2e\u6210\u9577\u968e\u6bb5\u8207\u7167\u8b77\u52d5\u4f5c\u5c55\u793a\uff08\u6210\u9577\u70ba\u865b\u64ec\u65e5\u9f61\u5230\u9054\u5c0d\u61c9\u968e\u6bb5\u6642\u7684\u5916\u89c0\uff1b\u7167\u8b77\u59ff\u52e2\u4ee5\u9752\u5c11\u5e74\u671f\u9ad4\u578b\u793a\u610f\uff09\u3002\u7bad\u982d\u8868\u793a\u6642\u9593\u9032\u7a0b\u65b9\u5411\u3002",
+  dexEvolutionSection: "\u6210\u9577\u968e\u6bb5",
+  dexPoseSection: "\u7167\u8b77\u52d5\u4f5c",
+  dexPoseNote:
+    "\u5c0d\u61c9\u990a\u6210\u756b\u9762\u56db\u500b\u6309\u9215\uff1a\u9935\u98df\u3001\u8a13\u7df4\u3001\u4f11\u606f\u3001\u6e05\u6f54\uff08\u4ee5\u9752\u5c11\u5e74\u671f\u9ad4\u578b\u793a\u610f\uff09\u3002",
+  dexPoseEat: "\u9935\u98df",
+  dexPoseTrain: "\u8a13\u7df4",
+  dexPoseRest: "\u4f11\u606f",
+  dexPoseClean: "\u6e05\u6f54",
   dexEgg: "\u536f",
   dexBackMemorial: "\u56de\u5230\u7d00\u5ff5\u9801",
   dexBlurbVolt:
@@ -448,6 +456,17 @@ const DEX_SPECIES_ORDER: PetSpecies[] = [
   "dog",
 ];
 
+/** 圖鑑「照護動作」列使用的成長階段（青少年期），與實際養成時依日齡變化不同。 */
+const DEX_POSE_STAGE = 2 as 0 | 1 | 2 | 3 | 4;
+const DEX_POSE_ORDER: CarePose[] = ["eat", "train", "rest", "clean"];
+
+function dexPoseLabel(pose: CarePose): string {
+  if (pose === "eat") return UI.dexPoseEat;
+  if (pose === "train") return UI.dexPoseTrain;
+  if (pose === "rest") return UI.dexPoseRest;
+  return UI.dexPoseClean;
+}
+
 function speciesDexIntroLine(species: PetSpecies): string {
   switch (species) {
     case "cat":
@@ -509,6 +528,31 @@ function dexEggCardHtml(species: PetSpecies): string {
   `;
 }
 
+function dexPoseCardHtml(species: PetSpecies, pose: CarePose): string {
+  const scale = growthSpriteScale(DEX_POSE_STAGE);
+  const label = dexPoseLabel(pose);
+  if (species === "dog") {
+    return `
+    <div class="dex-pose-card">
+      <div class="dex-sprite-wrap dex-sprite-wrap--pose">
+        <canvas class="dex-sprite dex-dog-canvas" width="96" height="96" data-dex-dog="pose" data-dex-pose="${pose}" data-stage="${DEX_POSE_STAGE}" style="transform: scale(${scale}); transform-origin: center 70%;"></canvas>
+      </div>
+      <span class="dex-pose-label">${label}</span>
+    </div>
+  `;
+  }
+  const file = carePoseFile(species, pose);
+  const alt = species === "crystal" ? " pet-sprite--alt" : "";
+  return `
+    <div class="dex-pose-card">
+      <div class="dex-sprite-wrap dex-sprite-wrap--pose">
+        <img class="dex-sprite${alt}" alt="" width="96" height="96" decoding="async" src="${petAssetUrl(file)}" style="transform: scale(${scale}); transform-origin: center 70%;" />
+      </div>
+      <span class="dex-pose-label">${label}</span>
+    </div>
+  `;
+}
+
 function dexSpeciesBlockHtml(species: PetSpecies): string {
   const emoji = petEmoji(species);
   const name = petDefaultName(species);
@@ -520,12 +564,20 @@ function dexSpeciesBlockHtml(species: PetSpecies): string {
     species === "cat" || species === "dog"
       ? dexJoinWithArrows(stages)
       : dexJoinWithArrows([dexEggCardHtml(species), ...stages]);
+  const poseParts = DEX_POSE_ORDER.map((pose) => dexPoseCardHtml(species, pose));
+  const poseTrack = dexJoinWithArrows(poseParts);
   return `
     <section class="dex-species-block" aria-label="${escapeHtml(name)}">
       <h3 class="dex-species-title"><span class="dex-species-emoji">${emoji}</span> ${escapeHtml(name)}</h3>
       <p class="dex-species-intro">${escapeHtml(intro)}</p>
+      <h4 class="dex-section-heading">${UI.dexEvolutionSection}</h4>
       <div class="dex-evolution-track">
         ${trackInner}
+      </div>
+      <h4 class="dex-section-heading">${UI.dexPoseSection}</h4>
+      <p class="dex-pose-note">${UI.dexPoseNote}</p>
+      <div class="dex-pose-track">
+        ${poseTrack}
       </div>
     </section>
   `;

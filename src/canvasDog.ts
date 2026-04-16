@@ -200,7 +200,7 @@ export function renderDogCanvas(
   else drawDogIdle(ctx, cell, st);
 }
 
-/** 圖鑑掛載：`data-dex-dog="idle"` + `data-stage`（`egg` 僅供相容舊 HTML） */
+/** 圖鑑掛載：`data-dex-dog` — `egg` | 其他；`data-stage` 0…4；可選 `data-dex-pose` = eat|train|rest|clean */
 export function initDexDogCanvases(root: HTMLElement): void {
   root.querySelectorAll<HTMLCanvasElement>("[data-dex-dog]").forEach((cv) => {
     const kind = cv.dataset.dexDog;
@@ -208,11 +208,16 @@ export function initDexDogCanvases(root: HTMLElement): void {
       renderDogCanvas(cv, { cssSize: 96, hatched: false, stage: 0 });
     } else {
       const st = Number(cv.dataset.stage) as 0 | 1 | 2 | 3 | 4;
+      const pr = cv.dataset.dexPose;
+      const pose: CarePose | null =
+        pr === "eat" || pr === "train" || pr === "rest" || pr === "clean"
+          ? pr
+          : null;
       renderDogCanvas(cv, {
         cssSize: 96,
         hatched: true,
         stage: st >= 0 && st <= 4 ? st : 0,
-        pose: null,
+        pose,
       });
     }
   });

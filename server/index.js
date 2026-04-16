@@ -155,6 +155,21 @@ function notifyOpenRoomsChanged() {
 /** `list_open_rooms`：每連線 1 秒內最多 10 次，防刷。 */
 const listOpenRoomsHits = new Map();
 
+/** 對戰快捷語 key 白名單（與 `src/main.ts` `BATTLE_EMOTE_IDS` 同步）。 */
+const BATTLE_EMOTE_KEYS = new Set([
+  "hi",
+  "good_luck",
+  "nice",
+  "ouch",
+  "hmm",
+  "hurry",
+  "gg",
+  "thanks",
+]);
+/** 每連線 `battle_emote` 節流時間戳。 */
+const battleEmoteLastTs = new Map();
+const BATTLE_EMOTE_COOLDOWN_MS = 2200;
+
 /** @param {string} socketId @param {number} now */
 function allowListOpenRoomsHit(socketId, now) {
   let arr = listOpenRoomsHits.get(socketId);
@@ -632,6 +647,26 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("battle_emote", (payload) => {
+    const link = socketRoom.get(socket.id);
+    if (!link) return;
+    const r = rooms.get(link.roomCode);
+    if (!r?.battle || !r.guestId) return;
+    const raw =
+      payload && typeof payload === "object"
+        ? /** @type {{ key?: unknown }} */ (payload).key
+        : null;
+    const key = typeof raw === "string" ? raw.trim() : "";
+    if (!BATTLE_EMOTE_KEYS.has(key)) return;
+    const now = Date.now();
+    const prev = battleEmoteLastTs.get(socket.id) || 0;
+    if (now - prev < BATTLE_EMOTE_COOLDOWN_MS) return;
+    battleEmoteLastTs.set(socket.id, now);
+    const peerId = socket.id === r.hostId ? r.guestId : r.hostId;
+    if (!peerId) return;
+    io.to(peerId).emit("battle_emote", { key });
+  });
+
   socket.on("forfeit", () => {
     const link = socketRoom.get(socket.id);
     if (!link) return;
@@ -660,6 +695,7 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     listOpenRoomsHits.delete(socket.id);
+    battleEmoteLastTs.delete(socket.id);
     const link = socketRoom.get(socket.id);
     socketRoom.delete(socket.id);
     if (!link) return;

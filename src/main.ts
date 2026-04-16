@@ -53,6 +53,47 @@ import { mountThemeBar } from "./theme";
 type Move = "strike" | "guard" | "charge";
 
 const ROUND_MS = 12_000;
+
+/** 對戰快捷語 id（與 `server/index.js` `BATTLE_EMOTE_KEYS` 同步）。 */
+const BATTLE_EMOTE_IDS = [
+  "hi",
+  "good_luck",
+  "nice",
+  "ouch",
+  "hmm",
+  "hurry",
+  "gg",
+  "thanks",
+] as const;
+type BattleEmoteId = (typeof BATTLE_EMOTE_IDS)[number];
+
+const BATTLE_EMOTE_CLIENT_COOLDOWN_MS = 2200;
+
+function isBattleEmoteId(raw: string): raw is BattleEmoteId {
+  return (BATTLE_EMOTE_IDS as readonly string[]).includes(raw);
+}
+
+function battleEmoteButtonLabel(id: BattleEmoteId): string {
+  if (id === "hi") return "\u55e8";
+  if (id === "good_luck") return "\u597d\u904b";
+  if (id === "nice") return "\u6f02\u4eae";
+  if (id === "ouch") return "\u597d\u75db";
+  if (id === "hmm") return "\u601d\u8003";
+  if (id === "hurry") return "\u5feb\u51fa\u62db";
+  if (id === "gg") return "GG";
+  return "\u8b1d\u8b1d";
+}
+
+function battleEmoteFullLine(id: BattleEmoteId): string {
+  if (id === "hi") return "\u55e8\uff01\u4e00\u8d77\u52a0\u6cb9\u5427\uff5e";
+  if (id === "good_luck") return "\u795d\u4f60\u597d\u904b\uff01";
+  if (id === "nice") return "\u9019\u62db\u6f02\u4eae\uff01";
+  if (id === "ouch") return "\u597d\u75db\u2026";
+  if (id === "hmm") return "\u8b93\u6211\u601d\u8003\u4e00\u4e0b\u2026";
+  if (id === "hurry") return "\u5feb\u9ede\u51fa\u62db\u5427\uff5e";
+  if (id === "gg") return "GG\uff0c\u8b9a\u8b9a\u4f60\uff01";
+  return "\u8b1d\u8b1d\u6307\u6559\uff01";
+}
 /** 與 `server/index.js` 的 `MP_COST_CHARGE` 一致；蓄力消耗的靈力。 */
 const MP_COST_CHARGE = 8;
 
@@ -172,6 +213,10 @@ const UI = {
   endModalHint:
     "\u7e7c\u7e8c\u990a\u6210\u6216\u518d\u958b\u4e00\u623f\u5c0d\u6230\u3002",
   peerLeft: "\u5c0d\u65b9\u5df2\u65b7\u7dda",
+  battleEmoteTitle: "\u5feb\u6377\u8a9e\uff08\u5c0d\u6230\uff09",
+  battleEmoteYouPrefix: "\u4f60\uff1a",
+  battleEmoteFoePrefix: "\u5c0d\u624b\uff1a",
+  battleEmoteTooFast: "\u5feb\u6377\u8a9e\u592a\u5feb\u56c9\uff0c\u7a0d\u5f8c\u518d\u8a66\u3002",
   errGeneric: "\u9023\u7dda\u5931\u6557\uff0c\u8acb\u91cd\u8a66",
   needBackend:
     "\u5c0d\u6230\u9700\u8981\u5f8c\u7aef\uff1a\u8acb\u8a2d\u5b9a VITE_SOCKET_URL \u5f8c\u91cd\u65b0\u6253\u5305\uff0c\u6216\u53c3\u8003 deploy \u8aaa\u660e\u3002",
@@ -1764,6 +1809,15 @@ function renderBattle(root: HTMLElement) {
           <button type="button" class="move-btn" data-move="guard">${UI.guard}</button>
           <button type="button" class="move-btn" data-move="charge">${UI.charge}</button>
         </div>
+        <details class="battle-emote-panel">
+          <summary class="battle-emote-summary">${UI.battleEmoteTitle}</summary>
+          <div class="battle-emote-buttons" role="group" aria-label="${escapeHtml(UI.battleEmoteTitle)}">
+            ${BATTLE_EMOTE_IDS.map(
+              (id) =>
+                `<button type="button" class="btn btn-secondary btn--compact battle-emote-btn" data-battle-emote="${id}">${escapeHtml(battleEmoteButtonLabel(id))}</button>`,
+            ).join("")}
+          </div>
+        </details>
         <div class="row battle-forfeit-row">
           <button type="button" class="btn btn-secondary" id="btn-forfeit">${UI.surrenderLeave}</button>
         </div>
@@ -1875,6 +1929,7 @@ function renderBattle(root: HTMLElement) {
   s.removeAllListeners("battle_state");
   s.removeAllListeners("round_result");
   s.removeAllListeners("battle_end");
+  s.removeAllListeners("battle_emote");
   s.removeAllListeners("linked");
   s.removeAllListeners("peer_left");
   let myLocked = false;
@@ -1886,11 +1941,26 @@ function renderBattle(root: HTMLElement) {
   const timerEl = $("#timer", root);
   const roundLabel = $("#round-label", root);
 
-  const appendLog = (line: string) => {
+  const appendLog = (line: string, emoteLine = false) => {
     const p = document.createElement("div");
     p.textContent = line;
+    if (emoteLine) p.classList.add("log-line--emote");
     logEl.appendChild(p);
     logEl.scrollTop = logEl.scrollHeight;
+  };
+
+  let lastBattleEmoteLocal = 0;
+  const appendEmoteYou = (id: BattleEmoteId) => {
+    appendLog(
+      `${UI.battleEmoteYouPrefix}${battleEmoteFullLine(id)}`,
+      true,
+    );
+  };
+  const appendEmoteFoe = (id: BattleEmoteId) => {
+    appendLog(
+      `${UI.battleEmoteFoePrefix}${battleEmoteFullLine(id)}`,
+      true,
+    );
   };
 
   const setHp = (yourHp: number, foeHp: number) => {
@@ -2032,14 +2102,37 @@ function renderBattle(root: HTMLElement) {
     showEndModal(root, UI.peerLeft);
   };
 
+  const onBattleEmote = (payload: { key?: string }) => {
+    const raw = typeof payload?.key === "string" ? payload.key.trim() : "";
+    if (!isBattleEmoteId(raw)) return;
+    appendEmoteFoe(raw);
+  };
+
   s.off("battle_state");
   s.off("round_result");
   s.off("battle_end");
+  s.off("battle_emote");
   s.off("peer_left");
   s.on("battle_state", onBattleState);
   s.on("round_result", onRoundResult);
   s.on("battle_end", onBattleEnd);
+  s.on("battle_emote", onBattleEmote);
   s.on("peer_left", onPeerLeftBattle);
+
+  root.querySelectorAll(".battle-emote-btn").forEach((b) => {
+    b.addEventListener("click", () => {
+      const raw = (b as HTMLButtonElement).dataset.battleEmote;
+      if (!raw || !isBattleEmoteId(raw)) return;
+      const now = Date.now();
+      if (now - lastBattleEmoteLocal < BATTLE_EMOTE_CLIENT_COOLDOWN_MS) {
+        appendLog(UI.battleEmoteTooFast);
+        return;
+      }
+      lastBattleEmoteLocal = now;
+      appendEmoteYou(raw);
+      s.emit("battle_emote", { key: raw });
+    });
+  });
 
   root.querySelectorAll(".move-btn").forEach((b) => {
     b.addEventListener("click", () => {

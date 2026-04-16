@@ -138,6 +138,11 @@
 - **投降**：立即判對方獲勝。
 - **斷線**：房主斷線會解散房間；訪客斷線房主可留在等待或依事件回到養成（見伺服器 `disconnect`）。
 
+### 2.9 對戰快捷語（非自由聊天）
+
+- 對戰中可送 **預設句子**（伺服器白名單 `key`），以 **`battle_emote`** 送達對方，對方收到 **`battle_emote`** 顯示在戰報區；**不支援自訂長文**，以免濫用與審核成本。
+- **節流**：同一連線約 **2.2 秒** 內最多送一次（伺服器與客戶端皆有限制）。
+
 ---
 
 ## 三、想改平衡時
@@ -172,12 +177,12 @@
 
 | 變更類型 | 請同步檢查／更新 |
 |----------|------------------|
-| **Socket 事件名、payload、流程**（例：`linked`、`list_open_rooms`、`open_rooms_changed`、`create_room` 的 `roomTitle`） | `AGENTS.md` 的 **Socket 協定**（Client → Server / Server → Client） |
+| **Socket 事件名、payload、流程**（例：`linked`、`battle_emote`、`list_open_rooms`、`open_rooms_changed`、`create_room` 的 `roomTitle`） | `AGENTS.md` 的 **Socket 協定**（Client → Server / Server → Client） |
 | **建置／環境變數** 影響對戰或回饋 | `AGENTS.md` 環境變數表、`deploy.env.example` |
 | **關閉或落實** `docs/IMPROVEMENT_BACKLOG.md` 裡某條待辦 | 該 backlog 檔案（對照區與待辦區）；若屬版本里程碑亦請更新 **`docs/ROADMAP_TASKS.md`** 勾選 |
 | **僅改數值或敘述**、協定不變 | 僅需本檔與程式一致；`AGENTS.md` 若無協定描述可不改 |
 | **`phase` 或照顧冷卻常數**（`src/main.ts`） | 本檔 **§1.6** 若影響玩家體感須同步一句 |
-| **對戰 MP、物種係數、`battle_state` / `round_result` 欄位** | 本檔 **第 2.5～2.7 節**、`AGENTS.md` Socket 協定 |
+| **對戰 MP、物種係數、`battle_state` / `round_result`、快捷語** | 本檔 **第 2.5～2.7、2.9 節**、`AGENTS.md` Socket 協定 |
 | **發布版本號**（頂欄、`GET /version`） | 根目錄 **`package.json` 的 `version`**（與本檔或 `AGENTS.md`、`.cursor/rules` 實質同批更新時預設 **patch +1**）；遞增後以**中文**撰寫 `git commit` 並 `git push`（見 `AGENTS.md` 與 `.cursor/rules/pocket-pet-game-rules-sync.mdc`） |
 
 **單一來源**：玩家可讀的長篇規則以 **本檔** 為主；`AGENTS.md` 保持精簡索引與**協定／路徑**，避免在兩處複製大段重複規則文字。

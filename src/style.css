@@ -832,12 +832,51 @@ h1 {
   cursor: not-allowed;
 }
 
+.battle-emote-panel {
+  margin-top: 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(255, 255, 255, 0.35);
+  overflow: hidden;
+}
+
+.battle-emote-summary {
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--muted);
+  list-style: none;
+}
+
+.battle-emote-summary::-webkit-details-marker {
+  display: none;
+}
+
+.battle-emote-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 8px 10px;
+  justify-content: center;
+}
+
+.battle-emote-btn {
+  font-size: 0.68rem !important;
+  padding: 5px 8px !important;
+}
+
+.log .log-line--emote {
+  color: var(--accent-dim);
+  font-weight: 600;
+}
+
 .log {
   font-size: 0.76rem;
   line-height: 1.5;
   color: var(--text-soft);
   margin-top: 12px;
-  max-height: 76px;
+  max-height: 96px;
   overflow-y: auto;
   padding: 8px 10px;
   border-radius: var(--radius-sm);
@@ -2176,6 +2215,19 @@ html[data-theme="retro"] .battle-hint {
   color: #fcd34d;
 }
 
+html[data-theme="retro"] .battle-emote-panel {
+  background: rgba(15, 31, 22, 0.65);
+  border-color: rgba(52, 211, 153, 0.22);
+}
+
+html[data-theme="retro"] .battle-emote-summary {
+  color: #86efac;
+}
+
+html[data-theme="retro"] .log .log-line--emote {
+  color: #fde047;
+}
+
 html[data-theme="retro"] .modal-overlay {
   background: rgb(0 10 6 / 0.65);
 }
@@ -2521,6 +2573,16 @@ html[data-theme="minimal"] .status-pill {
 
 html[data-theme="minimal"] .toast,
 html[data-theme="minimal"] .battle-hint {
+  color: #0a0a0a;
+}
+
+html[data-theme="minimal"] .battle-emote-panel {
+  border: 2px solid #0a0a0a;
+  background: #fff;
+  border-radius: 8px;
+}
+
+html[data-theme="minimal"] .battle-emote-summary {
   color: #0a0a0a;
 }
 

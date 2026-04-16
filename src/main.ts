@@ -1013,7 +1013,7 @@ function renderLobby(
       <div class="row stack-gap-md">
         <button type="button" class="btn btn-primary" id="btn-host">${UI.createHost}</button>
       </div>
-      <input class="field" id="room-input" maxlength="8" autocomplete="off" placeholder="${UI.roomPlaceholder}" />
+      <input class="field" id="room-input" maxlength="4" autocomplete="off" placeholder="${UI.roomPlaceholder}" />
       <div class="row mt-gap">
         <button type="button" class="btn btn-secondary" id="btn-join">${UI.join}</button>
       </div>
@@ -1076,7 +1076,7 @@ function renderLobby(
 
   const attemptJoinRoom = (code: string) => {
     const c = code.trim().toUpperCase();
-    if (c.length < 4) {
+    if (c.length !== 4) {
       toast.textContent = UI.roomPlaceholder;
       toast.classList.remove("hidden");
       return;
@@ -1806,7 +1806,7 @@ function boot() {
   const root = $("#view-root");
   const params = new URLSearchParams(location.search);
   const preJoin = params.get("join")?.toUpperCase().trim();
-  if (preJoin && preJoin.length >= 4) {
+  if (preJoin && preJoin.length === 4) {
     renderLobby(root, { lockForAutoJoin: true });
     window.setTimeout(() => {
       const input = document.getElementById("room-input") as HTMLInputElement | null;

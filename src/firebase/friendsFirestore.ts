@@ -1,0 +1,272 @@
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  query,
+  runTransaction,
+  serverTimestamp,
+  updateDoc,
+  where,
+  writeBatch,
+  type Firestore,
+  type Unsubscribe,
+} from "firebase/firestore";
+
+const FRIEND_CODE_ALPH =
+  "23456789ABCDEFGHJKMNPQRSTVWXYZ";
+
+export type UserProfileDoc = {
+  displayName: string;
+  friendCode: string;
+};
+
+export function pairFriendDocId(uidA: string, uidB: string): string {
+  return uidA < uidB ? `${uidA}_${uidB}` : `${uidB}_${uidA}`;
+}
+
+export async function ensureUserProfile(
+  db: Firestore,
+  uid: string,
+  displayName: string,
+): Promise<UserProfileDoc> {
+  const pref = doc(db, "profiles", uid);
+  const snap = await getDoc(pref);
+  if (snap.exists()) {
+    const d = snap.data();
+    return {
+      displayName: String(d.displayName || displayName).slice(0, 32),
+      friendCode: String(d.friendCode || ""),
+    };
+  }
+  const safeName = displayName.trim().slice(0, 32) || "\u73a9\u5bb6";
+  for (let attempt = 0; attempt < 48; attempt++) {
+    let code = "";
+    for (let i = 0; i < 8; i++) {
+      code += FRIEND_CODE_ALPH[
+        Math.floor(Math.random() * FRIEND_CODE_ALPH.length)
+      ]!;
+    }
+    try {
+      await runTransaction(db, async (transaction) => {
+        const cref = doc(db, "friend_codes", code);
+        const cSnap = await transaction.get(cref);
+        if (cSnap.exists()) throw new Error("collision");
+        transaction.set(cref, { uid });
+        transaction.set(pref, {
+          displayName: safeName,
+          friendCode: code,
+          updatedAt: serverTimestamp(),
+        });
+      });
+      return { displayName: safeName, friendCode: code };
+    } catch {
+      /* retry new code */
+    }
+  }
+  throw new Error("friend_code_exhausted");
+}
+
+export async function updateProfileDisplayName(
+  db: Firestore,
+  uid: string,
+  name: string,
+): Promise<void> {
+  const pref = doc(db, "profiles", uid);
+  await updateDoc(pref, {
+    displayName: name.trim().slice(0, 32),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function resolveUidFromFriendCode(
+  db: Firestore,
+  rawCode: string,
+): Promise<string> {
+  const code = rawCode.trim().toUpperCase().replace(/[^0-9A-Z]/g, "");
+  if (code.length < 6) throw new Error("code_short");
+  const cref = doc(db, "friend_codes", code);
+  const snap = await getDoc(cref);
+  if (!snap.exists()) throw new Error("code_unknown");
+  const uid = String(snap.data()?.uid || "");
+  if (!uid) throw new Error("code_unknown");
+  return uid;
+}
+
+export async function sendFriendRequest(
+  db: Firestore,
+  fromUid: string,
+  toUid: string,
+  fromDisplayName: string,
+): Promise<void> {
+  if (fromUid === toUid) throw new Error("self");
+  const pair = pairFriendDocId(fromUid, toUid);
+  const fSnap = await getDoc(doc(db, "friends", pair));
+  if (fSnap.exists()) throw new Error("already_friends");
+  const dupA = query(
+    collection(db, "friend_requests"),
+    where("fromUid", "==", fromUid),
+    where("toUid", "==", toUid),
+    where("status", "==", "pending"),
+  );
+  if (!(await getDocs(dupA)).empty) throw new Error("dup_pending");
+  const dupB = query(
+    collection(db, "friend_requests"),
+    where("fromUid", "==", toUid),
+    where("toUid", "==", fromUid),
+    where("status", "==", "pending"),
+  );
+  if (!(await getDocs(dupB)).empty) throw new Error("reverse_pending");
+  await addDoc(collection(db, "friend_requests"), {
+    fromUid,
+    toUid,
+    fromDisplayName: fromDisplayName.trim().slice(0, 32),
+    status: "pending",
+    createdAt: serverTimestamp(),
+  });
+}
+
+export async function acceptFriendRequest(
+  db: Firestore,
+  requestId: string,
+  toUid: string,
+  toDisplayName: string,
+): Promise<void> {
+  const reqRef = doc(db, "friend_requests", requestId);
+  const reqSnap = await getDoc(reqRef);
+  if (!reqSnap.exists()) throw new Error("missing");
+  const d = reqSnap.data();
+  if (d.toUid !== toUid) throw new Error("forbidden");
+  if (d.status !== "pending") throw new Error("not_pending");
+  const fromUid = String(d.fromUid);
+  const pair = pairFriendDocId(fromUid, toUid);
+  const fromName = String(d.fromDisplayName || "");
+  const batch = writeBatch(db);
+  batch.delete(reqRef);
+  const sorted = [fromUid, toUid].sort();
+  batch.set(doc(db, "friends", pair), {
+    members: sorted,
+    nicknames: {
+      [fromUid]: fromName,
+      [toUid]: toDisplayName.trim().slice(0, 32),
+    },
+    since: serverTimestamp(),
+  });
+  await batch.commit();
+}
+
+export async function rejectFriendRequest(
+  db: Firestore,
+  requestId: string,
+  uid: string,
+): Promise<void> {
+  const reqRef = doc(db, "friend_requests", requestId);
+  const reqSnap = await getDoc(reqRef);
+  if (!reqSnap.exists()) return;
+  const d = reqSnap.data();
+  if (d.toUid !== uid) throw new Error("forbidden");
+  await deleteDoc(reqRef);
+}
+
+export async function cancelOutgoingRequest(
+  db: Firestore,
+  requestId: string,
+  fromUid: string,
+): Promise<void> {
+  const reqRef = doc(db, "friend_requests", requestId);
+  const reqSnap = await getDoc(reqRef);
+  if (!reqSnap.exists()) return;
+  const d = reqSnap.data();
+  if (d.fromUid !== fromUid) throw new Error("forbidden");
+  await deleteDoc(reqRef);
+}
+
+export async function removeFriendship(
+  db: Firestore,
+  pairId: string,
+  myUid: string,
+): Promise<void> {
+  const fref = doc(db, "friends", pairId);
+  const snap = await getDoc(fref);
+  if (!snap.exists()) return;
+  const members = snap.data().members as string[] | undefined;
+  if (!Array.isArray(members) || !members.includes(myUid)) {
+    throw new Error("forbidden");
+  }
+  await deleteDoc(fref);
+}
+
+export function subscribeIncomingRequests(
+  db: Firestore,
+  toUid: string,
+  onRows: (
+    rows: { id: string; fromUid: string; fromDisplayName: string }[],
+  ) => void,
+): Unsubscribe {
+  const q = query(
+    collection(db, "friend_requests"),
+    where("toUid", "==", toUid),
+    where("status", "==", "pending"),
+  );
+  return onSnapshot(q, (snap) => {
+    const rows: { id: string; fromUid: string; fromDisplayName: string }[] = [];
+    snap.forEach((d) => {
+      const x = d.data();
+      rows.push({
+        id: d.id,
+        fromUid: String(x.fromUid),
+        fromDisplayName: String(x.fromDisplayName || ""),
+      });
+    });
+    onRows(rows);
+  });
+}
+
+export function subscribeOutgoingRequests(
+  db: Firestore,
+  fromUid: string,
+  onRows: (rows: { id: string; toUid: string }[]) => void,
+): Unsubscribe {
+  const q = query(
+    collection(db, "friend_requests"),
+    where("fromUid", "==", fromUid),
+    where("status", "==", "pending"),
+  );
+  return onSnapshot(q, (snap) => {
+    const rows: { id: string; toUid: string }[] = [];
+    snap.forEach((d) => {
+      const x = d.data();
+      rows.push({ id: d.id, toUid: String(x.toUid) });
+    });
+    onRows(rows);
+  });
+}
+
+export function subscribeFriends(
+  db: Firestore,
+  uid: string,
+  onRows: (
+    rows: { pairId: string; otherUid: string; label: string }[],
+  ) => void,
+): Unsubscribe {
+  const q = query(
+    collection(db, "friends"),
+    where("members", "array-contains", uid),
+  );
+  return onSnapshot(q, (snap) => {
+    const rows: { pairId: string; otherUid: string; label: string }[] = [];
+    snap.forEach((d) => {
+      const m = d.data().members as string[] | undefined;
+      const nick = d.data().nicknames as Record<string, string> | undefined;
+      if (!Array.isArray(m)) return;
+      const other = m.find((x) => x !== uid) || "";
+      const label =
+        (other && nick?.[other]) || other.slice(0, 8) || "\u53cb\u4eba";
+      rows.push({ pairId: d.id, otherUid: other, label });
+    });
+    onRows(rows);
+  });
+}

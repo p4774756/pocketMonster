@@ -605,6 +605,129 @@ h1 {
   white-space: nowrap;
 }
 
+/* ----- lobby: Firebase friends (optional) ----- */
+.lobby-friends {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--edge);
+}
+
+.lobby-friends-summary {
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--indigo);
+  list-style: none;
+}
+
+.lobby-friends-summary::-webkit-details-marker {
+  display: none;
+}
+
+.lobby-friends-hint {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.lobby-friends-inner {
+  margin-top: 10px;
+  padding: 12px 12px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--edge);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.lobby-friends-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.lobby-friends-row--wrap .field {
+  flex: 1 1 140px;
+  min-width: 120px;
+}
+
+.lobby-friends-label {
+  flex: 0 0 auto;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.lobby-friends-actions {
+  gap: 10px;
+}
+
+.lobby-friends-meta {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+.lobby-friends-code {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--indigo);
+}
+
+.lobby-friends-sub {
+  margin: 12px 0 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.lobby-friends-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: min(28vh, 160px);
+  overflow-y: auto;
+}
+
+.lobby-friends-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--edge);
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.lobby-friends-item-label {
+  font-size: 0.8rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lobby-friends-item-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+}
+
+.lobby-friends-empty {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.lobby-friends-toast {
+  margin-top: 10px;
+}
+
 .btn--compact {
   flex: 0 0 auto;
   min-width: auto;

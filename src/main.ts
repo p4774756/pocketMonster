@@ -49,6 +49,10 @@ import "./fonts.css";
 import "./style.css";
 import { getGameRulesPlayerHtml } from "./gameRulesContent";
 import { mountThemeBar } from "./theme";
+import {
+  clearLobbyFirebaseFriendsCleanup,
+  mountLobbyFirebaseFriends,
+} from "./lobbyFirebaseFriends";
 
 type Move = "strike" | "guard" | "charge";
 
@@ -991,6 +995,7 @@ function renderCare(root: HTMLElement) {
   battleFoeSnapshot = null;
   detachOpenRoomsLiveListener();
   clearLobbySocketGuardTimer();
+  clearLobbyFirebaseFriendsCleanup();
   const hint = consumeCareFlash();
   let state: PetState = loadPet();
   const morphToast = consumeMorphToast();
@@ -1434,6 +1439,7 @@ function renderLobby(
   clearCareAmbientTimer();
   battleFoeSnapshot = null;
   clearLobbySocketGuardTimer();
+  clearLobbyFirebaseFriendsCleanup();
   const pet = loadPet();
   if (!pet.alive) {
     flashCare(UI.deadPetBattleBlocked);
@@ -1660,6 +1666,7 @@ function renderLobby(
 
   fetchOpenRooms();
   attachOpenRoomsLiveListener(fetchOpenRooms);
+  mountLobbyFirebaseFriends(root);
 }
 
 function renderWaiting(
@@ -1668,6 +1675,7 @@ function renderWaiting(
   isHost: boolean,
   roomTitle = "",
 ) {
+  clearLobbyFirebaseFriendsCleanup();
   clearCareAmbientTimer();
   phase = "waiting";
   detachOpenRoomsLiveListener();
@@ -1753,6 +1761,7 @@ function renderWaiting(
 }
 
 function renderBattle(root: HTMLElement) {
+  clearLobbyFirebaseFriendsCleanup();
   clearCareAmbientTimer();
   phase = "battle";
   detachOpenRoomsLiveListener();

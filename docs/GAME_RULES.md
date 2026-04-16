@@ -143,6 +143,13 @@
 - 對戰中可送 **預設句子**（伺服器白名單 `key`），以 **`battle_emote`** 送達對方，對方收到 **`battle_emote`** 顯示在戰報區；**不支援自訂長文**，以免濫用與審核成本。
 - **節流**：同一連線約 **2.2 秒** 內最多送一次（伺服器與客戶端皆有限制）。
 
+### 2.10 好友（Firebase，選用）
+
+- **僅在**建置時已設定 **`VITE_FIREBASE_*`** 六個變數時，連線大廳會顯示「好友（Firebase）」區塊；否則僅簡短說明，不影響匿名房間碼對戰。
+- 使用 **Firebase Authentication（Email／密碼）** 註冊／登入；每位使用者會取得一組 **好友代碼**（8 碼英數，大寫），可把代碼給對方，對方輸入後送出 **好友邀請**；對方在大廳 **接受** 或 **拒絕**。雙方成為好友後可在大廳檢視名單或 **移除** 關係。
+- 好友與邀請資料存在 **Cloud Firestore**（規則與索引見倉庫 `docs/firebase-friends.rules`、`docs/firebase-friends.indexes.json` 與 **`docs/FIREBASE_FRIENDS.md`**）。**養成進度仍只存本機 `localStorage`**，與 Firebase 帳號無自動同步。
+- **對戰配對**仍依本檔第 2.1 節：Socket 房間碼與 Render（或同源）後端；Firebase **不**負責對戰連線。
+
 ---
 
 ## 三、想改平衡時
@@ -164,6 +171,7 @@
 | 寵物 PNG 批次壓縮 | `scripts/optimize-pet-pngs.mjs`（`npm run optimize:pets`） |
 | 圖鑑介面 | `src/main.ts` `renderSpeciesDex`：物種**分頁**切換；貓／狗屬性變體為**摺疊** `<details>`；成長／姿勢列可**橫向捲動**（`src/style.css`）。雷／水貓示意檔見 `dexCatVolt*`／`dexCatAqua*`（`src/pet.ts`）；狗四屬 Canvas 見 `data-dex-dog-element`（`src/canvasDog.ts`） |
 | 對戰結算、房間、計時 | `server/index.js` |
+| Firebase 好友（選用 Auth + Firestore） | `src/firebase/`、`src/lobbyFirebaseFriends.ts`、`docs/FIREBASE_FRIENDS.md`、`docs/firebase-friends.rules` |
 | 專案架構給 agent | `AGENTS.md` |
 | 對外說明（GitHub 首頁） | 根目錄 `README.md`；可替換截圖見 `docs/readme/IMAGES.md` |
 | 產品路線與任務勾選 | `docs/ROADMAP_TASKS.md`（與 `docs/IMPROVEMENT_BACKLOG.md` 互補） |
@@ -179,6 +187,7 @@
 |----------|------------------|
 | **Socket 事件名、payload、流程**（例：`linked`、`battle_emote`、`list_open_rooms`、`open_rooms_changed`、`create_room` 的 `roomTitle`） | `AGENTS.md` 的 **Socket 協定**（Client → Server / Server → Client） |
 | **建置／環境變數** 影響對戰或回饋 | `AGENTS.md` 環境變數表、`deploy.env.example` |
+| **Firebase 好友**（`VITE_FIREBASE_*`、規則或資料模型） | `docs/FIREBASE_FRIENDS.md`、`docs/firebase-friends.rules`（及索引 JSON）、`AGENTS.md` 環境變數表、`deploy.env.example` |
 | **關閉或落實** `docs/IMPROVEMENT_BACKLOG.md` 裡某條待辦 | 該 backlog 檔案（對照區與待辦區）；若屬版本里程碑亦請更新 **`docs/ROADMAP_TASKS.md`** 勾選 |
 | **僅改數值或敘述**、協定不變 | 僅需本檔與程式一致；`AGENTS.md` 若無協定描述可不改 |
 | **`phase` 或照顧冷卻常數**（`src/main.ts`） | 本檔 **§1.6** 若影響玩家體感須同步一句 |

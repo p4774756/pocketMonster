@@ -35,6 +35,7 @@
 | `public/pets/` | 精靈圖等靜態資源（idle 依成長階段命名）。 |
 | `docs/GAME_RULES.md` | **遊戲規則**：養成、孵化、對戰出招與傷害、勝負條件（給玩家／維護者）。 |
 | `docs/ARCHITECTURE.md` | **系統架構圖**（Mermaid）：前後端分層、主要模組、Socket 流程；協定細節仍以本檔 Socket 節為準。 |
+| `docs/FIREBASE_FRIENDS.md` | **選用**：Firebase Auth + Firestore 好友代碼／邀請／名單；規則範例 `docs/firebase-friends.rules`。 |
 | `vite.config.ts` | 開發時把 `/socket.io` **proxy** 到 `localhost:3000`。 |
 | `render.yaml` | Render.com Web Service 範例（僅 API、不掛靜態）。 |
 | `.github/workflows/deploy-pages.yml` | GitHub Pages 靜態部署；建置需 `SOCKET_SERVER_URL` secret。 |
@@ -64,11 +65,17 @@ npm run dev
 | `VITE_SOCKET_URL` | 前端建置／執行 | **生產或分離部署時必填**（完整 origin，無尾隨 `/`）。見 `deploy.env.example`。開發留空則連同源並走 proxy。 |
 | `VITE_FEEDBACK_URL` | 前端建置 | 選填。意見回饋彈窗的「開啟回饋表單」連結（建議 `https:`）。 |
 | `VITE_FEEDBACK_EMAIL` | 前端建置 | 選填。`mailto` 收件信箱。 |
+| `VITE_FIREBASE_API_KEY` | 前端建置 | 選填。與下列五項**皆**設定時，連線大廳顯示 Firebase 好友面板（Email／密碼、Firestore 邀請與名單）。見 **`docs/FIREBASE_FRIENDS.md`**。 |
+| `VITE_FIREBASE_AUTH_DOMAIN` | 前端建置 | 選填。例：`your-app.firebaseapp.com`。 |
+| `VITE_FIREBASE_PROJECT_ID` | 前端建置 | 選填。Firebase 專案 ID。 |
+| `VITE_FIREBASE_STORAGE_BUCKET` | 前端建置 | 選填。例：`your-app.appspot.com`（須與主控台 Web 設定一致）。 |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | 前端建置 | 選填。 |
+| `VITE_FIREBASE_APP_ID` | 前端建置 | 選填。 |
 | `PORT` | `server/index.js` | HTTP 埠，預設 `3000`。 |
 | `NODE_ENV=production` | 伺服器 | 生產模式。 |
 | `SERVE_STATIC=0` | 伺服器 | 僅 API：不從 `dist` 提供靜態（Render 上的 API 服務用）。 |
 
-型別：`src/vite-env.d.ts` 宣告了 `VITE_SOCKET_URL` 與選填的 `VITE_FEEDBACK_*`。
+型別：`src/vite-env.d.ts` 宣告了 `VITE_SOCKET_URL`、選填的 `VITE_FEEDBACK_*` 與選填的 **`VITE_FIREBASE_*`**（六項齊備才啟用大廳 Firebase 好友）。
 
 ## Socket 協定（客戶端 ↔ `server/index.js`）
 

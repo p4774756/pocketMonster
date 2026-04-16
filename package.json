@@ -1,7 +1,7 @@
 {
   "name": "pocket-pet-battle",
   "private": true,
-  "version": "0.2.24",
+  "version": "0.2.25",
   "type": "module",
   "scripts": {
     "dev": "concurrently -k \"npm:dev:server\" \"npm:dev:client\"",
@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "express": "^4.21.2",
+    "firebase": "^11.10.0",
     "marked": "^18.0.0",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1"

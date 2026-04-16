@@ -10,7 +10,7 @@
 
 - **版號**：以根目錄 **`package.json` 的 `version`** 為準（與頂欄、`GET /version` 同源），勿在此檔另寫死數字。
 - **已落地（養成／對戰）**：首次**進化分支**（`morphTier`／`morphKey`；**`cat_volt` 雷貓專用 `public/pets/cat-volt-*.png` 立繪**、水貓 `cat-aqua-*`；**狗 Canvas 雷／水／火／毒** 四屬光點與圖鑑示意；`doodoo` 大便怪 Canvas）；`pvpWins`／`careQualityEma`／`totalIllVirtDays`、勝場結算、`create_room`／`join_room` 寵物快照可選 **`morphKey`**、對戰畫面顯示對手形態；**夜間本機時段結算**與養成畫面**開關燈**（`lightsOn`）見 **`GAME_RULES.md` 第 1.7～1.8 節**；實作見 **`src/pet.ts`**、**`src/canvasPoop.ts`**、**`src/canvasDog.ts`**、**`src/main.ts`**、**`server/index.js`**（`parsePetSnap`）。
-- **仍屬規劃／待辦**：形態專屬美術、戰鬥本場 log、`server/index.js` 模組化、**帳號制社交**（真實好友、聊天、代友照護寵物須後端身分與資料持久化）等——見 **`ROADMAP_TASKS.md`** 未勾選項。（根目錄 **README** 已補。）
+- **仍屬規劃／待辦**：形態專屬美術、戰鬥本場 log、`server/index.js` 模組化、站內聊天／代友照護等——見 **`ROADMAP_TASKS.md`** 未勾選項。**選用 Firebase 好友**（代碼加友、邀請、名單；不含對戰 Socket、不含雲端養成）已見 **`docs/FIREBASE_FRIENDS.md`**。（根目錄 **README** 已補。）
 
 ---
 

@@ -51,10 +51,10 @@ service cloud.firestore {
            否則 onSnapshot 會整體 permission-denied。訊息文件須含 memberUids（與父層 friends.members 一致，由客戶端寫入時複製）。
            createdAt 使用 serverTimestamp() 時，keys() 可能不含 createdAt，故 hasOnly 分兩種寫法。
            text.size() 為 UTF-8 位元組數。 */
-        /* 使用 hasAny：部分環境下 `request.auth.uid in list` 對陣列成員比對較不穩定。 */
+        /* 與查詢 `where memberUids array-contains request.auth.uid` 對齊，僅用 `in` 成員判斷。 */
         allow read: if request.auth != null
           && resource.data.memberUids is list
-          && resource.data.memberUids.hasAny([request.auth.uid]);
+          && request.auth.uid in resource.data.memberUids;
         allow create: if request.auth != null
           && request.resource.data.keys().hasAll(['fromUid', 'text', 'memberUids'])
           && (

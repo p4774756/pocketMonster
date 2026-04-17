@@ -147,7 +147,7 @@
 
 - **僅在**建置時已設定 **`VITE_FIREBASE_*`** 六個變數時，可從養成畫面進入獨立 **「好友（Firebase）」** 頁；未設定時該頁僅顯示簡短說明，不影響匿名房間碼對戰。
 - 使用 **Firebase Authentication（Email／密碼）** 註冊／登入；每位使用者會取得一組 **好友代碼**（**4** 碼英文與數字、大寫），可把代碼給對方，對方輸入後送出 **好友邀請**；對方在好友頁 **接受** 或 **拒絕**。雙方成為好友後可檢視名單或 **移除** 關係。（舊版曾發過 **8** 碼者仍可輸入原碼加入。）
-- **好友一對一文字聊天**（選用）：僅限**已成好友**的雙方，訊息存在 **`friends/{pairId}/messages`**（每筆含 **`memberUids`** 與父層好友關係一致，供安全規則在**集合查詢**下驗證讀取；前端每則最多 **500** 字元；Firestore 規則以 UTF-8 位元組上限防濫用，見 `docs/firebase-friends.rules`；客戶端另有送出節流）。**連線對戰**仍僅支援 **預設快捷語**（見 **2.9**），不提供對戰自由長文聊天。
+- **好友一對一文字聊天**（選用）：僅限**已成好友**的雙方，訊息存在 **`friends/{pairId}/messages`**（每筆含 **`memberUids`** 與父層好友關係一致；讀取以 **`array-contains` + `limit`** 過濾，時間序由前端依 `createdAt` 排序，見 **`docs/FIREBASE_FRIENDS.md`**；前端每則最多 **500** 字元；Firestore 規則以 UTF-8 位元組上限防濫用，見 `docs/firebase-friends.rules`；客戶端另有送出節流）。**連線對戰**仍僅支援 **預設快捷語**（見 **2.9**），不提供對戰自由長文聊天。
 - 好友與邀請資料存在 **Cloud Firestore**（規則與索引見倉庫 `docs/firebase-friends.rules`、`docs/firebase-friends.indexes.json` 與 **`docs/FIREBASE_FRIENDS.md`**）。**養成進度仍只存本機 `localStorage`**，與 Firebase 帳號無自動同步。  
 - 若需將**既有 8 碼**帳號改為 **4 碼**（顯示與加友代碼），須由維護者在 Firestore **手動遷移**，步驟見 **`docs/FIREBASE_FRIENDS.md`** 第六節。
 - **對戰配對**仍依本檔第 2.1 節：Socket 房間碼與 Render（或同源）後端；Firebase **不**負責對戰連線。

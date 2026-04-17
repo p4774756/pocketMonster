@@ -292,21 +292,28 @@ export function mountFirebaseFriends(root: HTMLElement): void {
     chatTitleEl.textContent = label;
     chatPanel.classList.remove("hidden");
     chatPanel.setAttribute("aria-hidden", "false");
-    friendChatUnsub = subscribeFriendChatMessages(db, pairId, (rows) => {
-      chatMessagesEl.replaceChildren();
-      for (const m of rows) {
-        const rowEl = document.createElement("div");
-        rowEl.className =
-          "lobby-friends-chat-msg" +
-          (m.fromUid === u.uid ? " lobby-friends-chat-msg--me" : "");
-        const bubble = document.createElement("div");
-        bubble.className = "lobby-friends-chat-msg-bubble";
-        bubble.textContent = m.text;
-        rowEl.append(bubble);
-        chatMessagesEl.append(rowEl);
-      }
-      chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
-    });
+    friendChatUnsub = subscribeFriendChatMessages(
+      db,
+      pairId,
+      (rows) => {
+        chatMessagesEl.replaceChildren();
+        for (const m of rows) {
+          const rowEl = document.createElement("div");
+          rowEl.className =
+            "lobby-friends-chat-msg" +
+            (m.fromUid === u.uid ? " lobby-friends-chat-msg--me" : "");
+          const bubble = document.createElement("div");
+          bubble.className = "lobby-friends-chat-msg-bubble";
+          bubble.textContent = m.text;
+          rowEl.append(bubble);
+          chatMessagesEl.append(rowEl);
+        }
+        chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+      },
+      (err) => {
+        setToast(fbToast, mapFriendErr(err), true);
+      },
+    );
   };
 
   const trySendFriendChat = async () => {
@@ -374,7 +381,8 @@ export function mountFirebaseFriends(root: HTMLElement): void {
   };
 
   const paintUser = (email: string, code: string, dname: string) => {
-    clearFriendChat();
+    /* 勿在此呼叫 clearFriendChat：onAuthStateChanged 會因 token 更新等多次觸發，
+       若每次 paintUser 都清聊天，會卸載 onSnapshot，雙方畫面會永遠看不到訊息。登出見 paintGuest。 */
     setAddFriendBusy(false);
     setUserSaveNameBusy(false);
     setGuestAuthBusy(false);

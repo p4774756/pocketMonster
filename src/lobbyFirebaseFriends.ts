@@ -63,6 +63,10 @@ const S = {
   errReverse:
     "\u5c0d\u65b9\u5df2\u5411\u4f60\u767c\u8d77\u9080\u8acb\uff0c\u8acb\u5230\u300c\u6536\u5230\u7684\u9080\u8acb\u300d\u56de\u8986",
   errCode: "\u67e5\u7121\u6b64\u4ee3\u78bc",
+  errFriendFirestore:
+    "\u7121\u6cd5\u8b80\u5beb\u597d\u53cb\u9080\u8acb\u8cc7\u6599\uff08Firestore\uff09\u3002\u8acb\u78ba\u8a8d\u5df2\u767b\u5165\uff0c\u4e14\u898f\u5247\u5df2\u4f9d docs/firebase-friends.rules \u767c\u5e03\u3002",
+  errFriendIndex:
+    "\u9700\u5728 Firestore \u5efa\u7acb\u8907\u5408\u7d22\u5f15\u3002\u8acb\u67e5\u4e3b\u63a7\u53f0\u932f\u8aa4\u9023\u7d50\u6216 docs/firebase-friends.indexes.json \u3002",
   errAuth: "\u5e33\u865f\u6216\u5bc6\u78bc\u4e0d\u6b63\u78ba",
   errWeakPassword: "\u5bc6\u78bc\u81f3\u5c11 6 \u4f4d",
   okInvite: "\u5df2\u767c\u9001\u9080\u8acb",
@@ -115,6 +119,16 @@ function mapProfileInitErr(e: unknown): string {
 }
 
 function mapFriendErr(e: unknown): string {
+  const code = errCode(e);
+  if (code === "permission-denied") return S.errFriendFirestore;
+  if (code === "unavailable" || code === "deadline-exceeded") return S.errNetwork;
+  if (code === "resource-exhausted") return S.errTooManyRequests;
+  if (code === "failed-precondition") {
+    const msg =
+      e && typeof e === "object" && "message" in e ? String((e as Error).message) : "";
+    if (/index/i.test(msg)) return S.errFriendIndex;
+    return S.errFriendFirestore;
+  }
   const m = e && typeof e === "object" && "message" in e ? String((e as Error).message) : "";
   if (m === "self") return S.errSelf;
   if (m === "already_friends") return S.errAlready;
@@ -216,6 +230,7 @@ export function mountLobbyFirebaseFriends(root: HTMLElement): void {
   const dnameIn = qs("#fb-dname") as HTMLInputElement;
   const btnSaveName = qs("#fb-save-name") as HTMLButtonElement;
   const peerCodeIn = qs("#fb-peer-code") as HTMLInputElement;
+  const btnAdd = qs("#fb-add") as HTMLButtonElement;
   const inList = qs("#fb-in");
   const outList = qs("#fb-out");
   const friendsList = qs("#fb-friends");
@@ -251,7 +266,14 @@ export function mountLobbyFirebaseFriends(root: HTMLElement): void {
     if (busy) setToast(fbToast, S.authWorking, true);
   };
 
+  const setAddFriendBusy = (busy: boolean) => {
+    btnAdd.disabled = busy;
+    peerCodeIn.disabled = busy;
+    if (busy) setToast(fbToast, S.authWorking, true);
+  };
+
   const paintGuest = () => {
+    setAddFriendBusy(false);
     setUserSaveNameBusy(false);
     setGuestAuthBusy(false);
     clearDataSubs();
@@ -261,6 +283,7 @@ export function mountLobbyFirebaseFriends(root: HTMLElement): void {
   };
 
   const paintUser = (email: string, code: string, dname: string) => {
+    setAddFriendBusy(false);
     setUserSaveNameBusy(false);
     setGuestAuthBusy(false);
     setToast(fbToast, "", false);
@@ -478,8 +501,8 @@ export function mountLobbyFirebaseFriends(root: HTMLElement): void {
 
   qs("#fb-add").addEventListener("click", async () => {
     const u = auth.currentUser;
-    if (!u) return;
-    setToast(fbToast, "", false);
+    if (!u || btnAdd.disabled) return;
+    setAddFriendBusy(true);
     try {
       const target = await resolveUidFromFriendCode(db, peerCodeIn.value);
       await sendFriendRequest(
@@ -491,7 +514,10 @@ export function mountLobbyFirebaseFriends(root: HTMLElement): void {
       peerCodeIn.value = "";
       setToast(fbToast, S.okInvite, true);
     } catch (e) {
+      if (import.meta.env.DEV) console.error("[firebase friends] send invite", e);
       setToast(fbToast, mapFriendErr(e), true);
+    } finally {
+      setAddFriendBusy(false);
     }
   });
 

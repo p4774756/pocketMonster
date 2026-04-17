@@ -2,6 +2,12 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    /** 用於 friends 子集合：讀寫前須確認配對文件存在且目前使用者為 members。 */
+    function isFriendPairMember(pairId) {
+      let fd = get(/databases/$(database)/documents/friends/$(pairId));
+      return fd.exists && request.auth.uid in fd.data.members;
+    }
+
     match /profiles/{userId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null && request.auth.uid == userId;
@@ -47,15 +53,20 @@ service cloud.firestore {
       allow update: if false;
 
       match /messages/{msgId} {
-        allow read: if request.auth != null
-          && request.auth.uid in get(/databases/$(database)/documents/friends/$(pairId)).data.members;
+        /* createdAt 使用 serverTimestamp() 時，規則評估未必把該欄算進 keys()，勿強制 hasAll('createdAt')。
+           text.size() 為 UTF-8 位元組數（非字元數），須大於 500 才能涵蓋常見中文／emoji。 */
+        allow read: if request.auth != null && isFriendPairMember(pairId);
         allow create: if request.auth != null
-          && request.auth.uid in get(/databases/$(database)/documents/friends/$(pairId)).data.members
+          && isFriendPairMember(pairId)
           && request.resource.data.fromUid == request.auth.uid
-          && request.resource.data.keys().hasAll(['fromUid', 'text', 'createdAt'])
+          && request.resource.data.keys().hasAll(['fromUid', 'text'])
+          && (
+            request.resource.data.keys().hasOnly(['fromUid', 'text'])
+            || request.resource.data.keys().hasOnly(['fromUid', 'text', 'createdAt'])
+          )
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
-          && request.resource.data.text.size() <= 500;
+          && request.resource.data.text.size() <= 2048;
         allow update, delete: if false;
       }
     }

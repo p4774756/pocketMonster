@@ -47,6 +47,7 @@
 - 修正規則後：若該 Email 已在 Auth 裡註冊過，請改按 **登入**（勿再註冊）；若仍無個人檔，登入後會再次執行建立個人檔與好友代碼。  
 - **發送邀請**會查詢 `friend_requests` 複合條件；若主控台或瀏覽器 Console 出現需建立**索引**的提示，請依連結建立，或將 **`docs/firebase-friends.indexes.json`** 併入專案後以 Firebase CLI 部署索引。  
 - 若已登入且規則已發布，仍無法發送邀請並出現 **permission-denied**：舊版 `friends` 讀取規則在**文件尚不存在**時會誤擋 `get`；請將本倉 **`docs/firebase-friends.rules`** 更新後**再次發布**（`friends` 的 `read` 須含「文件不存在則允許已登入讀取」的條件，見檔內註解）。
+- **好友聊天**若送出訊息即 **permission-denied**：請確認主控台規則已包含 **`friends/{pairId}/messages`** 區塊並**重新發布**。舊版若對 `createdAt` 使用 `keys().hasAll`，可能與 `serverTimestamp()` 衝突；另規則中字串 **`size()` 為 UTF-8 位元組**，若上限過低會擋中文，請使用本倉最新規則。
 
 ## 5. 維護注意
 

@@ -1,7 +1,7 @@
 {
   "name": "pocket-pet-battle",
   "private": true,
-  "version": "0.2.38",
+  "version": "0.2.39",
   "type": "module",
   "scripts": {
     "dev": "concurrently -k \"npm:dev:server\" \"npm:dev:client\"",

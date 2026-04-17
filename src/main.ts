@@ -51,7 +51,7 @@ import { getGameRulesPlayerHtml } from "./gameRulesContent";
 import { mountThemeBar } from "./theme";
 import {
   clearLobbyFirebaseFriendsCleanup,
-  mountLobbyFirebaseFriends,
+  mountFirebaseFriends,
 } from "./lobbyFirebaseFriends";
 
 type Move = "strike" | "guard" | "charge";
@@ -231,6 +231,10 @@ const UI = {
   battleSection: "\u9023\u7dda\u5c0d\u6230",
   openBattle: "\u9023\u7dda\u5c0d\u6230",
   openSpeciesDex: "\u5925\u4f34\u5716\u9451",
+  openFriends: "\u597d\u53cb",
+  friendsTitle: "\u597d\u53cb\uff08Firebase\uff09",
+  friendsSubtitle:
+    "\u767b\u5165\u3001\u597d\u53cb\u4ee3\u78bc\u8207\u9080\u8acb\uff1b\u672c\u904a\u6232\u7121\u7ad9\u5167\u597d\u53cb\u6587\u5b57\u804a\u5929\u3002",
   dexTitle: "\u5925\u4f34\u5716\u9451",
   dexSubtitle:
     "\u6210\u9577\u968e\u6bb5\u8207\u7167\u8b77\u52d5\u4f5c\u5c55\u793a\uff1b\u7bad\u982d\u70ba\u6642\u9593\u9032\u7a0b\u3002\u6210\u9577\u4ee5\u865b\u64ec\u65e5\u9f61\u5230\u968e\u6bb5\u70ba\u6e96\uff0c\u59ff\u52e2\u5716\u70ba\u9752\u5c11\u5e74\u671f\u9ad4\u578b\u793a\u610f\u3002",
@@ -359,8 +363,15 @@ let tickTimer: number | null = null;
 let roomCode: string | null = null;
 let role: "host" | "guest" | null = null;
 /** 與目前畫面一致，供大廳即時清單等邏輯判斷。 */
-let phase: "care" | "memorial" | "dex" | "lobby" | "waiting" | "battle" | "end" =
-  "care";
+let phase:
+  | "care"
+  | "memorial"
+  | "dex"
+  | "friends"
+  | "lobby"
+  | "waiting"
+  | "battle"
+  | "end" = "care";
 
 /** 大廳 create/join 逾時解鎖（模組級，避免舊 closure 計時器誤傷新一輪操作）。 */
 let lobbySocketGuardTimer: number | null = null;
@@ -1011,6 +1022,7 @@ function renderCare(root: HTMLElement) {
       <div class="row care-top-actions">
         <button type="button" class="btn btn-primary" id="btn-open-battle">${UI.openBattle}</button>
         <button type="button" class="btn btn-secondary" id="btn-open-dex">${UI.openSpeciesDex}</button>
+        <button type="button" class="btn btn-secondary" id="btn-open-friends">${UI.openFriends}</button>
         <button type="button" class="btn btn-secondary" id="btn-restart-adopt">${UI.restartAdopt}</button>
       </div>
       <p class="care-egg-battle-hint hidden" id="care-egg-battle-hint" role="status">${UI.eggBattleBlocked}</p>
@@ -1316,6 +1328,15 @@ function renderCare(root: HTMLElement) {
     renderSpeciesDex(root);
   });
 
+  $("#btn-open-friends", root).addEventListener("click", () => {
+    if (!state.hatched) {
+      flashCare(UI.eggBattleBlocked);
+      renderCare(root);
+      return;
+    }
+    renderFriends(root);
+  });
+
   root.querySelectorAll("[data-care]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const act = (btn as HTMLElement).dataset.care;
@@ -1430,7 +1451,40 @@ function renderCare(root: HTMLElement) {
   }, 45000);
 
   paint();
-  mountLobbyFirebaseFriends(root);
+}
+
+function renderFriends(root: HTMLElement) {
+  clearCareAmbientTimer();
+  battleFoeSnapshot = null;
+  clearLobbySocketGuardTimer();
+  clearLobbyFirebaseFriendsCleanup();
+  const pet = loadPet();
+  if (!pet.alive) {
+    flashCare(UI.deadPetBattleBlocked);
+    renderCare(root);
+    return;
+  }
+  if (!pet.hatched) {
+    flashCare(UI.eggBattleBlocked);
+    renderCare(root);
+    return;
+  }
+  phase = "friends";
+  stopTick();
+  root.replaceChildren(
+    el(`
+    <div class="shell shell--friends">
+      <div class="row stack-gap">
+        <button type="button" class="btn btn-secondary" id="btn-back-friends">${UI.backToPet}</button>
+      </div>
+      <h1>${UI.friendsTitle}</h1>
+      <p class="tagline">${UI.friendsSubtitle}</p>
+      <div id="firebase-friends-root"></div>
+    </div>
+  `),
+  );
+  $("#btn-back-friends", root).addEventListener("click", () => renderCare(root));
+  mountFirebaseFriends(root);
 }
 
 function renderLobby(

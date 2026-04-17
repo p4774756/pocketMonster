@@ -145,8 +145,9 @@
 
 ### 2.10 好友（Firebase，選用）
 
-- **僅在**建置時已設定 **`VITE_FIREBASE_*`** 六個變數時，**養成主畫面**會顯示「好友（Firebase）」摺疊區；否則僅簡短說明，不影響匿名房間碼對戰。
-- 使用 **Firebase Authentication（Email／密碼）** 註冊／登入；每位使用者會取得一組 **好友代碼**（**4** 碼英文與數字、大寫），可把代碼給對方，對方輸入後送出 **好友邀請**；對方在養成主畫面的好友區 **接受** 或 **拒絕**。雙方成為好友後可於該區檢視名單或 **移除** 關係。（舊版曾發過 **8** 碼者仍可輸入原碼加入。）
+- **僅在**建置時已設定 **`VITE_FIREBASE_*`** 六個變數時，可從養成畫面進入獨立 **「好友（Firebase）」** 頁；未設定時該頁僅顯示簡短說明，不影響匿名房間碼對戰。
+- 使用 **Firebase Authentication（Email／密碼）** 註冊／登入；每位使用者會取得一組 **好友代碼**（**4** 碼英文與數字、大寫），可把代碼給對方，對方輸入後送出 **好友邀請**；對方在好友頁 **接受** 或 **拒絕**。雙方成為好友後可檢視名單或 **移除** 關係。（舊版曾發過 **8** 碼者仍可輸入原碼加入。）
+- **本遊戲不提供好友站內文字聊天**；與對手溝通僅限對戰中的 **預設快捷語**（見 **2.9**），以免濫用與審核成本。
 - 好友與邀請資料存在 **Cloud Firestore**（規則與索引見倉庫 `docs/firebase-friends.rules`、`docs/firebase-friends.indexes.json` 與 **`docs/FIREBASE_FRIENDS.md`**）。**養成進度仍只存本機 `localStorage`**，與 Firebase 帳號無自動同步。  
 - 若需將**既有 8 碼**帳號改為 **4 碼**（顯示與加友代碼），須由維護者在 Firestore **手動遷移**，步驟見 **`docs/FIREBASE_FRIENDS.md`** 第六節。
 - **對戰配對**仍依本檔第 2.1 節：Socket 房間碼與 Render（或同源）後端；Firebase **不**負責對戰連線。
@@ -172,7 +173,7 @@
 | 寵物 PNG 批次壓縮 | `scripts/optimize-pet-pngs.mjs`（`npm run optimize:pets`） |
 | 圖鑑介面 | `src/main.ts` `renderSpeciesDex`：物種**分頁**切換；貓／狗屬性變體為**摺疊** `<details>`；成長／姿勢列可**橫向捲動**（`src/style.css`）。雷／水貓示意檔見 `dexCatVolt*`／`dexCatAqua*`（`src/pet.ts`）；狗四屬 Canvas 見 `data-dex-dog-element`（`src/canvasDog.ts`） |
 | 對戰結算、房間、計時 | `server/index.js` |
-| Firebase 好友（選用 Auth + Firestore） | `src/firebase/`、`src/lobbyFirebaseFriends.ts`、`docs/FIREBASE_FRIENDS.md`、`docs/firebase-friends.rules` |
+| Firebase 好友（選用 Auth + Firestore） | `src/firebase/`、`src/lobbyFirebaseFriends.ts`（掛載於 `renderFriends`）、`docs/FIREBASE_FRIENDS.md`、`docs/firebase-friends.rules` |
 | 專案架構給 agent | `AGENTS.md` |
 | 對外說明（GitHub 首頁） | 根目錄 `README.md`；可替換截圖見 `docs/readme/IMAGES.md` |
 | 產品路線與任務勾選 | `docs/ROADMAP_TASKS.md`（與 `docs/IMPROVEMENT_BACKLOG.md` 互補） |

@@ -7,7 +7,7 @@ function readEnv(key: keyof ImportMetaEnv): string {
   return typeof v === "string" ? v.trim() : "";
 }
 
-/** 建置時若六項皆已設定，養成主畫面可啟用 Firebase 好友面板。 */
+/** 建置時若六項皆已設定，可啟用 Firebase「好友」獨立頁。 */
 export function isFirebaseFriendsConfigured(): boolean {
   return (
     !!readEnv("VITE_FIREBASE_API_KEY") &&

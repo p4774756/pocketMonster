@@ -145,28 +145,24 @@ function mapFriendErr(e: unknown): string {
 }
 
 /**
- * \u5728\u990a\u6210\u4e3b\u756b\u9762\uff08`.shell--care`\uff09\u5167\u639b\u8f09\u300c\u597d\u53cb\uff08Firebase\uff09\u300d\u3002
+ * \u5c07\u597d\u53cb\u9762\u677f\u639b\u5728 `#firebase-friends-root`\uff08\u7368\u7acb\u300c\u597d\u53cb\u300d\u9801\uff09\u3002
  * \u5207\u63db\u756b\u9762\u6642\u8acb\u547c\u53eb clearLobbyFirebaseFriendsCleanup\u3002
  */
-export function mountLobbyFirebaseFriends(root: HTMLElement): void {
+export function mountFirebaseFriends(root: HTMLElement): void {
   clearLobbyFirebaseFriendsCleanup();
-  const wrap = document.createElement("details");
-  wrap.className = "lobby-friends";
-  wrap.open = false;
-  const sum = document.createElement("summary");
-  sum.className = "lobby-friends-summary";
-  sum.textContent = S.summary;
-  wrap.append(sum);
+  const mountEl = root.querySelector("#firebase-friends-root");
+  if (!mountEl) return;
 
-  const shell = root.querySelector(".shell--care");
-  if (!shell) return;
+  const wrap = document.createElement("section");
+  wrap.className = "lobby-friends lobby-friends--page";
+  wrap.setAttribute("aria-label", S.summary);
 
   if (!isFirebaseFriendsConfigured()) {
     const p = document.createElement("p");
     p.className = "lobby-friends-hint";
     p.textContent = S.disabledHint;
     wrap.append(p);
-    shell.append(wrap);
+    mountEl.append(wrap);
     return;
   }
 
@@ -217,7 +213,7 @@ export function mountLobbyFirebaseFriends(root: HTMLElement): void {
     <p class="toast lobby-friends-toast hidden" id="fb-toast"></p>
   `;
   wrap.append(inner);
-  shell.append(wrap);
+  mountEl.append(wrap);
 
   const qs = (sel: string) => {
     const n = inner.querySelector(sel);
@@ -437,13 +433,6 @@ export function mountLobbyFirebaseFriends(root: HTMLElement): void {
   };
   document.addEventListener("visibilitychange", onFriendPanelVisibility);
 
-  wrap.addEventListener("toggle", () => {
-    if (!wrap.open) return;
-    const u = auth.currentUser;
-    if (!u || userEl.classList.contains("hidden")) return;
-    void refreshFriendDataFromServer(u.uid);
-  });
-
   const unsubAuth = onAuthStateChanged(auth, (user) => {
     void (async () => {
       if (!user) {
@@ -459,6 +448,9 @@ export function mountLobbyFirebaseFriends(root: HTMLElement): void {
         profileDisplay = prof.displayName;
         paintUser(user.email || user.uid, prof.friendCode, prof.displayName);
         wireDataListeners(user.uid);
+        queueMicrotask(() => {
+          void refreshFriendDataFromServer(user.uid);
+        });
       } catch (e) {
         if (import.meta.env.DEV) console.error("[firebase friends] profile init", e);
         try {
@@ -570,4 +562,9 @@ export function mountLobbyFirebaseFriends(root: HTMLElement): void {
     if (wrap.parentNode) wrap.remove();
   };
   activeCleanup = cleanup;
+}
+
+/** @deprecated \u8acb\u6539\u7528 mountFirebaseFriends */
+export function mountLobbyFirebaseFriends(root: HTMLElement): void {
+  mountFirebaseFriends(root);
 }

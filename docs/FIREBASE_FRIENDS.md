@@ -1,6 +1,6 @@
 # Firebase 好友系統（選用）
 
-**養成主畫面**（非連線大廳）可顯示 **「好友（Firebase）」** 摺疊區：以 **Firebase Authentication（Email／密碼）** 登入，**Cloud Firestore** 儲存個人檔、好友代碼、邀請與好友關係。  
+從 **養成畫面**進入獨立 **「好友（Firebase）」** 頁（非連線大廳）：以 **Firebase Authentication（Email／密碼）** 登入，**Cloud Firestore** 儲存個人檔、好友代碼、邀請與好友關係；**不含站內文字聊天**。  
 **養成資料仍僅存 `localStorage`**，與 Firebase 帳號無自動綁定；對戰仍走既有 **Render Socket**（`VITE_SOCKET_URL`），本功能不取代後端對戰。
 
 ## 1. Firebase 主控台設定
@@ -24,7 +24,7 @@
 | `VITE_FIREBASE_MESSAGING_SENDER_ID` | 寄件者 ID（數字字串） |
 | `VITE_FIREBASE_APP_ID` | App ID |
 
-**六項皆齊**時養成主畫面才會顯示可操作的好友面板；否則僅顯示說明文字。  
+**六項皆齊**時好友頁才會顯示可操作的面板；否則僅顯示說明文字。  
 `deploy.env.example` 與 `AGENTS.md` 環境變數表有摘要。
 
 ## 3. 資料模型（Firestore）
@@ -51,7 +51,7 @@
 
 - 修改 Firestore 結構或規則時，請同步更新本檔與 `docs/firebase-friends.rules`。  
 - 玩家可讀規則摘要見 `docs/GAME_RULES.md` **2.10**。  
-- 實作程式：`src/firebase/config.ts`、`src/firebase/friendsFirestore.ts`、`src/lobbyFirebaseFriends.ts`，掛載於 `src/main.ts` 的 `renderCare`。
+- 實作程式：`src/firebase/config.ts`、`src/firebase/friendsFirestore.ts`、`src/lobbyFirebaseFriends.ts`，掛載於 `src/main.ts` 的 `renderFriends`（`#firebase-friends-root`）。
 
 ## 6. 舊 8 碼改為 4 碼（營運／維護手動遷移）
 

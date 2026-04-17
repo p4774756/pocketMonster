@@ -322,9 +322,18 @@ body {
 }
 
 .shell--hub h1,
+.shell--friends h1,
 .shell--wait h1,
 .shell--battle .round-meta {
   letter-spacing: -0.02em;
+}
+
+.shell--friends .tagline {
+  margin-bottom: 14px;
+}
+
+#firebase-friends-root {
+  min-height: 120px;
 }
 
 .screen-bezel {
@@ -609,11 +618,21 @@ h1 {
   white-space: nowrap;
 }
 
-/* ----- Firebase friends on care screen (optional) ----- */
+/* ----- Firebase friends panel (optional; mount on #firebase-friends-root) ----- */
 .lobby-friends {
   margin-top: 18px;
   padding-top: 14px;
   border-top: 1px dashed var(--edge);
+}
+
+.lobby-friends--page {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.lobby-friends--page .lobby-friends-inner {
+  margin-top: 0;
 }
 
 .lobby-friends-summary {

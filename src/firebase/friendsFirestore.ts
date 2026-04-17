@@ -379,9 +379,18 @@ export async function sendFriendChatMessage(
 ): Promise<void> {
   const t = text.trim().slice(0, FRIEND_CHAT_MAX_LEN);
   if (!t) throw new Error("empty");
+  const pairRef = doc(db, "friends", pairId);
+  const pairSnap = await getDoc(pairRef);
+  if (!pairSnap.exists()) throw new Error("pair_missing");
+  const rawMembers = pairSnap.data()?.members;
+  if (!Array.isArray(rawMembers) || rawMembers.length !== 2)
+    throw new Error("pair_invalid");
+  const memberUids = [String(rawMembers[0]), String(rawMembers[1])];
+  if (!memberUids.includes(fromUid)) throw new Error("not_member");
   await addDoc(collection(db, "friends", pairId, "messages"), {
     fromUid,
     text: t,
+    memberUids,
     createdAt: serverTimestamp(),
   });
 }

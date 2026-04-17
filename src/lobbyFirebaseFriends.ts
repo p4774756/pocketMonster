@@ -151,6 +151,8 @@ function mapFriendErr(e: unknown): string {
   if (m === "reverse_pending") return S.errReverse;
   if (m === "code_unknown" || m === "code_short") return S.errCode;
   if (m === "empty") return S.errChatEmpty;
+  if (m === "pair_missing" || m === "pair_invalid" || m === "not_member")
+    return S.errFriendFirestore;
   return S.errGeneric;
 }
 

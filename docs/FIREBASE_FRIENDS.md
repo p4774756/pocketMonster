@@ -35,7 +35,7 @@
 | `friend_codes/{code}` | `uid`，供以代碼查使用者 |
 | `friend_requests/{autoId}` | `fromUid`、`toUid`、`fromDisplayName`、`status`（僅 `pending`）、`createdAt` |
 | `friends/{uidA_uidB}` | `members`（兩個 uid 排序）、`nicknames`（對照 uid→顯示名）、`since` |
-| `friends/{pairId}/messages/{autoId}` | `fromUid`、`text`（1～500 字）、`createdAt`（`serverTimestamp`）；僅雙方可讀寫建立，見 `docs/firebase-friends.rules` |
+| `friends/{pairId}/messages/{autoId}` | `fromUid`、`text`（1～500 字）、`memberUids`（長度 2，與父層 `friends.members` 一致）、`createdAt`（`serverTimestamp`）；僅雙方可讀寫建立，見 `docs/firebase-friends.rules` |
 
 接受邀請時以 **batch** 刪除邀請文件並建立 `friends` 文件；**不**使用 Cloud Functions。  
 客戶端以 **`onSnapshot`** 訂閱邀請／名單；若畫面未即時更新，**展開「好友（Firebase）」摺疊區**或**切回此分頁**時會再向伺服器拉取一次（`getDocs` 備援）。
@@ -47,7 +47,7 @@
 - 修正規則後：若該 Email 已在 Auth 裡註冊過，請改按 **登入**（勿再註冊）；若仍無個人檔，登入後會再次執行建立個人檔與好友代碼。  
 - **發送邀請**會查詢 `friend_requests` 複合條件；若主控台或瀏覽器 Console 出現需建立**索引**的提示，請依連結建立，或將 **`docs/firebase-friends.indexes.json`** 併入專案後以 Firebase CLI 部署索引。  
 - 若已登入且規則已發布，仍無法發送邀請並出現 **permission-denied**：舊版 `friends` 讀取規則在**文件尚不存在**時會誤擋 `get`；請將本倉 **`docs/firebase-friends.rules`** 更新後**再次發布**（`friends` 的 `read` 須含「文件不存在則允許已登入讀取」的條件，見檔內註解）。
-- **好友聊天**若送出訊息即 **permission-denied**：請確認主控台規則已包含 **`friends/{pairId}/messages`** 區塊並**重新發布**。舊版若對 `createdAt` 使用 `keys().hasAll`，可能與 `serverTimestamp()` 衝突；另規則中字串 **`size()` 為 UTF-8 位元組**，若上限過低會擋中文，請使用本倉最新規則。
+- **好友聊天**若**監聽**或**送出**即 **permission-denied**：請確認主控台規則已包含 **`friends/{pairId}/messages`** 並**重新發布**。即時查詢（`onSnapshot` + `orderBy`）要求讀取規則能僅由訊息文件本身判斷，本專案在訊息內寫入 **`memberUids`**；若先前曾寫入**沒有** `memberUids` 的舊訊息，請在 Firestore 主控台刪除該子集合內舊文件或改以新版 App 重送。另：`createdAt` 與 `keys().hasAll`、`text.size()`（位元組）相關說明見倉庫規則檔註解。
 
 ## 5. 維護注意
 

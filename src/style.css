@@ -663,6 +663,14 @@ h1 {
   gap: 10px;
 }
 
+.lobby-friends-auth--busy {
+  cursor: wait;
+}
+
+.lobby-friends-auth--busy .lobby-friends-actions .btn:disabled {
+  cursor: wait;
+}
+
 .lobby-friends-meta {
   margin: 0 0 8px;
   font-size: 0.78rem;

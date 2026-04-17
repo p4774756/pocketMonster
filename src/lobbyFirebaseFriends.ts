@@ -31,6 +31,7 @@ const S = {
   password: "\u5bc6\u78bc",
   login: "\u767b\u5165",
   register: "\u8a3b\u518a",
+  authWorking: "\u8655\u7406\u4e2d\u2026",
   logout: "\u767b\u51fa",
   friendCode: "\u6211\u7684\u597d\u53cb\u4ee3\u78bc",
   copyCode: "\u8907\u88fd\u4ee3\u78bc",
@@ -208,6 +209,8 @@ export function mountLobbyFirebaseFriends(root: HTMLElement): void {
   const userEl = qs("#fb-auth-user");
   const emailIn = qs("#fb-email") as HTMLInputElement;
   const passIn = qs("#fb-pass") as HTMLInputElement;
+  const btnLogin = qs("#fb-login") as HTMLButtonElement;
+  const btnRegister = qs("#fb-register") as HTMLButtonElement;
   const emailLine = qs("#fb-email-line");
   const codeEl = qs("#fb-code");
   const dnameIn = qs("#fb-dname") as HTMLInputElement;
@@ -229,7 +232,18 @@ export function mountLobbyFirebaseFriends(root: HTMLElement): void {
     }
   };
 
+  const setGuestAuthBusy = (busy: boolean) => {
+    btnLogin.disabled = busy;
+    btnRegister.disabled = busy;
+    emailIn.disabled = busy;
+    passIn.disabled = busy;
+    guestEl.classList.toggle("lobby-friends-auth--busy", busy);
+    guestEl.setAttribute("aria-busy", busy ? "true" : "false");
+    if (busy) setToast(fbToast, S.authWorking, true);
+  };
+
   const paintGuest = () => {
+    setGuestAuthBusy(false);
     clearDataSubs();
     guestEl.classList.remove("hidden");
     userEl.classList.add("hidden");
@@ -237,6 +251,8 @@ export function mountLobbyFirebaseFriends(root: HTMLElement): void {
   };
 
   const paintUser = (email: string, code: string, dname: string) => {
+    setGuestAuthBusy(false);
+    setToast(fbToast, "", false);
     guestEl.classList.add("hidden");
     userEl.classList.remove("hidden");
     emailLine.textContent = email;
@@ -381,23 +397,27 @@ export function mountLobbyFirebaseFriends(root: HTMLElement): void {
   });
 
   qs("#fb-login").addEventListener("click", async () => {
+    if (btnLogin.disabled || btnRegister.disabled) return;
+    setGuestAuthBusy(true);
     try {
       await signInWithEmailAndPassword(auth, emailIn.value.trim(), passIn.value);
-      setToast(fbToast, "", false);
     } catch (e) {
+      setGuestAuthBusy(false);
       setToast(fbToast, mapAuthErr(e), true);
     }
   });
 
   qs("#fb-register").addEventListener("click", async () => {
+    if (btnLogin.disabled || btnRegister.disabled) return;
+    setGuestAuthBusy(true);
     try {
       await createUserWithEmailAndPassword(
         auth,
         emailIn.value.trim(),
         passIn.value,
       );
-      setToast(fbToast, "", false);
     } catch (e) {
+      setGuestAuthBusy(false);
       setToast(fbToast, mapAuthErr(e), true);
     }
   });

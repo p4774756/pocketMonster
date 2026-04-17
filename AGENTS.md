@@ -38,7 +38,7 @@
 | `docs/FIREBASE_FRIENDS.md` | **選用**：Firebase Auth + Firestore 好友代碼／邀請／名單；規則範例 `docs/firebase-friends.rules`。 |
 | `vite.config.ts` | 開發時把 `/socket.io` **proxy** 到 `localhost:3000`。 |
 | `render.yaml` | Render.com Web Service 範例（僅 API、不掛靜態）。 |
-| `.github/workflows/deploy-pages.yml` | GitHub Pages 靜態部署；建置需 `SOCKET_SERVER_URL` secret。 |
+| `.github/workflows/deploy-pages.yml` | GitHub Pages 靜態部署；建置需 `SOCKET_SERVER_URL`；選填六個 `VITE_FIREBASE_*` secrets 以啟用大廳好友。 |
 | `.cursor/rules/pocket-pet-assets.mdc` | **永遠套用**：美術資產流程（原創、PNG、idle 命名等）。 |
 
 ## 本機開發
@@ -112,7 +112,7 @@ npm run start:api   # SERVE_STATIC=0：只跑 API（給 Pages + 分離後端）
 
 ## 部署形態（摘要）
 
-1. **GitHub Pages（靜態）**：workflow 建置時注入 `secrets.SOCKET_SERVER_URL` → `VITE_SOCKET_URL`。未設 secret 建置會失敗。
+1. **GitHub Pages（靜態）**：workflow 建置時注入 `secrets.SOCKET_SERVER_URL` → `VITE_SOCKET_URL`；若 Repository 另有設定六個 `VITE_FIREBASE_*` secrets，同一建置步驟會一併注入（大廳 Firebase 好友）。未設 `SOCKET_SERVER_URL` 建置會失敗。
 2. **Render（API）**：`render.yaml` 使用 `start:api`；部署後把該服務的 HTTPS URL 設進 GitHub secret。
 
 ## 改功能時該看哪

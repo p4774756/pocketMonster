@@ -13,7 +13,7 @@
 
 ## 2. 前端建置變數（Vite）
 
-在 **GitHub Actions** 建置時，可於 Repository secrets 另行新增 `VITE_FIREBASE_API_KEY` 等六個名稱與值（與 `SOCKET_SERVER_URL` 並列），並在 `.github/workflows/deploy-pages.yml` 的 **Build static site** 步驟 `env:` 區塊手動帶入 `${{ secrets.VITE_FIREBASE_* }}`（預設 workflow **未**寫死這些變數，避免未使用者建置失敗）。本機則用 `.env.local`（**勿**提交版控）。
+在 **GitHub** → **Settings → Secrets and variables → Actions** 建立 Repository secrets：`SOCKET_SERVER_URL`（必填）以及六個 `VITE_FIREBASE_*`（選填；皆設定後 Pages 建置才會內嵌大廳好友功能）。本倉 `.github/workflows/deploy-pages.yml` 的 **Build static site** 已將上述 secrets 對應到 `env`，**無需**再改 workflow。本機則用專案根目錄 `.env.local`（**勿**提交版控）。
 
 | 變數 | 說明 |
 |------|------|

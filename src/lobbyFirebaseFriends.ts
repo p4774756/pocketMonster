@@ -214,6 +214,7 @@ export function mountLobbyFirebaseFriends(root: HTMLElement): void {
   const emailLine = qs("#fb-email-line");
   const codeEl = qs("#fb-code");
   const dnameIn = qs("#fb-dname") as HTMLInputElement;
+  const btnSaveName = qs("#fb-save-name") as HTMLButtonElement;
   const peerCodeIn = qs("#fb-peer-code") as HTMLInputElement;
   const inList = qs("#fb-in");
   const outList = qs("#fb-out");
@@ -242,7 +243,16 @@ export function mountLobbyFirebaseFriends(root: HTMLElement): void {
     if (busy) setToast(fbToast, S.authWorking, true);
   };
 
+  const setUserSaveNameBusy = (busy: boolean) => {
+    btnSaveName.disabled = busy;
+    dnameIn.disabled = busy;
+    userEl.classList.toggle("lobby-friends-user--busy", busy);
+    userEl.setAttribute("aria-busy", busy ? "true" : "false");
+    if (busy) setToast(fbToast, S.authWorking, true);
+  };
+
   const paintGuest = () => {
+    setUserSaveNameBusy(false);
     setGuestAuthBusy(false);
     clearDataSubs();
     guestEl.classList.remove("hidden");
@@ -251,6 +261,7 @@ export function mountLobbyFirebaseFriends(root: HTMLElement): void {
   };
 
   const paintUser = (email: string, code: string, dname: string) => {
+    setUserSaveNameBusy(false);
     setGuestAuthBusy(false);
     setToast(fbToast, "", false);
     guestEl.classList.add("hidden");
@@ -447,18 +458,21 @@ export function mountLobbyFirebaseFriends(root: HTMLElement): void {
 
   qs("#fb-save-name").addEventListener("click", async () => {
     const u = auth.currentUser;
-    if (!u) return;
+    if (!u || btnSaveName.disabled) return;
     const name = dnameIn.value.trim();
     if (!name) {
       setToast(fbToast, S.errGeneric, true);
       return;
     }
+    setUserSaveNameBusy(true);
     try {
       await updateProfileDisplayName(db, u.uid, name);
       profileDisplay = name.slice(0, 32);
       setToast(fbToast, S.okSaved, true);
     } catch {
       setToast(fbToast, S.errGeneric, true);
+    } finally {
+      setUserSaveNameBusy(false);
     }
   });
 

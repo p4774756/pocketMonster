@@ -663,11 +663,13 @@ h1 {
   gap: 10px;
 }
 
-.lobby-friends-auth--busy {
+.lobby-friends-auth--busy,
+.lobby-friends-user--busy {
   cursor: wait;
 }
 
-.lobby-friends-auth--busy .lobby-friends-actions .btn:disabled {
+.lobby-friends-auth--busy .lobby-friends-actions .btn:disabled,
+.lobby-friends-user--busy .btn:disabled {
   cursor: wait;
 }
 

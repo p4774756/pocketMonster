@@ -8,6 +8,9 @@ import {
   acceptFriendRequest,
   cancelOutgoingRequest,
   ensureUserProfile,
+  fetchFriendListRows,
+  fetchIncomingRequestRows,
+  fetchOutgoingRequestRows,
   rejectFriendRequest,
   removeFriendship,
   resolveUidFromFriendCode,
@@ -16,6 +19,9 @@ import {
   subscribeIncomingRequests,
   subscribeOutgoingRequests,
   updateProfileDisplayName,
+  type FriendListRow,
+  type IncomingRequestRow,
+  type OutgoingRequestRow,
 } from "./firebase/friendsFirestore";
 import {
   getFirebaseFriendsAuth,
@@ -295,112 +301,148 @@ export function mountLobbyFirebaseFriends(root: HTMLElement): void {
     profileDisplay = dname;
   };
 
+  const paintIncomingRows = (uid: string, rows: IncomingRequestRow[]) => {
+    inList.replaceChildren();
+    for (const r of rows) {
+      const row = document.createElement("div");
+      row.className = "lobby-friends-item";
+      const lab = document.createElement("span");
+      lab.className = "lobby-friends-item-label";
+      lab.textContent = r.fromDisplayName || r.fromUid.slice(0, 8);
+      const actions = document.createElement("div");
+      actions.className = "lobby-friends-item-actions";
+      const bOk = document.createElement("button");
+      bOk.type = "button";
+      bOk.className = "btn btn-primary btn--compact";
+      bOk.textContent = S.accept;
+      bOk.addEventListener("click", async () => {
+        try {
+          await acceptFriendRequest(
+            db,
+            r.id,
+            uid,
+            dnameIn.value.trim() || profileDisplay || "\u73a9\u5bb6",
+          );
+          setToast(fbToast, S.okAccepted, true);
+        } catch {
+          setToast(fbToast, S.errGeneric, true);
+        }
+      });
+      const bNo = document.createElement("button");
+      bNo.type = "button";
+      bNo.className = "btn btn-secondary btn--compact";
+      bNo.textContent = S.reject;
+      bNo.addEventListener("click", async () => {
+        try {
+          await rejectFriendRequest(db, r.id, uid);
+        } catch {
+          setToast(fbToast, S.errGeneric, true);
+        }
+      });
+      actions.append(bOk, bNo);
+      row.append(lab, actions);
+      inList.append(row);
+    }
+  };
+
+  const paintOutgoingRows = (uid: string, rows: OutgoingRequestRow[]) => {
+    outList.replaceChildren();
+    for (const r of rows) {
+      const row = document.createElement("div");
+      row.className = "lobby-friends-item";
+      const lab = document.createElement("span");
+      lab.className = "lobby-friends-item-label";
+      lab.textContent = r.toUid.slice(0, 10) + "\u2026";
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "btn btn-secondary btn--compact";
+      b.textContent = S.cancel;
+      b.addEventListener("click", async () => {
+        try {
+          await cancelOutgoingRequest(db, r.id, uid);
+        } catch {
+          setToast(fbToast, S.errGeneric, true);
+        }
+      });
+      row.append(lab, b);
+      outList.append(row);
+    }
+  };
+
+  const paintFriendsRows = (uid: string, rows: FriendListRow[]) => {
+    friendsList.replaceChildren();
+    if (rows.length === 0) {
+      const p = document.createElement("p");
+      p.className = "lobby-friends-empty";
+      p.textContent = S.emptyFriends;
+      friendsList.append(p);
+      return;
+    }
+    for (const r of rows) {
+      const row = document.createElement("div");
+      row.className = "lobby-friends-item";
+      const lab = document.createElement("span");
+      lab.className = "lobby-friends-item-label";
+      lab.textContent = r.label;
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "btn btn-secondary btn--compact";
+      b.textContent = S.remove;
+      b.addEventListener("click", async () => {
+        try {
+          await removeFriendship(db, r.pairId, uid);
+          setToast(fbToast, S.okRemoved, true);
+        } catch {
+          setToast(fbToast, S.errGeneric, true);
+        }
+      });
+      row.append(lab, b);
+      friendsList.append(row);
+    }
+  };
+
+  const refreshFriendDataFromServer = async (forUid: string) => {
+    try {
+      const [inc, outg, fr] = await Promise.all([
+        fetchIncomingRequestRows(db, forUid),
+        fetchOutgoingRequestRows(db, forUid),
+        fetchFriendListRows(db, forUid),
+      ]);
+      paintIncomingRows(forUid, inc);
+      paintOutgoingRows(forUid, outg);
+      paintFriendsRows(forUid, fr);
+    } catch (e) {
+      if (import.meta.env.DEV) console.error("[firebase friends] refresh lists", e);
+    }
+  };
+
   const wireDataListeners = (uid: string) => {
     clearDataSubs();
     dataUnsubs.push(
-      subscribeIncomingRequests(db, uid, (rows) => {
-        inList.replaceChildren();
-        for (const r of rows) {
-          const row = document.createElement("div");
-          row.className = "lobby-friends-item";
-          const lab = document.createElement("span");
-          lab.className = "lobby-friends-item-label";
-          lab.textContent = r.fromDisplayName || r.fromUid.slice(0, 8);
-          const actions = document.createElement("div");
-          actions.className = "lobby-friends-item-actions";
-          const bOk = document.createElement("button");
-          bOk.type = "button";
-          bOk.className = "btn btn-primary btn--compact";
-          bOk.textContent = S.accept;
-          bOk.addEventListener("click", async () => {
-            try {
-              await acceptFriendRequest(
-                db,
-                r.id,
-                uid,
-                dnameIn.value.trim() || profileDisplay || "\u73a9\u5bb6",
-              );
-              setToast(fbToast, S.okAccepted, true);
-            } catch {
-              setToast(fbToast, S.errGeneric, true);
-            }
-          });
-          const bNo = document.createElement("button");
-          bNo.type = "button";
-          bNo.className = "btn btn-secondary btn--compact";
-          bNo.textContent = S.reject;
-          bNo.addEventListener("click", async () => {
-            try {
-              await rejectFriendRequest(db, r.id, uid);
-            } catch {
-              setToast(fbToast, S.errGeneric, true);
-            }
-          });
-          actions.append(bOk, bNo);
-          row.append(lab, actions);
-          inList.append(row);
-        }
-      }),
+      subscribeIncomingRequests(db, uid, (rows) => paintIncomingRows(uid, rows)),
     );
     dataUnsubs.push(
-      subscribeOutgoingRequests(db, uid, (rows) => {
-        outList.replaceChildren();
-        for (const r of rows) {
-          const row = document.createElement("div");
-          row.className = "lobby-friends-item";
-          const lab = document.createElement("span");
-          lab.className = "lobby-friends-item-label";
-          lab.textContent = r.toUid.slice(0, 10) + "\u2026";
-          const b = document.createElement("button");
-          b.type = "button";
-          b.className = "btn btn-secondary btn--compact";
-          b.textContent = S.cancel;
-          b.addEventListener("click", async () => {
-            try {
-              await cancelOutgoingRequest(db, r.id, uid);
-            } catch {
-              setToast(fbToast, S.errGeneric, true);
-            }
-          });
-          row.append(lab, b);
-          outList.append(row);
-        }
-      }),
+      subscribeOutgoingRequests(db, uid, (rows) => paintOutgoingRows(uid, rows)),
     );
     dataUnsubs.push(
-      subscribeFriends(db, uid, (rows) => {
-        friendsList.replaceChildren();
-        if (rows.length === 0) {
-          const p = document.createElement("p");
-          p.className = "lobby-friends-empty";
-          p.textContent = S.emptyFriends;
-          friendsList.append(p);
-          return;
-        }
-        for (const r of rows) {
-          const row = document.createElement("div");
-          row.className = "lobby-friends-item";
-          const lab = document.createElement("span");
-          lab.className = "lobby-friends-item-label";
-          lab.textContent = r.label;
-          const b = document.createElement("button");
-          b.type = "button";
-          b.className = "btn btn-secondary btn--compact";
-          b.textContent = S.remove;
-          b.addEventListener("click", async () => {
-            try {
-              await removeFriendship(db, r.pairId, uid);
-              setToast(fbToast, S.okRemoved, true);
-            } catch {
-              setToast(fbToast, S.errGeneric, true);
-            }
-          });
-          row.append(lab, b);
-          friendsList.append(row);
-        }
-      }),
+      subscribeFriends(db, uid, (rows) => paintFriendsRows(uid, rows)),
     );
   };
+
+  const onFriendPanelVisibility = () => {
+    if (document.visibilityState !== "visible") return;
+    const u = auth.currentUser;
+    if (!u || userEl.classList.contains("hidden")) return;
+    void refreshFriendDataFromServer(u.uid);
+  };
+  document.addEventListener("visibilitychange", onFriendPanelVisibility);
+
+  wrap.addEventListener("toggle", () => {
+    if (!wrap.open) return;
+    const u = auth.currentUser;
+    if (!u || userEl.classList.contains("hidden")) return;
+    void refreshFriendDataFromServer(u.uid);
+  });
 
   const unsubAuth = onAuthStateChanged(auth, (user) => {
     void (async () => {
@@ -522,6 +564,7 @@ export function mountLobbyFirebaseFriends(root: HTMLElement): void {
   });
 
   const cleanup = () => {
+    document.removeEventListener("visibilitychange", onFriendPanelVisibility);
     clearDataSubs();
     unsubAuth();
     if (wrap.parentNode) wrap.remove();

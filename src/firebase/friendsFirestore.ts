@@ -13,8 +13,61 @@ import {
   where,
   writeBatch,
   type Firestore,
+  type QuerySnapshot,
   type Unsubscribe,
 } from "firebase/firestore";
+
+export type IncomingRequestRow = {
+  id: string;
+  fromUid: string;
+  fromDisplayName: string;
+};
+
+export type OutgoingRequestRow = { id: string; toUid: string };
+
+export type FriendListRow = {
+  pairId: string;
+  otherUid: string;
+  label: string;
+};
+
+function mapIncomingSnap(
+  snap: QuerySnapshot,
+): IncomingRequestRow[] {
+  const rows: IncomingRequestRow[] = [];
+  snap.forEach((d) => {
+    const x = d.data();
+    rows.push({
+      id: d.id,
+      fromUid: String(x.fromUid),
+      fromDisplayName: String(x.fromDisplayName || ""),
+    });
+  });
+  return rows;
+}
+
+function mapOutgoingSnap(snap: QuerySnapshot): OutgoingRequestRow[] {
+  const rows: OutgoingRequestRow[] = [];
+  snap.forEach((d) => {
+    const x = d.data();
+    rows.push({ id: d.id, toUid: String(x.toUid) });
+  });
+  return rows;
+}
+
+function mapFriendsSnap(snap: QuerySnapshot, uid: string): FriendListRow[] {
+  const rows: FriendListRow[] = [];
+  snap.forEach((d) => {
+    const m = d.data().members as string[] | undefined;
+    const nick = d.data().nicknames as Record<string, string> | undefined;
+    if (!Array.isArray(m)) return;
+    const other = m.find((x) => x !== uid) || "";
+    const label =
+      (other && nick?.[other]) || other.slice(0, 8) || "\u53cb\u4eba";
+    rows.push({ pairId: d.id, otherUid: other, label });
+  });
+  return rows;
+}
 
 /** 好友代碼字元集（大寫英數，略過易混淆的 0/O/1/I）。 */
 const FRIEND_CODE_ALPH =
@@ -203,74 +256,105 @@ export async function removeFriendship(
   await deleteDoc(fref);
 }
 
+export async function fetchIncomingRequestRows(
+  db: Firestore,
+  toUid: string,
+): Promise<IncomingRequestRow[]> {
+  const q = query(
+    collection(db, "friend_requests"),
+    where("toUid", "==", toUid),
+    where("status", "==", "pending"),
+  );
+  const snap = await getDocs(q);
+  return mapIncomingSnap(snap);
+}
+
+export async function fetchOutgoingRequestRows(
+  db: Firestore,
+  fromUid: string,
+): Promise<OutgoingRequestRow[]> {
+  const q = query(
+    collection(db, "friend_requests"),
+    where("fromUid", "==", fromUid),
+    where("status", "==", "pending"),
+  );
+  const snap = await getDocs(q);
+  return mapOutgoingSnap(snap);
+}
+
+export async function fetchFriendListRows(
+  db: Firestore,
+  uid: string,
+): Promise<FriendListRow[]> {
+  const q = query(
+    collection(db, "friends"),
+    where("members", "array-contains", uid),
+  );
+  const snap = await getDocs(q);
+  return mapFriendsSnap(snap, uid);
+}
+
 export function subscribeIncomingRequests(
   db: Firestore,
   toUid: string,
-  onRows: (
-    rows: { id: string; fromUid: string; fromDisplayName: string }[],
-  ) => void,
+  onRows: (rows: IncomingRequestRow[]) => void,
+  onListenError?: (e: Error) => void,
 ): Unsubscribe {
   const q = query(
     collection(db, "friend_requests"),
     where("toUid", "==", toUid),
     where("status", "==", "pending"),
   );
-  return onSnapshot(q, (snap) => {
-    const rows: { id: string; fromUid: string; fromDisplayName: string }[] = [];
-    snap.forEach((d) => {
-      const x = d.data();
-      rows.push({
-        id: d.id,
-        fromUid: String(x.fromUid),
-        fromDisplayName: String(x.fromDisplayName || ""),
-      });
-    });
-    onRows(rows);
-  });
+  return onSnapshot(
+    q,
+    (snap) => onRows(mapIncomingSnap(snap)),
+    (e) => {
+      if (import.meta.env.DEV) console.error("[friend_requests incoming listen]", e);
+      onListenError?.(e);
+      onRows([]);
+    },
+  );
 }
 
 export function subscribeOutgoingRequests(
   db: Firestore,
   fromUid: string,
-  onRows: (rows: { id: string; toUid: string }[]) => void,
+  onRows: (rows: OutgoingRequestRow[]) => void,
+  onListenError?: (e: Error) => void,
 ): Unsubscribe {
   const q = query(
     collection(db, "friend_requests"),
     where("fromUid", "==", fromUid),
     where("status", "==", "pending"),
   );
-  return onSnapshot(q, (snap) => {
-    const rows: { id: string; toUid: string }[] = [];
-    snap.forEach((d) => {
-      const x = d.data();
-      rows.push({ id: d.id, toUid: String(x.toUid) });
-    });
-    onRows(rows);
-  });
+  return onSnapshot(
+    q,
+    (snap) => onRows(mapOutgoingSnap(snap)),
+    (e) => {
+      if (import.meta.env.DEV) console.error("[friend_requests outgoing listen]", e);
+      onListenError?.(e);
+      onRows([]);
+    },
+  );
 }
 
 export function subscribeFriends(
   db: Firestore,
   uid: string,
-  onRows: (
-    rows: { pairId: string; otherUid: string; label: string }[],
-  ) => void,
+  onRows: (rows: FriendListRow[]) => void,
+  onListenError?: (e: Error) => void,
 ): Unsubscribe {
   const q = query(
     collection(db, "friends"),
     where("members", "array-contains", uid),
   );
-  return onSnapshot(q, (snap) => {
-    const rows: { pairId: string; otherUid: string; label: string }[] = [];
-    snap.forEach((d) => {
-      const m = d.data().members as string[] | undefined;
-      const nick = d.data().nicknames as Record<string, string> | undefined;
-      if (!Array.isArray(m)) return;
-      const other = m.find((x) => x !== uid) || "";
-      const label =
-        (other && nick?.[other]) || other.slice(0, 8) || "\u53cb\u4eba";
-      rows.push({ pairId: d.id, otherUid: other, label });
-    });
-    onRows(rows);
-  });
+  return onSnapshot(
+    q,
+    (snap) => onRows(mapFriendsSnap(snap, uid)),
+    (e) => {
+      if (import.meta.env.DEV) console.error("[friends listen]", e);
+      onListenError?.(e);
+      onRows([]);
+    },
+  );
 }

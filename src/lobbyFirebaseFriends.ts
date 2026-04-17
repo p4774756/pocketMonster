@@ -48,6 +48,14 @@ const S = {
   remove: "\u79fb\u9664",
   emptyFriends: "\u5c1a\u7121\u597d\u53cb",
   errGeneric: "\u5931\u6557\uff0c\u8acb\u7a0d\u5f8c\u518d\u8a66",
+  errEmailInUse:
+    "\u6b64 Email \u5df2\u88ab\u8a3b\u518a\uff0c\u8acb\u6539\u6309\u300c\u767b\u5165\u300d",
+  errAuthProviderDisabled:
+    "Firebase \u672a\u555f\u7528 Email\uff0f\u5bc6\u78bc\u767b\u5165\uff1b\u8acb\u81f3\u4e3b\u63a7\u53f0 Authentication \u958b\u555f\u300c\u96fb\u5b50\u90f5\u4ef6\uff0f\u5bc6\u78bc\u300d\u3002",
+  errNetwork: "\u7db2\u8def\u9023\u7dda\u7570\u5e38\uff0c\u8acb\u7a0d\u5f8c\u518d\u8a66",
+  errTooManyRequests: "\u5617\u8a66\u904e\u65bc\u983b\u7e41\uff0c\u8acb\u7a0d\u5f8c\u518d\u8a66",
+  errProfileFirestore:
+    "\u5e33\u865f\u5df2\u5efa\u7acb\uff0c\u4f46\u7121\u6cd5\u5beb\u5165\u597d\u53cb\u8cc7\u6599\uff08Firestore\uff09\u3002\u8acb\u78ba\u8a8d\u5df2\u555f\u7528 Cloud Firestore\uff0c\u4e26\u5c07\u5009\u5eab docs/firebase-friends.rules \u8cbc\u4e0a\u4e3b\u63a7\u53f0\u5f8c\u767c\u5e03\u898f\u5247\u3002",
   errSelf: "\u7121\u6cd5\u52a0\u81ea\u5df1",
   errAlready: "\u5df2\u662f\u597d\u53cb",
   errDup: "\u5df2\u6709\u5f85\u56de\u8986\u7684\u9080\u8acb",
@@ -74,18 +82,35 @@ function setToast(el: HTMLElement, msg: string, show: boolean) {
   el.classList.toggle("hidden", !show);
 }
 
+function errCode(e: unknown): string {
+  return e && typeof e === "object" && "code" in e
+    ? String((e as { code: string }).code)
+    : "";
+}
+
 function mapAuthErr(e: unknown): string {
-  const code =
-    e && typeof e === "object" && "code" in e
-      ? String((e as { code: string }).code)
-      : "";
+  const code = errCode(e);
   if (code === "auth/invalid-email") return S.errAuth;
   if (code === "auth/user-not-found" || code === "auth/wrong-password")
     return S.errAuth;
   if (code === "auth/invalid-credential") return S.errAuth;
-  if (code === "auth/email-already-in-use") return S.errAuth;
+  if (code === "auth/email-already-in-use") return S.errEmailInUse;
   if (code === "auth/weak-password") return S.errWeakPassword;
+  if (code === "auth/operation-not-allowed") return S.errAuthProviderDisabled;
+  if (code === "auth/network-request-failed") return S.errNetwork;
+  if (code === "auth/too-many-requests") return S.errTooManyRequests;
   return S.errGeneric;
+}
+
+/** Auth \u5df2\u6210\u529f\u4f46 `ensureUserProfile` \u6216 Firestore \u5931\u6557\u6642\u986f\u793a\u3002 */
+function mapProfileInitErr(e: unknown): string {
+  const code = errCode(e);
+  if (code === "permission-denied") return S.errProfileFirestore;
+  if (code === "unavailable" || code === "deadline-exceeded") return S.errNetwork;
+  const msg =
+    e && typeof e === "object" && "message" in e ? String((e as Error).message) : "";
+  if (msg === "friend_code_exhausted") return S.errGeneric;
+  return S.errProfileFirestore;
 }
 
 function mapFriendErr(e: unknown): string {
@@ -342,9 +367,15 @@ export function mountLobbyFirebaseFriends(root: HTMLElement): void {
         profileDisplay = prof.displayName;
         paintUser(user.email || user.uid, prof.friendCode, prof.displayName);
         wireDataListeners(user.uid);
-      } catch {
-        setToast(fbToast, S.errGeneric, true);
+      } catch (e) {
+        if (import.meta.env.DEV) console.error("[firebase friends] profile init", e);
+        try {
+          await signOut(auth);
+        } catch {
+          /* ignore */
+        }
         paintGuest();
+        setToast(fbToast, mapProfileInitErr(e), true);
       }
     })();
   });

@@ -38,7 +38,13 @@
 
 接受邀請時以 **batch** 刪除邀請文件並建立 `friends` 文件；**不**使用 Cloud Functions。
 
-## 4. 維護注意
+## 4. 註冊後顯示「無法寫入好友資料」或泛用失敗
+
+- **Authentication**：主控台須啟用 **電子郵件／密碼**；未啟用時介面會提示無法使用該登入方式。  
+- **Firestore**：須建立資料庫，並將 **`docs/firebase-friends.rules`** 貼到「規則」後**發布**。若 Auth 已成功建立帳號但寫入 `profiles`／`friend_codes` 被拒，介面會改顯示與 Firestore 相關的說明（開發模式下瀏覽器 **Console** 會有 `[firebase friends] profile init` 日誌）。  
+- 修正規則後：若該 Email 已在 Auth 裡註冊過，請改按 **登入**（勿再註冊）；若仍無個人檔，登入後會再次執行建立個人檔與好友代碼。
+
+## 5. 維護注意
 
 - 修改 Firestore 結構或規則時，請同步更新本檔與 `docs/firebase-friends.rules`。  
 - 玩家可讀規則摘要見 `docs/GAME_RULES.md` **2.10**。  

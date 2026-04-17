@@ -395,14 +395,21 @@ export async function sendFriendChatMessage(
   });
 }
 
+/**
+ * 以 `memberUids array-contains` 過濾，避免子集合內混有舊版（無 memberUids）訊息時，
+ * 整段 `orderBy(createdAt)` 查詢因規則無法通過而 permission-denied。
+ * 需複合索引：memberUids (Contains) + createdAt —— 見 `docs/firebase-friends.indexes.json`。
+ */
 export function subscribeFriendChatMessages(
   db: Firestore,
   pairId: string,
+  viewerUid: string,
   onRows: (rows: FriendChatMessageRow[]) => void,
   onListenError?: (e: Error) => void,
 ): Unsubscribe {
   const q = query(
     collection(db, "friends", pairId, "messages"),
+    where("memberUids", "array-contains", viewerUid),
     orderBy("createdAt", "asc"),
     limit(100),
   );

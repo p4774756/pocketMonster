@@ -295,6 +295,7 @@ export function mountFirebaseFriends(root: HTMLElement): void {
     friendChatUnsub = subscribeFriendChatMessages(
       db,
       pairId,
+      u.uid,
       (rows) => {
         chatMessagesEl.replaceChildren();
         for (const m of rows) {

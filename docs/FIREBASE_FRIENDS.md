@@ -49,3 +49,30 @@
 - 修改 Firestore 結構或規則時，請同步更新本檔與 `docs/firebase-friends.rules`。  
 - 玩家可讀規則摘要見 `docs/GAME_RULES.md` **2.10**。  
 - 實作程式：`src/firebase/config.ts`、`src/firebase/friendsFirestore.ts`、`src/lobbyFirebaseFriends.ts`，掛載於 `src/main.ts` 的 `renderCare`。
+
+## 6. 舊 8 碼改為 4 碼（營運／維護手動遷移）
+
+前端自 **v0.2.29** 起僅**新註冊**會產生 **4** 碼；已存在之 `profiles`／`friend_codes` **不會自動改寫**。若希望舊使用者也改顯示 4 碼、且加友時以短碼為主，須在 Firestore **手動**調整（或自行撰寫 **Admin SDK** 批次腳本，勿把服務帳號金鑰提交版控）。
+
+**為何不能用 App 內自己刪？** 目前 `docs/firebase-friends.rules` 規定 `friend_codes` 的 **delete** 為 `false`，一般使用者無法刪除代碼文件；遷移須透過 **Firebase 主控台**（專案擁有者操作，不受規則限制）或 **Admin SDK**。
+
+### 6.1 單一使用者（主控台）
+
+對 `profiles/{uid}` 內 `friendCode` 仍為 **8** 碼者，建議順序如下（避免短暫查不到人）：
+
+1. **備份**：匯出或截圖該使用者的 `profiles` 與對應之 `friend_codes/{舊碼}`。  
+2. **挑新碼**：在 **`friend_codes`** 集合搜尋，自訂一組 **4** 碼大寫英數，字元須與程式一致：`23456789ABCDEFGHJKMNPQRSTVWXYZ`（見 `src/firebase/friendsFirestore.ts` 的 `FRIEND_CODE_ALPH`），且 **`friend_codes/{新碼}` 尚不存在**。  
+3. **新增**：建立文件 `friend_codes/{新碼}`，欄位僅需 `{ "uid": "<該使用者 uid>" }`（與現有格式相同）。  
+4. **更新**：編輯 `profiles/{uid}`，將 `friendCode` 改為該 **新碼**，並更新 `updatedAt`（可選，建議與其他欄位一併寫入 `serverTimestamp` 等價時間）。  
+5. **刪除舊索引**（選做，但建議）：刪除 `friend_codes/{舊 8 碼}`。刪除後他人**無法**再以舊 8 碼查到此使用者；若希望過渡期兩碼皆可加友，可暫留舊文件（兩份文件之 `uid` 相同即可，查詢仍依代碼文件 id）。  
+6. 請使用者**重新登入**或重新整理養成頁，以看到新代碼。
+
+### 6.2 批次注意
+
+- 每個 **新 4 碼** 在 `friend_codes` 內必須**全域唯一**；批次前可先匯出 `friend_codes` 清單避免碰撞。  
+- `friends`／`friend_requests` 內儲存的是 **uid**，**不必**因改短碼而修改（關係與邀請仍以 uid 為準）。  
+- 若曾手動複製錯誤的 `friendCode` 到別處宣傳，改碼後請通知使用者更新分享字串。
+
+### 6.3 Admin SDK（略述）
+
+使用 **Firebase Admin** 以服務帳號讀寫 Firestore，邏輯與 **6.1** 相同：先 `create` 新 `friend_codes` 文件、再 `update` `profiles`、最後 `delete` 舊 `friend_codes`（若需）。請在隔離環境執行、先對測試專案驗證。

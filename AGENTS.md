@@ -38,7 +38,7 @@
 | `docs/FIREBASE_FRIENDS.md` | **選用**：Firebase Auth + Firestore 好友代碼／邀請／名單；規則範例 `docs/firebase-friends.rules`。 |
 | `vite.config.ts` | 開發時把 `/socket.io` **proxy** 到 `localhost:3000`。 |
 | `render.yaml` | Render.com Web Service 範例（僅 API、不掛靜態）。 |
-| `.github/workflows/deploy-pages.yml` | GitHub Pages 靜態部署；建置需 `SOCKET_SERVER_URL`；選填六個 `VITE_FIREBASE_*` secrets 以啟用大廳好友。 |
+| `.github/workflows/deploy-pages.yml` | GitHub Pages 靜態部署；建置需 `SOCKET_SERVER_URL`；選填六個 `VITE_FIREBASE_*` secrets 以啟用養成畫面好友。 |
 | `.cursor/rules/pocket-pet-assets.mdc` | **永遠套用**：美術資產流程（原創、PNG、idle 命名等）。 |
 
 ## 本機開發
@@ -65,7 +65,7 @@ npm run dev
 | `VITE_SOCKET_URL` | 前端建置／執行 | **生產或分離部署時必填**（完整 origin，無尾隨 `/`）。見 `deploy.env.example`。開發留空則連同源並走 proxy。 |
 | `VITE_FEEDBACK_URL` | 前端建置 | 選填。意見回饋彈窗的「開啟回饋表單」連結（建議 `https:`）。 |
 | `VITE_FEEDBACK_EMAIL` | 前端建置 | 選填。`mailto` 收件信箱。 |
-| `VITE_FIREBASE_API_KEY` | 前端建置 | 選填。與下列五項**皆**設定時，連線大廳顯示 Firebase 好友面板（Email／密碼、Firestore 邀請與名單）。見 **`docs/FIREBASE_FRIENDS.md`**。 |
+| `VITE_FIREBASE_API_KEY` | 前端建置 | 選填。與下列五項**皆**設定時，養成主畫面顯示 Firebase 好友面板（Email／密碼、Firestore 邀請與名單）。見 **`docs/FIREBASE_FRIENDS.md`**。 |
 | `VITE_FIREBASE_AUTH_DOMAIN` | 前端建置 | 選填。例：`your-app.firebaseapp.com`。 |
 | `VITE_FIREBASE_PROJECT_ID` | 前端建置 | 選填。Firebase 專案 ID。 |
 | `VITE_FIREBASE_STORAGE_BUCKET` | 前端建置 | 選填。例：`your-app.appspot.com`（須與主控台 Web 設定一致）。 |
@@ -75,7 +75,7 @@ npm run dev
 | `NODE_ENV=production` | 伺服器 | 生產模式。 |
 | `SERVE_STATIC=0` | 伺服器 | 僅 API：不從 `dist` 提供靜態（Render 上的 API 服務用）。 |
 
-型別：`src/vite-env.d.ts` 宣告了 `VITE_SOCKET_URL`、選填的 `VITE_FEEDBACK_*` 與選填的 **`VITE_FIREBASE_*`**（六項齊備才啟用大廳 Firebase 好友）。
+型別：`src/vite-env.d.ts` 宣告了 `VITE_SOCKET_URL`、選填的 `VITE_FEEDBACK_*` 與選填的 **`VITE_FIREBASE_*`**（六項齊備才在養成主畫面啟用 Firebase 好友）。
 
 ## Socket 協定（客戶端 ↔ `server/index.js`）
 
@@ -112,7 +112,7 @@ npm run start:api   # SERVE_STATIC=0：只跑 API（給 Pages + 分離後端）
 
 ## 部署形態（摘要）
 
-1. **GitHub Pages（靜態）**：workflow 建置時注入 `secrets.SOCKET_SERVER_URL` → `VITE_SOCKET_URL`；若 Repository 另有設定六個 `VITE_FIREBASE_*` secrets，同一建置步驟會一併注入（大廳 Firebase 好友）。未設 `SOCKET_SERVER_URL` 建置會失敗。
+1. **GitHub Pages（靜態）**：workflow 建置時注入 `secrets.SOCKET_SERVER_URL` → `VITE_SOCKET_URL`；若 Repository 另有設定六個 `VITE_FIREBASE_*` secrets，同一建置步驟會一併注入（養成畫面 Firebase 好友）。未設 `SOCKET_SERVER_URL` 建置會失敗。
 2. **Render（API）**：`render.yaml` 使用 `start:api`；部署後把該服務的 HTTPS URL 設進 GitHub secret。
 
 ## 改功能時該看哪

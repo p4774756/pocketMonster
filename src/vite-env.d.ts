@@ -13,7 +13,7 @@ interface ImportMetaEnv {
   readonly VITE_FEEDBACK_URL: string | undefined;
   /** 選填：回饋用信箱（純位址，如 feedback@example.com），會開啟已帶主旨與環境資訊的 mailto。 */
   readonly VITE_FEEDBACK_EMAIL: string | undefined;
-  /** 選用：Firebase Web 設定（六項皆齊才啟用大廳好友面板）。見 `docs/FIREBASE_FRIENDS.md`。 */
+  /** 選用：Firebase Web 設定（六項皆齊才在養成主畫面啟用好友面板）。見 `docs/FIREBASE_FRIENDS.md`。 */
   readonly VITE_FIREBASE_API_KEY: string | undefined;
   readonly VITE_FIREBASE_AUTH_DOMAIN: string | undefined;
   readonly VITE_FIREBASE_PROJECT_ID: string | undefined;

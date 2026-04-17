@@ -5,7 +5,7 @@
 
 **與倉庫同步**：實作進度以程式為準；**版號**見根目錄 `package.json`（頂欄與後端 `/version` 同源）。本檔勾選由維護者在里程碑完成時更新。
 
-**進度摘要（請隨版本更新此段）**：**v0.3 進化核心**已擴充：貓／狗屬性鍵、`cat_volt`／`cat_aqua` 專用 PNG、圖鑑改版、`doodoo` 大便怪 Canvas、狗 Canvas 四屬、`lightsOn` 與夜間結算（`GAME_RULES.md` §1.7～1.8）；**根目錄 README**（技術棧、啟動、部署、圖片示意）已補；**選用 Firebase 好友 MVP**（大廳、Firestore、見 `docs/FIREBASE_FRIENDS.md`）已落地；**架構圖**見 `docs/ARCHITECTURE.md`；**v0.3 其餘**（戰鬥 log、server 模組化、草貓專屬圖等）仍為待辦。
+**進度摘要（請隨版本更新此段）**：**v0.3 進化核心**已擴充：貓／狗屬性鍵、`cat_volt`／`cat_aqua` 專用 PNG、圖鑑改版、`doodoo` 大便怪 Canvas、狗 Canvas 四屬、`lightsOn` 與夜間結算（`GAME_RULES.md` §1.7～1.8）；**根目錄 README**（技術棧、啟動、部署、圖片示意）已補；**選用 Firebase 好友 MVP**（養成主畫面、Firestore、見 `docs/FIREBASE_FRIENDS.md`）已落地；**架構圖**見 `docs/ARCHITECTURE.md`；**v0.3 其餘**（戰鬥 log、server 模組化、草貓專屬圖等）仍為待辦。
 
 ---
 
@@ -42,7 +42,7 @@
 
 ## v0.4 — 單機與黏著
 
-- [x] **Firebase 好友 MVP（選用）**：大廳 Email 註冊／登入、好友代碼、邀請／接受／拒絕、好友名單（Firestore）；不含站內聊天、不含雲端養成；見 `docs/FIREBASE_FRIENDS.md`。
+- [x] **Firebase 好友 MVP（選用）**：養成主畫面 Email 註冊／登入、好友代碼、邀請／接受／拒絕、好友名單（Firestore）；不含站內聊天、不含雲端養成；見 `docs/FIREBASE_FRIENDS.md`。
 - [ ] **帳號制社交（其餘大工程）**：站內聊天、代友照護、寵物雲端同步等（須另行設計訊息／授權與後端策略）；與現行「匿名房間碼＋本機養成」架構分線規劃。
 - [ ] **AI 對手**：本地或 Socket 單人房；簡單 heuristics（MP 門檻、隨機打破純 Nash）。
 - [ ] **單機模式**：無後端時降級說明 + 僅養成或僅本地戰（需產品決策）。

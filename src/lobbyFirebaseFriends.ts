@@ -99,8 +99,8 @@ function mapFriendErr(e: unknown): string {
 }
 
 /**
- * \u5728\u9023\u7dda\u5927\u5ef3 shell \u5167\u639b\u8f09\u300c\u597d\u53cb\uff08Firebase\uff09\u300d\u3002
- * \u96e2\u958b\u5927\u5ef3\u6642\u8acb\u547c\u53eb clearLobbyFirebaseFriendsCleanup\u3002
+ * \u5728\u990a\u6210\u4e3b\u756b\u9762\uff08`.shell--care`\uff09\u5167\u639b\u8f09\u300c\u597d\u53cb\uff08Firebase\uff09\u300d\u3002
+ * \u5207\u63db\u756b\u9762\u6642\u8acb\u547c\u53eb clearLobbyFirebaseFriendsCleanup\u3002
  */
 export function mountLobbyFirebaseFriends(root: HTMLElement): void {
   clearLobbyFirebaseFriendsCleanup();
@@ -112,7 +112,7 @@ export function mountLobbyFirebaseFriends(root: HTMLElement): void {
   sum.textContent = S.summary;
   wrap.append(sum);
 
-  const shell = root.querySelector(".shell--hub");
+  const shell = root.querySelector(".shell--care, .shell--hub");
   if (!shell) return;
 
   if (!isFirebaseFriendsConfigured()) {

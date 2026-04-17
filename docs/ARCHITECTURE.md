@@ -84,4 +84,4 @@ sequenceDiagram
 
 同機前後同源時可使用 `npm run start`（靜態 + Socket 同一 Node 行程），見 `AGENTS.md` 建置與生產跑法。
 
-**選用**：若建置時設定 **`VITE_FIREBASE_*`**（見 `docs/FIREBASE_FRIENDS.md`），連線大廳可透過 **Firebase Auth + Firestore** 管理好友代碼與邀請；**不**取代 Render 上的 Socket 對戰後端。
+**選用**：若建置時設定 **`VITE_FIREBASE_*`**（見 `docs/FIREBASE_FRIENDS.md`），養成主畫面可透過 **Firebase Auth + Firestore** 管理好友代碼與邀請；**不**取代 Render 上的 Socket 對戰後端。

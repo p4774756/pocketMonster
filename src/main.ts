@@ -1430,6 +1430,7 @@ function renderCare(root: HTMLElement) {
   }, 45000);
 
   paint();
+  mountLobbyFirebaseFriends(root);
 }
 
 function renderLobby(
@@ -1666,7 +1667,6 @@ function renderLobby(
 
   fetchOpenRooms();
   attachOpenRoomsLiveListener(fetchOpenRooms);
-  mountLobbyFirebaseFriends(root);
 }
 
 function renderWaiting(

@@ -1,6 +1,6 @@
 # Firebase 好友系統（選用）
 
-從 **養成畫面**進入獨立 **「好友（Firebase）」** 頁（非連線大廳）：以 **Firebase Authentication（Email／密碼）** 登入，**Cloud Firestore** 儲存個人檔、好友代碼、邀請與好友關係；**不含站內文字聊天**。  
+從 **養成畫面**進入獨立 **「好友（Firebase）」** 頁（非連線大廳）：以 **Firebase Authentication（Email／密碼）** 登入，**Cloud Firestore** 儲存個人檔、好友代碼、邀請、好友關係與**好友一對一文字聊天**（每則最多 **500** 字；對戰仍僅快捷語，見 `docs/GAME_RULES.md` **2.9**）。  
 **養成資料仍僅存 `localStorage`**，與 Firebase 帳號無自動綁定；對戰仍走既有 **Render Socket**（`VITE_SOCKET_URL`），本功能不取代後端對戰。
 
 ## 1. Firebase 主控台設定
@@ -8,7 +8,7 @@
 1. 建立專案 → 啟用 **Authentication** → 登入方式勾選 **電子郵件／密碼**。  
 2. 啟用 **Cloud Firestore**（建議先以「測試模式」建立資料庫，再立刻改為正式規則）。  
 3. **規則**：將本倉 `docs/firebase-friends.rules` 內容貼到 Firestore「規則」並發布。  
-4. **索引**：若即時監聽或查詢報錯，主控台會提供建立連結；亦可將 `docs/firebase-friends.indexes.json` 併入專案的 `firestore.indexes.json` 後以 Firebase CLI 部署。  
+4. **索引**：若即時監聽或查詢報錯，主控台會提供建立連結；亦可將 `docs/firebase-friends.indexes.json` 併入專案的 `firestore.indexes.json` 後以 Firebase CLI 部署。（`messages` 子集合依 `createdAt` 排序通常可由單欄位索引自動建立；若主控台提示再補。）  
 5. **專案設定 → 一般 → 您的應用程式** 新增 **Web** 應用，取得設定物件中的六個欄位，對應下方 `VITE_*` 變數。
 
 ## 2. 前端建置變數（Vite）
@@ -35,6 +35,7 @@
 | `friend_codes/{code}` | `uid`，供以代碼查使用者 |
 | `friend_requests/{autoId}` | `fromUid`、`toUid`、`fromDisplayName`、`status`（僅 `pending`）、`createdAt` |
 | `friends/{uidA_uidB}` | `members`（兩個 uid 排序）、`nicknames`（對照 uid→顯示名）、`since` |
+| `friends/{pairId}/messages/{autoId}` | `fromUid`、`text`（1～500 字）、`createdAt`（`serverTimestamp`）；僅雙方可讀寫建立，見 `docs/firebase-friends.rules` |
 
 接受邀請時以 **batch** 刪除邀請文件並建立 `friends` 文件；**不**使用 Cloud Functions。  
 客戶端以 **`onSnapshot`** 訂閱邀請／名單；若畫面未即時更新，**展開「好友（Firebase）」摺疊區**或**切回此分頁**時會再向伺服器拉取一次（`getDocs` 備援）。

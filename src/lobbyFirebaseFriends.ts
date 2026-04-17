@@ -14,11 +14,14 @@ import {
   rejectFriendRequest,
   removeFriendship,
   resolveUidFromFriendCode,
+  sendFriendChatMessage,
   sendFriendRequest,
+  subscribeFriendChatMessages,
   subscribeFriends,
   subscribeIncomingRequests,
   subscribeOutgoingRequests,
   updateProfileDisplayName,
+  FRIEND_CHAT_MAX_LEN,
   type FriendListRow,
   type IncomingRequestRow,
   type OutgoingRequestRow,
@@ -53,6 +56,12 @@ const S = {
   reject: "\u62d2\u7d55",
   cancel: "\u64a4\u56de",
   remove: "\u79fb\u9664",
+  chatOpen: "\u804a\u5929",
+  chatClose: "\u95dc\u9589",
+  chatPlaceholder: "\u8f38\u5165\u8a0a\u606f\u2026",
+  chatSend: "\u9001\u51fa",
+  errChatEmpty: "\u8a0a\u606f\u4e0d\u80fd\u70ba\u7a7a",
+  errChatRate: "\u9001\u51fa\u592a\u5feb\uff0c\u8acb\u7a0d\u5f8c",
   emptyFriends: "\u5c1a\u7121\u597d\u53cb",
   errGeneric: "\u5931\u6557\uff0c\u8acb\u7a0d\u5f8c\u518d\u8a66",
   errEmailInUse:
@@ -141,6 +150,7 @@ function mapFriendErr(e: unknown): string {
   if (m === "dup_pending") return S.errDup;
   if (m === "reverse_pending") return S.errReverse;
   if (m === "code_unknown" || m === "code_short") return S.errCode;
+  if (m === "empty") return S.errChatEmpty;
   return S.errGeneric;
 }
 
@@ -206,6 +216,17 @@ export function mountFirebaseFriends(root: HTMLElement): void {
       <div class="lobby-friends-list" id="fb-out"></div>
       <p class="lobby-friends-sub">${S.friends}</p>
       <div class="lobby-friends-list" id="fb-friends"></div>
+      <div id="fb-chat-panel" class="lobby-friends-chat hidden" aria-hidden="true">
+        <div class="lobby-friends-chat-head">
+          <span class="lobby-friends-chat-title" id="fb-chat-title"></span>
+          <button type="button" class="btn btn-secondary btn--compact" id="fb-chat-close">${S.chatClose}</button>
+        </div>
+        <div id="fb-chat-messages" class="lobby-friends-chat-messages" role="log"></div>
+        <div class="lobby-friends-chat-input-row">
+          <input type="text" class="field" id="fb-chat-input" maxlength="${String(FRIEND_CHAT_MAX_LEN)}" autocomplete="off" placeholder="${S.chatPlaceholder}" />
+          <button type="button" class="btn btn-primary btn--compact" id="fb-chat-send">${S.chatSend}</button>
+        </div>
+      </div>
       <div class="lobby-friends-row mt-gap-sm">
         <button type="button" class="btn btn-secondary" id="fb-logout">${S.logout}</button>
       </div>
@@ -236,12 +257,77 @@ export function mountFirebaseFriends(root: HTMLElement): void {
   const inList = qs("#fb-in");
   const outList = qs("#fb-out");
   const friendsList = qs("#fb-friends");
+  const chatPanel = qs("#fb-chat-panel");
+  const chatTitleEl = qs("#fb-chat-title");
+  const chatMessagesEl = qs("#fb-chat-messages");
+  const chatInput = qs("#fb-chat-input") as HTMLInputElement;
+  const chatSendBtn = qs("#fb-chat-send") as HTMLButtonElement;
+  const chatCloseBtn = qs("#fb-chat-close") as HTMLButtonElement;
 
   const auth = getFirebaseFriendsAuth();
   const db = getFirebaseFriendsDb();
   type TD = () => void;
   const dataUnsubs: TD[] = [];
   let profileDisplay = "";
+  let friendChatUnsub: TD | null = null;
+  let friendChatPairId: string | null = null;
+  let lastFriendChatSendAt = 0;
+
+  const clearFriendChat = () => {
+    friendChatUnsub?.();
+    friendChatUnsub = null;
+    friendChatPairId = null;
+    chatPanel.classList.add("hidden");
+    chatPanel.setAttribute("aria-hidden", "true");
+    chatInput.value = "";
+  };
+
+  const openFriendChat = (pairId: string, label: string) => {
+    const u = auth.currentUser;
+    if (!u) return;
+    clearFriendChat();
+    friendChatPairId = pairId;
+    chatTitleEl.textContent = label;
+    chatPanel.classList.remove("hidden");
+    chatPanel.setAttribute("aria-hidden", "false");
+    friendChatUnsub = subscribeFriendChatMessages(db, pairId, (rows) => {
+      chatMessagesEl.replaceChildren();
+      for (const m of rows) {
+        const rowEl = document.createElement("div");
+        rowEl.className =
+          "lobby-friends-chat-msg" +
+          (m.fromUid === u.uid ? " lobby-friends-chat-msg--me" : "");
+        const bubble = document.createElement("div");
+        bubble.className = "lobby-friends-chat-msg-bubble";
+        bubble.textContent = m.text;
+        rowEl.append(bubble);
+        chatMessagesEl.append(rowEl);
+      }
+      chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+    });
+  };
+
+  const trySendFriendChat = async () => {
+    const u = auth.currentUser;
+    if (!u || !friendChatPairId) return;
+    const raw = chatInput.value;
+    if (!raw.trim()) {
+      setToast(fbToast, S.errChatEmpty, true);
+      return;
+    }
+    const now = Date.now();
+    if (now - lastFriendChatSendAt < 1200) {
+      setToast(fbToast, S.errChatRate, true);
+      return;
+    }
+    try {
+      await sendFriendChatMessage(db, friendChatPairId, u.uid, raw);
+      lastFriendChatSendAt = now;
+      chatInput.value = "";
+    } catch (e) {
+      setToast(fbToast, mapFriendErr(e), true);
+    }
+  };
 
   const clearDataSubs = () => {
     while (dataUnsubs.length) {
@@ -275,6 +361,7 @@ export function mountFirebaseFriends(root: HTMLElement): void {
   };
 
   const paintGuest = () => {
+    clearFriendChat();
     setAddFriendBusy(false);
     setUserSaveNameBusy(false);
     setGuestAuthBusy(false);
@@ -285,6 +372,7 @@ export function mountFirebaseFriends(root: HTMLElement): void {
   };
 
   const paintUser = (email: string, code: string, dname: string) => {
+    clearFriendChat();
     setAddFriendBusy(false);
     setUserSaveNameBusy(false);
     setGuestAuthBusy(false);
@@ -380,11 +468,21 @@ export function mountFirebaseFriends(root: HTMLElement): void {
       const lab = document.createElement("span");
       lab.className = "lobby-friends-item-label";
       lab.textContent = r.label;
+      const actions = document.createElement("div");
+      actions.className = "lobby-friends-item-actions";
+      const bChat = document.createElement("button");
+      bChat.type = "button";
+      bChat.className = "btn btn-primary btn--compact";
+      bChat.textContent = S.chatOpen;
+      bChat.addEventListener("click", () => {
+        openFriendChat(r.pairId, r.label);
+      });
       const b = document.createElement("button");
       b.type = "button";
       b.className = "btn btn-secondary btn--compact";
       b.textContent = S.remove;
       b.addEventListener("click", async () => {
+        if (friendChatPairId === r.pairId) clearFriendChat();
         try {
           await removeFriendship(db, r.pairId, uid);
           setToast(fbToast, S.okRemoved, true);
@@ -392,7 +490,8 @@ export function mountFirebaseFriends(root: HTMLElement): void {
           setToast(fbToast, S.errGeneric, true);
         }
       });
-      row.append(lab, b);
+      actions.append(bChat, b);
+      row.append(lab, actions);
       friendsList.append(row);
     }
   };
@@ -533,6 +632,18 @@ export function mountFirebaseFriends(root: HTMLElement): void {
     }
   });
 
+  chatCloseBtn.addEventListener("click", () => {
+    clearFriendChat();
+  });
+  chatSendBtn.addEventListener("click", () => {
+    void trySendFriendChat();
+  });
+  chatInput.addEventListener("keydown", (ev) => {
+    if (ev.key !== "Enter") return;
+    ev.preventDefault();
+    void trySendFriendChat();
+  });
+
   qs("#fb-add").addEventListener("click", async () => {
     const u = auth.currentUser;
     if (!u || btnAdd.disabled) return;
@@ -557,6 +668,7 @@ export function mountFirebaseFriends(root: HTMLElement): void {
 
   const cleanup = () => {
     document.removeEventListener("visibilitychange", onFriendPanelVisibility);
+    clearFriendChat();
     clearDataSubs();
     unsubAuth();
     if (wrap.parentNode) wrap.remove();

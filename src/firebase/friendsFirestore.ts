@@ -5,7 +5,9 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
   onSnapshot,
+  orderBy,
   query,
   runTransaction,
   serverTimestamp,
@@ -16,6 +18,9 @@ import {
   type QuerySnapshot,
   type Unsubscribe,
 } from "firebase/firestore";
+
+/** \u8207\u597d\u53cb\u804a\u5929\u55ae\u5247\u5b57\u6578\u4e0a\u9650\uff08\u8207\u898f\u5247\u4e00\u81f4\uff09\u3002 */
+export const FRIEND_CHAT_MAX_LEN = 500;
 
 export type IncomingRequestRow = {
   id: string;
@@ -353,6 +358,65 @@ export function subscribeFriends(
     (snap) => onRows(mapFriendsSnap(snap, uid)),
     (e) => {
       if (import.meta.env.DEV) console.error("[friends listen]", e);
+      onListenError?.(e);
+      onRows([]);
+    },
+  );
+}
+
+export type FriendChatMessageRow = {
+  id: string;
+  fromUid: string;
+  text: string;
+  createdAtMs: number;
+};
+
+export async function sendFriendChatMessage(
+  db: Firestore,
+  pairId: string,
+  fromUid: string,
+  text: string,
+): Promise<void> {
+  const t = text.trim().slice(0, FRIEND_CHAT_MAX_LEN);
+  if (!t) throw new Error("empty");
+  await addDoc(collection(db, "friends", pairId, "messages"), {
+    fromUid,
+    text: t,
+    createdAt: serverTimestamp(),
+  });
+}
+
+export function subscribeFriendChatMessages(
+  db: Firestore,
+  pairId: string,
+  onRows: (rows: FriendChatMessageRow[]) => void,
+  onListenError?: (e: Error) => void,
+): Unsubscribe {
+  const q = query(
+    collection(db, "friends", pairId, "messages"),
+    orderBy("createdAt", "asc"),
+    limit(100),
+  );
+  return onSnapshot(
+    q,
+    (snap) => {
+      const rows: FriendChatMessageRow[] = [];
+      snap.forEach((d) => {
+        const x = d.data();
+        const ts = x.createdAt as { toMillis?: () => number } | undefined;
+        const ms =
+          ts && typeof ts.toMillis === "function" ? ts.toMillis() : 0;
+        rows.push({
+          id: d.id,
+          fromUid: String(x.fromUid || ""),
+          text: String(x.text || ""),
+          createdAtMs: ms,
+        });
+      });
+      onRows(rows);
+    },
+    (e) => {
+      if (import.meta.env.DEV) console.error("[friend chat listen]", e);
       onListenError?.(e);
       onRows([]);
     },

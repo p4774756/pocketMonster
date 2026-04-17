@@ -45,6 +45,19 @@ service cloud.firestore {
       allow delete: if request.auth != null
         && request.auth.uid in resource.data.members;
       allow update: if false;
+
+      match /messages/{msgId} {
+        allow read: if request.auth != null
+          && request.auth.uid in get(/databases/$(database)/documents/friends/$(pairId)).data.members;
+        allow create: if request.auth != null
+          && request.auth.uid in get(/databases/$(database)/documents/friends/$(pairId)).data.members
+          && request.resource.data.fromUid == request.auth.uid
+          && request.resource.data.keys().hasAll(['fromUid', 'text', 'createdAt'])
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 500;
+        allow update, delete: if false;
+      }
     }
   }
 }

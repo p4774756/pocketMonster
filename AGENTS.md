@@ -14,7 +14,7 @@
 ### 目前專案狀態（維護者快照）
 
 - **版號**：一律以 **`package.json` 的 `version`** 為單一來源（前端頂欄、`GET /version`）。
-- **已納入主線**：養成進化 MVP（`tryEvolve`、`recordPvpWin`）、對戰寵物快照可選 `morphKey`、`linked` 對手資料可含形態；細節見 **`docs/GAME_RULES.md`** 與 **`docs/ROADMAP_TASKS.md`**（路線勾選與待辦）。
+- **已納入主線**：養成進化 MVP（`tryEvolve`、`recordPvpWin`）、對戰寵物快照可選 `morphKey`、`linked` 對手資料可含形態；**選用 Firebase 好友**含一對一文字聊天（見 **`docs/FIREBASE_FRIENDS.md`**）；細節見 **`docs/GAME_RULES.md`** 與 **`docs/ROADMAP_TASKS.md`**（路線勾選與待辦）。
 - **進行中／下一批**：戰鬥本場 log、`server/index.js` 模組化、形態專屬美術等——以 **`docs/ROADMAP_TASKS.md`** 未勾選項為準。（**`README.md`** 已補：啟動、部署、圖片示意。）
 
 **版本號**：以根目錄 **`package.json` 的 `version`** 為單一來源；前端建置時由 Vite 注入 `__APP_VERSION__`（頂欄顯示），後端啟動日誌與 **`GET /version`** 亦讀取同檔。實質更新 **`GAME_RULES.md`**、**`AGENTS.md`** 或 **`.cursor/rules/*.mdc`** 時，須在同一批變更內遞增該欄位（預設 patch +1）；遞增後應以**中文 commit 訊息**完成 `git commit` 並 **`git push`**（見 **`.cursor/rules/pocket-pet-game-rules-sync.mdc`** 末段）。
@@ -35,7 +35,7 @@
 | `public/pets/` | 精靈圖等靜態資源（idle 依成長階段命名）。 |
 | `docs/GAME_RULES.md` | **遊戲規則**：養成、孵化、對戰出招與傷害、勝負條件（給玩家／維護者）。 |
 | `docs/ARCHITECTURE.md` | **系統架構圖**（Mermaid）：前後端分層、主要模組、Socket 流程；協定細節仍以本檔 Socket 節為準。 |
-| `docs/FIREBASE_FRIENDS.md` | **選用**：Firebase Auth + Firestore 好友代碼／邀請／名單；規則範例 `docs/firebase-friends.rules`。 |
+| `docs/FIREBASE_FRIENDS.md` | **選用**：Firebase Auth + Firestore 好友代碼／邀請／名單／**一對一聊天**（`friends/{pairId}/messages`）；規則範例 `docs/firebase-friends.rules`。 |
 | `vite.config.ts` | 開發時把 `/socket.io` **proxy** 到 `localhost:3000`。 |
 | `render.yaml` | Render.com Web Service 範例（僅 API、不掛靜態）。 |
 | `.github/workflows/deploy-pages.yml` | GitHub Pages 靜態部署；建置需 `SOCKET_SERVER_URL`；選填六個 `VITE_FIREBASE_*` secrets 以啟用好友頁。 |
@@ -65,7 +65,7 @@ npm run dev
 | `VITE_SOCKET_URL` | 前端建置／執行 | **生產或分離部署時必填**（完整 origin，無尾隨 `/`）。見 `deploy.env.example`。開發留空則連同源並走 proxy。 |
 | `VITE_FEEDBACK_URL` | 前端建置 | 選填。意見回饋彈窗的「開啟回饋表單」連結（建議 `https:`）。 |
 | `VITE_FEEDBACK_EMAIL` | 前端建置 | 選填。`mailto` 收件信箱。 |
-| `VITE_FIREBASE_API_KEY` | 前端建置 | 選填。與下列五項**皆**設定時，可進入 **好友（Firebase）** 獨立頁（Email／密碼、Firestore 邀請與名單）。見 **`docs/FIREBASE_FRIENDS.md`**。 |
+| `VITE_FIREBASE_API_KEY` | 前端建置 | 選填。與下列五項**皆**設定時，可進入 **好友（Firebase）** 獨立頁（Email／密碼、Firestore 邀請、名單與好友聊天）。見 **`docs/FIREBASE_FRIENDS.md`**。 |
 | `VITE_FIREBASE_AUTH_DOMAIN` | 前端建置 | 選填。例：`your-app.firebaseapp.com`。 |
 | `VITE_FIREBASE_PROJECT_ID` | 前端建置 | 選填。Firebase 專案 ID。 |
 | `VITE_FIREBASE_STORAGE_BUCKET` | 前端建置 | 選填。例：`your-app.appspot.com`（須與主控台 Web 設定一致）。 |

@@ -139,6 +139,9 @@ body {
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--muted-2);
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
   user-select: none;
   line-height: 1.2;
   padding: 4px 0;
@@ -263,6 +266,7 @@ body {
   );
   padding: 18px 18px 20px;
   box-shadow: var(--shadow-lg), var(--shadow-inset);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
 
@@ -1037,6 +1041,7 @@ h1 {
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.45);
+  -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
@@ -1091,7 +1096,6 @@ h1 {
   border-radius: var(--radius-md);
   border: 1px solid var(--edge);
   background: rgba(255, 255, 255, 0.65);
-  -webkit-overflow-scrolling: touch;
 }
 
 .rules-modal-body {
@@ -1172,7 +1176,6 @@ h1 {
 .rules-modal-body .table-wrap {
   margin: 0 0 14px;
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
   border-radius: var(--radius-sm);
   border: 1px solid var(--edge);
 }
@@ -1551,8 +1554,6 @@ footer.note {
   margin-top: 2px;
   overflow-x: auto;
   padding: 4px 2px 6px;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
 }
 
 .dex-pose-card {
@@ -1583,8 +1584,22 @@ footer.note {
   gap: 4px 6px;
   overflow-x: auto;
   padding: 4px 2px 6px;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
+}
+
+.dex-pose-track::-webkit-scrollbar,
+.dex-evolution-track::-webkit-scrollbar {
+  height: 6px;
+}
+
+.dex-pose-track::-webkit-scrollbar-thumb,
+.dex-evolution-track::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.22);
+  border-radius: 3px;
+}
+
+.dex-pose-track::-webkit-scrollbar-track,
+.dex-evolution-track::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .dex-stage-card {
@@ -1656,6 +1671,9 @@ footer.note {
   color: var(--muted);
   opacity: 0.55;
   padding: 0 2px;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
   user-select: none;
 }
 
@@ -2696,6 +2714,7 @@ html[data-theme="minimal"] .modal {
 
 html[data-theme="minimal"] .modal-overlay {
   background: rgb(0 0 0 / 0.35);
+  -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
 

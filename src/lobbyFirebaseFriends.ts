@@ -62,6 +62,10 @@ const S = {
   chatSend: "\u9001\u51fa",
   errChatEmpty: "\u8a0a\u606f\u4e0d\u80fd\u70ba\u7a7a",
   errChatRate: "\u9001\u51fa\u592a\u5feb\uff0c\u8acb\u7a0d\u5f8c",
+  errChatListenIndex:
+    "\u597d\u53cb\u804a\u5929\u9700 Firestore \u8907\u5408\u7d22\u5f15\uff08\u5b50\u96c6\u5408 messages\uff1amemberUids \u9663\u5217 Contains + createdAt \u905e\u589e\uff09\u3002\u8acb\u5728\u4e3b\u63a7\u53f0\u300c\u7d22\u5f15\u3001\u5efa\u7acb\u9023\u7d50\u300d\u6216\u91cd\u65b0\u57f7\u884c firebase deploy --only firestore:indexes\uff08\u7d22\u5f15\u6a94\u9808\u70ba COLLECTION_GROUP\uff09\u3002",
+  errChatListenPermission:
+    "\u7121\u6cd5\u8b80\u53d6\u804a\u5929\u8a0a\u606f\u3002\u8acb\u78ba\u8a8d\u6bcf\u5247\u8a0a\u606f\u6709 memberUids\uff08\u8207\u4e0a\u5c64 friends.members \u4e00\u81f4\uff09\uff0c\u898f\u5247\u898b docs/firebase-friends.rules \u3002",
   emptyFriends: "\u5c1a\u7121\u597d\u53cb",
   errGeneric: "\u5931\u6557\uff0c\u8acb\u7a0d\u5f8c\u518d\u8a66",
   errEmailInUse:
@@ -141,7 +145,8 @@ function mapFriendErr(e: unknown): string {
   if (code === "failed-precondition") {
     const msg =
       e && typeof e === "object" && "message" in e ? String((e as Error).message) : "";
-    if (/index/i.test(msg)) return S.errFriendIndex;
+    if (/index|索引|composite|requires|FAILED_PRECONDITION|create it/i.test(msg))
+      return S.errFriendIndex;
     return S.errFriendFirestore;
   }
   const m = e && typeof e === "object" && "message" in e ? String((e as Error).message) : "";
@@ -154,6 +159,13 @@ function mapFriendErr(e: unknown): string {
   if (m === "pair_missing" || m === "pair_invalid" || m === "not_member")
     return S.errFriendFirestore;
   return S.errGeneric;
+}
+
+function mapFriendChatListenErr(e: unknown): string {
+  const code = errCode(e);
+  if (code === "failed-precondition") return S.errChatListenIndex;
+  if (code === "permission-denied") return S.errChatListenPermission;
+  return mapFriendErr(e);
 }
 
 /**
@@ -312,7 +324,7 @@ export function mountFirebaseFriends(root: HTMLElement): void {
         chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
       },
       (err) => {
-        setToast(fbToast, mapFriendErr(err), true);
+        setToast(fbToast, mapFriendChatListenErr(err), true);
       },
     );
   };

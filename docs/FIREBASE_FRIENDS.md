@@ -9,7 +9,7 @@
 2. 啟用 **Cloud Firestore**（建議先以「測試模式」建立資料庫，再立刻改為正式規則）。  
 3. **規則**：將本倉 `docs/firebase-friends.rules` 內容貼到 Firestore「規則」並發布。  
 4. **索引**：若即時監聽或查詢報錯，主控台會提供建立連結；亦可將 `docs/firebase-friends.indexes.json` 併入專案的 `firestore.indexes.json` 後以 Firebase CLI 部署。  
-   **好友聊天**查詢為：`where("memberUids", "array-contains", 目前使用者)` + `orderBy("createdAt")`，須建立複合索引 **`memberUids`（陣列 Contains）+ `createdAt`（遞增）**（見本倉 `firebase-friends.indexes.json` 最後一筆）；僅 `orderBy(createdAt)` 時的單欄索引**不**足夠。  
+   **好友聊天**查詢為：`where("memberUids", "array-contains", 目前使用者)` + `orderBy("createdAt")`，須建立複合索引 **`memberUids`（陣列 Contains）+ `createdAt`（遞增）**；因訊息在 **`friends/{pairId}/messages` 子集合**，索引的 **`queryScope` 須為 `COLLECTION_GROUP`**（見本倉 `firebase-friends.indexes.json` 最後一筆）。若曾以 `COLLECTION` 部署過，請刪除錯誤索引後改以本檔重新 `firebase deploy --only firestore:indexes`。  
 5. **專案設定 → 一般 → 您的應用程式** 新增 **Web** 應用，取得設定物件中的六個欄位，對應下方 `VITE_*` 變數。
 
 ## 2. 前端建置變數（Vite）

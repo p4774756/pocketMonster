@@ -112,7 +112,7 @@ export function mountLobbyFirebaseFriends(root: HTMLElement): void {
   sum.textContent = S.summary;
   wrap.append(sum);
 
-  const shell = root.querySelector(".shell--care, .shell--hub");
+  const shell = root.querySelector(".shell--care");
   if (!shell) return;
 
   if (!isFirebaseFriendsConfigured()) {

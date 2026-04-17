@@ -43,7 +43,8 @@
 - **Authentication**：主控台須啟用 **電子郵件／密碼**；未啟用時介面會提示無法使用該登入方式。  
 - **Firestore**：須建立資料庫，並將 **`docs/firebase-friends.rules`** 貼到「規則」後**發布**。若 Auth 已成功建立帳號但寫入 `profiles`／`friend_codes` 被拒，介面會改顯示與 Firestore 相關的說明（開發模式下瀏覽器 **Console** 會有 `[firebase friends] profile init` 日誌）。  
 - 修正規則後：若該 Email 已在 Auth 裡註冊過，請改按 **登入**（勿再註冊）；若仍無個人檔，登入後會再次執行建立個人檔與好友代碼。  
-- **發送邀請**會查詢 `friend_requests` 複合條件；若主控台或瀏覽器 Console 出現需建立**索引**的提示，請依連結建立，或將 **`docs/firebase-friends.indexes.json`** 併入專案後以 Firebase CLI 部署索引。
+- **發送邀請**會查詢 `friend_requests` 複合條件；若主控台或瀏覽器 Console 出現需建立**索引**的提示，請依連結建立，或將 **`docs/firebase-friends.indexes.json`** 併入專案後以 Firebase CLI 部署索引。  
+- 若已登入且規則已發布，仍無法發送邀請並出現 **permission-denied**：舊版 `friends` 讀取規則在**文件尚不存在**時會誤擋 `get`；請將本倉 **`docs/firebase-friends.rules`** 更新後**再次發布**（`friends` 的 `read` 須含「文件不存在則允許已登入讀取」的條件，見檔內註解）。
 
 ## 5. 維護注意
 

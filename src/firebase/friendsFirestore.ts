@@ -16,8 +16,12 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 
+/** 好友代碼字元集（大寫英數，略過易混淆的 0/O/1/I）。 */
 const FRIEND_CODE_ALPH =
   "23456789ABCDEFGHJKMNPQRSTVWXYZ";
+
+/** 新產生的好友代碼長度（既有 8 碼仍可由 `resolveUidFromFriendCode` 查詢）。 */
+const FRIEND_CODE_LEN = 4;
 
 export type UserProfileDoc = {
   displayName: string;
@@ -45,7 +49,7 @@ export async function ensureUserProfile(
   const safeName = displayName.trim().slice(0, 32) || "\u73a9\u5bb6";
   for (let attempt = 0; attempt < 48; attempt++) {
     let code = "";
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < FRIEND_CODE_LEN; i++) {
       code += FRIEND_CODE_ALPH[
         Math.floor(Math.random() * FRIEND_CODE_ALPH.length)
       ]!;
@@ -87,7 +91,7 @@ export async function resolveUidFromFriendCode(
   rawCode: string,
 ): Promise<string> {
   const code = rawCode.trim().toUpperCase().replace(/[^0-9A-Z]/g, "");
-  if (code.length < 6) throw new Error("code_short");
+  if (code.length < FRIEND_CODE_LEN) throw new Error("code_short");
   const cref = doc(db, "friend_codes", code);
   const snap = await getDoc(cref);
   if (!snap.exists()) throw new Error("code_unknown");

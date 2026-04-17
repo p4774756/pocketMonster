@@ -180,7 +180,7 @@ export function mountLobbyFirebaseFriends(root: HTMLElement): void {
       </div>
       <div class="lobby-friends-row lobby-friends-row--wrap">
         <label class="lobby-friends-label" for="fb-peer-code">${S.addByCode}</label>
-        <input type="text" class="field" id="fb-peer-code" maxlength="12" autocomplete="off" placeholder="ABCD1234" />
+        <input type="text" class="field" id="fb-peer-code" maxlength="12" autocomplete="off" placeholder="A1B2" />
         <button type="button" class="btn btn-primary btn--compact" id="fb-add">${S.addSend}</button>
       </div>
       <p class="lobby-friends-sub">${S.incoming}</p>

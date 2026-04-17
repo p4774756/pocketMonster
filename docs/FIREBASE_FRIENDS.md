@@ -31,7 +31,7 @@
 
 | 集合／文件 | 用途 |
 |------------|------|
-| `profiles/{uid}` | `displayName`、`friendCode`（8 碼大寫英數）、`updatedAt` |
+| `profiles/{uid}` | `displayName`、`friendCode`（新帳為 **4** 碼大寫英數；舊資料可仍為 8 碼）、`updatedAt` |
 | `friend_codes/{code}` | `uid`，供以代碼查使用者 |
 | `friend_requests/{autoId}` | `fromUid`、`toUid`、`fromDisplayName`、`status`（僅 `pending`）、`createdAt` |
 | `friends/{uidA_uidB}` | `members`（兩個 uid 排序）、`nicknames`（對照 uid→顯示名）、`since` |

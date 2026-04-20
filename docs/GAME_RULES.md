@@ -171,7 +171,7 @@
 | 畫面與 Socket 客戶端（含大廳房名、骰子、公開清單列） | `src/main.ts` |
 | 自託管字型子集 | `src/fonts.css`（`@fontsource/dm-sans`、`@fontsource/jetbrains-mono`） |
 | 寵物 PNG 批次壓縮 | `scripts/optimize-pet-pngs.mjs`（`npm run optimize:pets`） |
-| 圖鑑介面 | `src/main.ts` `renderSpeciesDex`：物種**分頁**（雷系蛋獸、雞、貓）；貓之雷／水／無屬性示意為**摺疊** `<details>`；成長／姿勢列可**橫向捲動**（`src/style.css`）。雷／水貓示意檔見 `dexCatVolt*`／`dexCatAqua*`（`src/pet.ts`） |
+| 圖鑑介面 | `src/main.ts` `renderSpeciesDex`：物種**分頁**（雷系蛋獸、雞、貓）；貓之**雷**／**水**屬性示意為**摺疊** `<details>`（進化列僅**兒童期起**，與覺醒後專用立繪一致）；**一般貓**（含無屬性）成長與照護姿勢見貓分頁**主列**；成長／姿勢列可**橫向捲動**（`src/style.css`）。雷／水貓示意檔見 `dexCatVolt*`／`dexCatAqua*`（`src/pet.ts`） |
 | 對戰結算、房間、計時 | `server/index.js` |
 | Firebase 好友（選用 Auth + Firestore） | `src/firebase/`、`src/lobbyFirebaseFriends.ts`（掛載於 `renderFriends`）、`docs/FIREBASE_FRIENDS.md`、`docs/firebase-friends.rules` |
 | 專案架構給 agent | `AGENTS.md` |

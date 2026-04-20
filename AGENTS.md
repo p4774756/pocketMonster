@@ -121,7 +121,7 @@ npm run start:api   # SERVE_STATIC=0：只跑 API（給 Pages + 分離後端）
 - **畫面與對戰流程**：`src/main.ts`（體積大，可用搜尋 `renderCare`、`renderFriends`、`renderBattle`、`ensureSocket`）。
 - **對戰平衡與房間生命週期**：`server/index.js`。
 - **樣式**：`src/style.css`。
-- **新精靈／圖示**：遵守 `.cursor/rules/pocket-pet-assets.mdc`；idle 見 **`idleSpriteForSpeciesStage`**／**`idleSpriteFromSnap`**／**`idleSpriteForPet`**（`src/pet.ts`）；照護姿勢見 **`carePoseFile`**（第三參數可帶 `morphKey`，雷貓 **`cat-volt-*.png`**、水貓 **`cat-aqua-*.png`**）。雷系訓練 **`pet-train-volt.png`**（其餘 `pet-*.png`／貓雞各檔）。**圖鑑**（`renderSpeciesDex`）：**物種分頁**（`data-dex-tab`／`data-dex-panel`）；貓之雷／水／無屬性示意為 **`<details class="dex-morph-details">`** 預設收合；成長／照護軌可橫向捲動（`src/style.css`）。`DEX_POSE_STAGE`。
+- **新精靈／圖示**：遵守 `.cursor/rules/pocket-pet-assets.mdc`；idle 見 **`idleSpriteForSpeciesStage`**／**`idleSpriteFromSnap`**／**`idleSpriteForPet`**（`src/pet.ts`）；照護姿勢見 **`carePoseFile`**（第三參數可帶 `morphKey`，雷貓 **`cat-volt-*.png`**、水貓 **`cat-aqua-*.png`**）。雷系訓練 **`pet-train-volt.png`**（其餘 `pet-*.png`／貓雞各檔）。**圖鑑**（`renderSpeciesDex`）：**物種分頁**（`data-dex-tab`／`data-dex-panel`）；貓之雷／水屬性示意為 **`<details class="dex-morph-details">`** 預設收合（進化列自兒童期起；一般貓含無屬性見貓分頁主列）；成長／照護軌可橫向捲動（`src/style.css`）。`DEX_POSE_STAGE`。
 
 ## 慣例與注意
 

@@ -322,7 +322,7 @@ export function carePoseFile(
   return `pet-${suf}.png`;
 }
 
-/** 圖鑑：雷屬進化貓 idle（階段 0…4 與養成體型對齊）。 */
+/** 圖鑑：雷屬進化貓 idle（`s0`…`s4`；圖鑑摺疊列僅展示覺醒後 **1…4** 與養成體型對齊）。 */
 export function dexCatVoltIdleFile(stage: 0 | 1 | 2 | 3 | 4): string {
   return `cat-volt-idle-s${stage}.png`;
 }
@@ -332,7 +332,7 @@ export function dexCatVoltCarePoseFile(pose: CarePose): string {
   return carePoseFile("cat", pose, "cat_volt");
 }
 
-/** 圖鑑：水屬進化貓 idle。 */
+/** 圖鑑：水屬進化貓 idle（`s0`…`s4`；圖鑑摺疊列僅展示 **1…4**）。 */
 export function dexCatAquaIdleFile(stage: 0 | 1 | 2 | 3 | 4): string {
   return `cat-aqua-idle-s${stage}.png`;
 }

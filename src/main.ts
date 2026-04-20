@@ -271,9 +271,6 @@ const UI = {
   dexCatAquaPoseSection: "\u6c34\u8c93\u7167\u8b77\u59ff\u52e2",
   dexCatAquaPoseNote:
     "\u540c\u6a23\u5c0d\u61c9\u990a\u6210\u56db\u9375\uff1b\u59ff\u52e2\u4ee5\u9752\u5c11\u5e74\u671f\u9ad4\u578b\u793a\u610f\u3002",
-  dexCatNeutralSection: "\u7121\u5c6c\u6027\u8c93\uff08\u5152\u7ae5\u671f\u9580\u6abb\uff09",
-  dexCatNeutralIntro:
-    "\u5bf6\u5bf6\u671f\u7167\u8b77\u8f03\u4e0d\u7406\u60f3\u6642\uff0c\u9032\u5165\u5152\u7ae5\u671f\u53ef\u80fd\u4e0d\u89f8\u767c\u5c6c\u6027\uff1b\u6b64\u5f8c\u6c38\u9060\u4fdd\u6301\u4e00\u822c\u8c93 PNG\uff08\u7121\u96f7\uff0f\u6c34\u5c08\u7528\u7acb\u7e6a\uff09\u3002",
   backToPet: "\u56de\u5230\u6211\u7684\u5925\u4f34",
   restartAdopt: "\u91cd\u65b0\u8a8d\u990a",
   confirmRestartAdopt:
@@ -601,7 +598,7 @@ function dexJoinWithArrows(parts: string[]): string {
     .join("");
 }
 
-/** 貓屬性／無屬性示意：預設收合，減少圖鑑縱向長度。 */
+/** 貓雷／水屬分支示意：預設收合，減少圖鑑縱向長度。 */
 function dexMorphAccordionHtml(summary: string, innerHtml: string): string {
   return `
     <details class="dex-morph-details">
@@ -748,7 +745,7 @@ function dexSpeciesBlockHtml(species: PetSpecies): string {
         <h4 class="dex-section-heading">${UI.dexEvolutionSection}</h4>
         <div class="dex-evolution-track">
           ${dexJoinWithArrows(
-            ([0, 1, 2, 3, 4] as const).map((st) => dexCatVoltStageCardHtml(st)),
+            ([1, 2, 3, 4] as const).map((st) => dexCatVoltStageCardHtml(st)),
           )}
         </div>
         <h4 class="dex-section-heading">${UI.dexCatVoltPoseSection}</h4>
@@ -766,7 +763,7 @@ function dexSpeciesBlockHtml(species: PetSpecies): string {
         <h4 class="dex-section-heading">${UI.dexEvolutionSection}</h4>
         <div class="dex-evolution-track">
           ${dexJoinWithArrows(
-            ([0, 1, 2, 3, 4] as const).map((st) => dexCatAquaStageCardHtml(st)),
+            ([1, 2, 3, 4] as const).map((st) => dexCatAquaStageCardHtml(st)),
           )}
         </div>
         <h4 class="dex-section-heading">${UI.dexCatAquaPoseSection}</h4>
@@ -774,24 +771,6 @@ function dexSpeciesBlockHtml(species: PetSpecies): string {
         <div class="dex-pose-track">
           ${dexJoinWithArrows(
             DEX_POSE_ORDER.map((pose) => dexCatAquaPoseCardHtml(pose)),
-          )}
-        </div>`,
-      )}
-      ${dexMorphAccordionHtml(
-        escapeHtml(UI.dexCatNeutralSection),
-        `
-        <p class="dex-species-intro dex-morph-details-intro">${escapeHtml(UI.dexCatNeutralIntro)}</p>
-        <h4 class="dex-section-heading">${UI.dexEvolutionSection}</h4>
-        <div class="dex-evolution-track">
-          ${dexJoinWithArrows(
-            ([0, 1, 2, 3, 4] as const).map((st) => dexStageCardHtml("cat", st)),
-          )}
-        </div>
-        <h4 class="dex-section-heading">${UI.dexPoseSection}</h4>
-        <p class="dex-pose-note">${UI.dexPoseNote}</p>
-        <div class="dex-pose-track">
-          ${dexJoinWithArrows(
-            DEX_POSE_ORDER.map((pose) => dexPoseCardHtml("cat", pose)),
           )}
         </div>`,
       )}

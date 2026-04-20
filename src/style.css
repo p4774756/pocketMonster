@@ -1879,6 +1879,43 @@ footer.note {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
+/* 養成關燈：#pet-stage 整塊暗房（須同時 .care-shell--lights-off） */
+.care-shell--lights-off .pet-stage.pet-stage--lights-off {
+  background: #050508;
+  border-color: rgba(0, 0, 0, 0.55);
+  box-shadow:
+    inset 0 0 48px rgba(0, 0, 0, 0.94),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.care-shell--lights-off .pet-stage.pet-stage--lights-off .pet-sprite-mount .pet-sprite,
+.care-shell--lights-off .pet-stage.pet-stage--lights-off .pet-sprite-mount .pet-sprite-canvas {
+  filter: brightness(0.3);
+}
+
+.care-shell--lights-off .pet-stage.pet-stage--lights-off .pet-nick {
+  opacity: 0.72;
+}
+
+html[data-theme="retro"] .care-shell--lights-off .pet-stage.pet-stage--lights-off {
+  background: #020403;
+  border-color: rgba(0, 0, 0, 0.65);
+  box-shadow: inset 0 0 52px rgba(0, 0, 0, 0.95);
+}
+
+html[data-theme="minimal"] .care-shell--lights-off .pet-stage.pet-stage--lights-off {
+  background: #0a0a0a;
+  border: 2px solid #000;
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.9);
+}
+
+.care-shell--lights-off .pet-stage.pet-stage--lights-off.pet-stage--senior {
+  box-shadow:
+    inset 0 0 48px rgba(0, 0, 0, 0.94),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 0 0 1px rgba(180, 160, 130, 0.12);
+}
+
 .pet-stage--senior {
   box-shadow:
     inset 0 0 0 1px rgba(180, 160, 130, 0.28),

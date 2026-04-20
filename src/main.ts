@@ -1128,6 +1128,7 @@ function renderCare(root: HTMLElement) {
       pvpMetaEl.classList.add("hidden");
     }
     stageEl.classList.toggle("pet-stage--senior", state.hatched && st === 4);
+    stageEl.classList.toggle("pet-stage--lights-off", !state.lightsOn);
     showCareIdleSprite();
     syncLightsUi();
     treatBtn.classList.toggle("hidden", !state.ill);

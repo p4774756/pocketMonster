@@ -64,7 +64,7 @@ npm run dev
 |------|------|------|
 | `VITE_SOCKET_URL` | 前端建置／執行 | **生產或分離部署時必填**（完整 origin，無尾隨 `/`）。見 `deploy.env.example`。開發留空則連同源並走 proxy。 |
 | `VITE_FEEDBACK_URL` | 前端建置 | 選填。意見回饋彈窗的「開啟回饋表單」連結（建議 `https:`）。 |
-| `VITE_FEEDBACK_EMAIL` | 前端建置 | 選填。`mailto` 收件信箱。 |
+| `VITE_FEEDBACK_EMAIL` | 前端建置 | 選填。`mailto` 收件信箱；未設定時前端使用 `src/main.ts` 內建預設（`DEFAULT_FEEDBACK_EMAIL`）。 |
 | `VITE_FIREBASE_API_KEY` | 前端建置 | 選填。與下列五項**皆**設定時，可進入 **好友（Firebase）** 獨立頁（Email／密碼、Firestore 邀請、名單與好友聊天）。見 **`docs/FIREBASE_FRIENDS.md`**。 |
 | `VITE_FIREBASE_AUTH_DOMAIN` | 前端建置 | 選填。例：`your-app.firebaseapp.com`。 |
 | `VITE_FIREBASE_PROJECT_ID` | 前端建置 | 選填。Firebase 專案 ID。 |

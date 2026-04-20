@@ -48,6 +48,8 @@ import {
 import "./fonts.css";
 import "./style.css";
 import { getGameRulesPlayerHtml } from "./gameRulesContent";
+
+const DEFAULT_FEEDBACK_EMAIL = "p4774756@gmail.com";
 import { mountThemeBar } from "./theme";
 import {
   clearLobbyFirebaseFriendsCleanup,
@@ -2299,7 +2301,9 @@ function mountFeedbackButton(): void {
 function showFeedbackModal(): void {
   if (document.getElementById("feedback-modal-overlay")) return;
   const urlRaw = (import.meta.env.VITE_FEEDBACK_URL || "").trim();
-  const emailRaw = (import.meta.env.VITE_FEEDBACK_EMAIL || "").trim();
+  const emailRaw = (
+    import.meta.env.VITE_FEEDBACK_EMAIL || DEFAULT_FEEDBACK_EMAIL
+  ).trim();
   const linkHref = safeHttpUrl(urlRaw);
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw);
   const meta = feedbackMetaBlock();

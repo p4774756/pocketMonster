@@ -63,7 +63,7 @@ npm run start
 | 變數 | 說明 |
 |------|------|
 | `VITE_SOCKET_URL` | 生產建置時 Socket 伺服器 origin（開發可留空走 proxy） |
-| `VITE_FEEDBACK_URL` / `VITE_FEEDBACK_EMAIL` | 選填，意見回饋連結 |
+| `VITE_FEEDBACK_URL` / `VITE_FEEDBACK_EMAIL` | 選填；`mailto` 信箱未設時使用程式預設收件（見 `AGENTS.md`） |
 | `PORT` | 後端埠，預設 `3000` |
 | `SERVE_STATIC=0` | 僅 API，不提供 `dist` |
 

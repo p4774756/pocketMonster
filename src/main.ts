@@ -912,9 +912,11 @@ function renderCare(root: HTMLElement) {
       <p class="care-egg-battle-hint hidden" id="care-egg-battle-hint" role="status">${UI.eggBattleBlocked}</p>
       <div class="screen-bezel care-bezel">
         <div class="pet-stage" id="pet-stage">
-          <div class="pet-sprite-mount pet-sprite-mount--care" id="pet-sprite-mount">
-            <img class="pet-sprite" id="pet-sprite" alt="" width="96" height="96" decoding="async" />
-            <canvas class="pet-sprite pet-sprite-canvas hidden" id="pet-sprite-canvas" width="96" height="96" aria-hidden="true"></canvas>
+          <div class="pet-stage-roam">
+            <div class="pet-sprite-mount pet-sprite-mount--care" id="pet-sprite-mount">
+              <img class="pet-sprite" id="pet-sprite" alt="" width="96" height="96" decoding="async" />
+              <canvas class="pet-sprite pet-sprite-canvas hidden" id="pet-sprite-canvas" width="96" height="96" aria-hidden="true"></canvas>
+            </div>
           </div>
           <input class="pet-nick field" id="pet-nick" maxlength="12" autocomplete="off" />
         </div>

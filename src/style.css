@@ -1789,25 +1789,81 @@ footer.note {
   font-size: 0.85rem;
 }
 
-@keyframes pet-idle-walk {
+/* 對戰 idle：小範圍一格一格搖擺 */
+@keyframes pet-idle-walk-battle {
   0%,
+  11.99% {
+    transform: translate3d(0, 0, 0);
+  }
+  12%,
+  23.99% {
+    transform: translate3d(2px, -2px, 0);
+  }
+  24%,
+  35.99% {
+    transform: translate3d(2px, -4px, 0);
+  }
+  36%,
+  47.99% {
+    transform: translate3d(0, -2px, 0);
+  }
+  48%,
+  59.99% {
+    transform: translate3d(-2px, -4px, 0);
+  }
+  60%,
+  71.99% {
+    transform: translate3d(-2px, -2px, 0);
+  }
+  72%,
+  83.99% {
+    transform: translate3d(0, -4px, 0);
+  }
+  84%,
+  99.99% {
+    transform: translate3d(0, -1px, 0);
+  }
   100% {
     transform: translate3d(0, 0, 0);
   }
-  18% {
-    transform: translate3d(1px, -2px, 0);
+}
+
+/* 養成 idle：在 #pet-stage 可視區內較大範圍踱步（4px 網格） */
+@keyframes pet-idle-walk-care {
+  0%,
+  11.99% {
+    transform: translate3d(0, 0, 0);
   }
-  36% {
-    transform: translate3d(2px, -4px, 0);
+  12%,
+  23.99% {
+    transform: translate3d(80px, -4px, 0);
   }
-  54% {
-    transform: translate3d(1px, -2px, 0);
+  24%,
+  35.99% {
+    transform: translate3d(80px, -16px, 0);
   }
-  72% {
-    transform: translate3d(-1px, -3px, 0);
+  36%,
+  47.99% {
+    transform: translate3d(0, -20px, 0);
   }
-  86% {
-    transform: translate3d(-2px, -1px, 0);
+  48%,
+  59.99% {
+    transform: translate3d(-80px, -16px, 0);
+  }
+  60%,
+  71.99% {
+    transform: translate3d(-80px, -4px, 0);
+  }
+  72%,
+  83.99% {
+    transform: translate3d(0, -12px, 0);
+  }
+  84%,
+  99.99% {
+    transform: translate3d(0, -4px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
   }
 }
 
@@ -1818,13 +1874,14 @@ footer.note {
   margin: 0 auto 10px;
   width: fit-content;
   max-width: 100%;
-  animation: pet-idle-walk 2.65s ease-in-out infinite;
+  animation: pet-idle-walk-care 3.5s linear infinite;
   transform-origin: 50% 100%;
 }
 
 .pet-sprite-mount--battle {
   margin-bottom: 8px;
-  animation-duration: 2.2s;
+  animation-name: pet-idle-walk-battle;
+  animation-duration: 2.9s;
 }
 
 .pet-sprite-mount--battle-you {
@@ -1846,6 +1903,9 @@ footer.note {
 }
 
 .pet-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   text-align: center;
   margin-bottom: 10px;
   padding: 18px 12px 14px;
@@ -1857,38 +1917,56 @@ footer.note {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
-/* 養成關燈：僅 #pet-stage 全黑；精靈與暱稱隱藏（紅框外不受影響） */
+/* 精靈只在暱稱欄上方區域踱步，避免壓到暱稱；橫向由 overflow 裁切以配合小螢幕 */
+.pet-stage-roam {
+  position: relative;
+  flex: 0 0 auto;
+  width: 100%;
+  min-height: 132px;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.pet-stage-roam .pet-sprite-mount {
+  margin-bottom: 6px;
+}
+
+/* 養成關燈：#pet-stage 暗下來；精靈以低透明度呈現（像夜裡剪影），暱稱略淡（紅框外不受影響） */
 .care-shell--lights-off .pet-stage.pet-stage--lights-off {
-  background: #000;
-  border-color: #000;
-  box-shadow: inset 0 0 32px rgba(0, 0, 0, 1);
+  background: rgba(15, 23, 42, 0.78);
+  border-color: rgba(30, 41, 59, 0.55);
+  box-shadow: inset 0 0 28px rgba(0, 0, 0, 0.45);
 }
 
 .care-shell--lights-off .pet-stage.pet-stage--lights-off .pet-sprite-mount .pet-sprite,
 .care-shell--lights-off .pet-stage.pet-stage--lights-off .pet-sprite-mount .pet-sprite-canvas {
-  visibility: hidden;
+  opacity: 0.38;
+  filter: brightness(0.55);
   pointer-events: none;
 }
 
 .care-shell--lights-off .pet-stage.pet-stage--lights-off .pet-nick {
-  visibility: hidden;
+  opacity: 0.42;
   pointer-events: none;
 }
 
 html[data-theme="retro"] .care-shell--lights-off .pet-stage.pet-stage--lights-off {
-  background: #020403;
-  border-color: rgba(0, 0, 0, 0.65);
-  box-shadow: inset 0 0 52px rgba(0, 0, 0, 0.95);
+  background: rgba(2, 4, 3, 0.8);
+  border-color: rgba(0, 0, 0, 0.45);
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.55);
 }
 
 html[data-theme="minimal"] .care-shell--lights-off .pet-stage.pet-stage--lights-off {
-  background: #0a0a0a;
-  border: 2px solid #000;
-  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.9);
+  background: rgba(10, 10, 10, 0.76);
+  border: 2px solid rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 0 32px rgba(0, 0, 0, 0.5);
 }
 
 .care-shell--lights-off .pet-stage.pet-stage--lights-off.pet-stage--senior {
-  box-shadow: inset 0 0 32px rgba(0, 0, 0, 1);
+  box-shadow: inset 0 0 28px rgba(0, 0, 0, 0.45);
 }
 
 .pet-stage--senior {

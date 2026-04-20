@@ -45,13 +45,11 @@ flowchart TB
 flowchart LR
   main["src/main.ts 照護／大廳／戰鬥 UI"]
   pet["src/pet.ts 狀態／進化／idle 路徑"]
-  dog["src/canvasDog.ts 狗 Canvas"]
   poop["src/canvasPoop.ts 大便怪等 Canvas"]
   style["src/style.css"]
   rules["遊戲說明 gameRulesContent.ts 節錄 GAME_RULES"]
 
   main --> pet
-  main --> dog
   main --> poop
   main --> style
   main --> rules

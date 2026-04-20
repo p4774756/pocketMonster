@@ -1,5 +1,4 @@
 import { io, Socket } from "socket.io-client";
-import { initDexDogCanvases, renderDogCanvas } from "./canvasDog";
 import { renderPoopMonsterCanvas } from "./canvasPoop";
 import {
   careIdleSpriteFile,
@@ -13,8 +12,6 @@ import {
   dexCatAquaIdleFile,
   dexCatVoltCarePoseFile,
   dexCatVoltIdleFile,
-  type DogCanvasElementKey,
-  dogElementKeyFromMorph,
   eggSpriteForSpecies,
   feed,
   formatVirtAgeDays,
@@ -33,10 +30,10 @@ import {
   renamePet,
   petDefaultName,
   petEmoji,
+  parseSpecies,
   recordPvpWin,
   resetNewPet,
   restPet,
-  speciesUsesCanvasArt,
   toggleCareLights,
   trainPet,
   treatPet,
@@ -256,12 +253,10 @@ const UI = {
   dexBackMemorial: "\u56de\u5230\u7d00\u5ff5\u9801",
   dexBlurbVolt:
     "\u5f9e\u96f7\u7d0b\u86cb\u7834\u6bbc\u5f8c\u70ba\u96f7\u7cfb\u5947\u7378\u3002",
-  dexBlurbCrystal:
-    "\u5f9e\u6676\u77f3\u86cb\u7834\u6bbc\u5f8c\u70ba\u6c34\u6676\u7cfb\u6676\u683c\u7378\u3002",
   dexBlurbChicken:
     "\u5f9e\u6696\u967d\u86cb\u7834\u6bbc\u5f8c\u70ba\u96de\u5bf6\u9020\u578b\u3002",
   dexBlurbCat:
-    "\u8a8d\u990a\u6642\u5df2\u70ba\u5c0f\u8c93\uff0c\u7121\u86cb\u968e\u6bb5\u3002",
+    "\u8a8d\u990a\u6642\u5df2\u70ba\u5c0f\u8c93\uff0c\u7121\u86cb\u968e\u6bb5\u3002\u9032\u5165\u5152\u7ae5\u671f\uff08\u7d04\u7b2c 5 \u865b\u64ec\u65e5\u8d77\uff09\u6642\u55ae\u6b21\u5224\u5b9a\u662f\u5426\u7372\u5f97\u96f7\uff0f\u6c34\uff0f\u8349\u5c6c\u6027\uff1b\u82e5\u672a\u7372\u5f97\u5247\u6c38\u9060\u7121\u5c6c\u6027\u5916\u89c0\u3002",
   dexCatVoltSection:
     "\u96f7\u5c6c\u9032\u5316\uff08\u793a\u610f\uff09",
   dexCatVoltIntro:
@@ -276,31 +271,13 @@ const UI = {
   dexCatAquaPoseSection: "\u6c34\u8c93\u7167\u8b77\u59ff\u52e2",
   dexCatAquaPoseNote:
     "\u540c\u6a23\u5c0d\u61c9\u990a\u6210\u56db\u9375\uff1b\u59ff\u52e2\u4ee5\u9752\u5c11\u5e74\u671f\u9ad4\u578b\u793a\u610f\u3002",
-  dexBlurbDog:
-    "\u8a8d\u990a\u6642\u5df2\u70ba\u5c0f\u72d7\uff0c\u7121\u86cb\u968e\u6bb5\uff1b\u7cbe\u9748\u70ba\u524d\u7aef Canvas \u50cf\u7d20\u7e6a\u88fd\uff08\u7121 PNG\uff09\u3002\u9032\u5316\u70ba\u96f7\uff0f\u6c34\uff0f\u706b\uff0f\u6bd2\u5c6c\u6642\u8eab\u4e0a\u6703\u591a\u4e00\u5c64\u5c6c\u6027\u5149\u9ede\u88dd\u98fe\u3002",
-  dexDogVoltSection:
-    "\u96f7\u5c6c\u9032\u5316\uff08\u72d7\u3001\u793a\u610f\uff09",
-  dexDogVoltIntro:
-    "\u9032\u5316\u70ba dog_volt \u6642\uff0cCanvas \u96f7\u7cfb\u9ec3\u8272\u5149\u9ede\u3002",
-  dexDogAquaSection:
-    "\u6c34\u5c6c\u9032\u5316\uff08\u72d7\u3001\u793a\u610f\uff09",
-  dexDogAquaIntro:
-    "\u9032\u5316\u70ba dog_aqua \u6642\uff0cCanvas \u6c34\u7cfb\u85cd\u9752\u5149\u9ede\u3002",
-  dexDogPyroSection:
-    "\u706b\u5c6c\u9032\u5316\uff08\u72d7\u3001\u793a\u610f\uff09",
-  dexDogPyroIntro:
-    "\u9032\u5316\u70ba dog_pyro \u6642\uff0cCanvas \u706b\u7cfb\u6a58\u8d64\u5149\u9ede\u3002",
-  dexDogToxSection:
-    "\u6bd2\u5c6c\u9032\u5316\uff08\u72d7\u3001\u793a\u610f\uff09",
-  dexDogToxIntro:
-    "\u9032\u5316\u70ba dog_tox \u6642\uff0cCanvas \u6bd2\u7cfb\u7d2b\uff0f\u7da0\u8272\u5149\u9ede\u3002",
-  dexDogMorphPoseSection: "\u7167\u8b77\u59ff\u52e2\uff08\u8a72\u5c6c\u793a\u610f\uff09",
-  dexDogMorphPoseNote:
-    "\u540c\u6a23\u5c0d\u61c9\u990a\u6210\u56db\u9375\uff1b\u59ff\u52e2\u4ee5\u9752\u5c11\u5e74\u671f\u9ad4\u578b\u793a\u610f\u3002",
+  dexCatNeutralSection: "\u7121\u5c6c\u6027\u8c93\uff08\u5152\u7ae5\u671f\u9580\u6abb\uff09",
+  dexCatNeutralIntro:
+    "\u5bf6\u5bf6\u671f\u7167\u8b77\u8f03\u4e0d\u7406\u60f3\u6642\uff0c\u9032\u5165\u5152\u7ae5\u671f\u53ef\u80fd\u4e0d\u89f8\u767c\u5c6c\u6027\uff1b\u6b64\u5f8c\u6c38\u9060\u4fdd\u6301\u4e00\u822c\u8c93 PNG\uff08\u7121\u96f7\uff0f\u6c34\u5c08\u7528\u7acb\u7e6a\uff09\u3002",
   backToPet: "\u56de\u5230\u6211\u7684\u5925\u4f34",
   restartAdopt: "\u91cd\u65b0\u8a8d\u990a",
   confirmRestartAdopt:
-    "\u78ba\u5b9a\u8981\u91cd\u65b0\u8a8d\u990a\uff1f\u73fe\u6709\u990a\u6210\u9032\u5ea6\u6703\u5168\u90e8\u6e05\u9664\u4e14\u7121\u6cd5\u9084\u539f\u3002\u65b0\u5925\u4f34\u53ef\u80fd\u662f\u8c93\u3001\u96de\u3001\u72d7\uff0c\u6216\u5f9e\u86cb\u5b75\u5316\u7684\u5947\u7378\u3002",
+    "\u78ba\u5b9a\u8981\u91cd\u65b0\u8a8d\u990a\uff1f\u73fe\u6709\u990a\u6210\u9032\u5ea6\u6703\u5168\u90e8\u6e05\u9664\u4e14\u7121\u6cd5\u9084\u539f\u3002\u65b0\u5925\u4f34\u70ba\u8c93\u3001\u96de\u6216\u96f7\u7cfb\u86cb\u5947\u7378\u3002",
   statHunger: "\u98fd\u98df",
   statHappy: "\u5fc3\u60c5",
   statClean: "\u6e05\u6f54",
@@ -309,6 +286,7 @@ const UI = {
   pvpWinsLine: (n: number) =>
     `\u9023\u7dda\u5c0d\u6230\u52dd\u5834\uff1a${n}`,
   morphLine: (label: string) => `\u9032\u5316\u5f62\u614b\uff1a${label}`,
+  morphLineCatNeutral: "\u5f62\u614b\uff1a\u7121\u5c6c\u6027\u5c0f\u8c93\uff08\u5152\u7ae5\u671f\u5df2\u5b9a\u7c4d\uff09",
   actionFeed: "\u9935\u98df",
   actionClean: "\u6e05\u7406",
   actionTrain: "\u8a13\u7df4",
@@ -436,15 +414,7 @@ function normalizeBattleFoe(raw: {
   power?: number;
   morphKey?: string | null;
 }): BattleFoeSnap {
-  const sp = raw.species;
-  const species: PetSpecies =
-    sp === "volt" ||
-    sp === "crystal" ||
-    sp === "chicken" ||
-    sp === "cat" ||
-    sp === "dog"
-      ? sp
-      : "volt";
+  const species = parseSpecies(raw.species);
   const nickname =
     typeof raw.nickname === "string" && raw.nickname.trim().length > 0
       ? raw.nickname.trim().slice(0, 12)
@@ -458,7 +428,7 @@ function normalizeBattleFoe(raw: {
     ? Math.min(100, Math.max(0, Math.floor(pr)))
     : 12;
   const mk = raw.morphKey;
-  const morphKey: PetMorphKey | null =
+  let morphKey: PetMorphKey | null =
     mk === "striker" ||
     mk === "guardian" ||
     mk === "survivor" ||
@@ -473,6 +443,9 @@ function normalizeBattleFoe(raw: {
     mk === "doodoo"
       ? mk
       : null;
+  if (morphKey && morphKey.startsWith("dog_")) morphKey = null;
+  if (species !== "cat" && morphKey && morphKey.startsWith("cat_"))
+    morphKey = null;
   return { species, nickname, virtAge, power, morphKey };
 }
 
@@ -594,13 +567,7 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-const DEX_SPECIES_ORDER: PetSpecies[] = [
-  "volt",
-  "crystal",
-  "chicken",
-  "cat",
-  "dog",
-];
+const DEX_SPECIES_ORDER: PetSpecies[] = ["volt", "chicken", "cat"];
 
 /** 圖鑑「照護動作」列使用的成長階段（青少年期），與實際養成時依日齡變化不同。 */
 const DEX_POSE_STAGE = 2 as 0 | 1 | 2 | 3 | 4;
@@ -619,10 +586,6 @@ function speciesDexIntroLine(species: PetSpecies): string {
       return UI.dexBlurbCat;
     case "chicken":
       return UI.dexBlurbChicken;
-    case "crystal":
-      return UI.dexBlurbCrystal;
-    case "dog":
-      return UI.dexBlurbDog;
     default:
       return UI.dexBlurbVolt;
   }
@@ -638,7 +601,7 @@ function dexJoinWithArrows(parts: string[]): string {
     .join("");
 }
 
-/** 貓／狗屬性分支：預設收合，減少圖鑑縱向長度。 */
+/** 貓屬性／無屬性示意：預設收合，減少圖鑑縱向長度。 */
 function dexMorphAccordionHtml(summary: string, innerHtml: string): string {
   return `
     <details class="dex-morph-details">
@@ -670,22 +633,11 @@ function dexSpeciesTabsHtml(): string {
 function dexStageCardHtml(species: PetSpecies, stage: 0 | 1 | 2 | 3 | 4): string {
   const scale = growthSpriteScale(stage);
   const senior = stage === 4 ? " dex-stage-card--senior" : "";
-  if (species === "dog") {
-    return `
-    <div class="dex-stage-card${senior}">
-      <div class="dex-sprite-wrap">
-        <canvas class="dex-sprite dex-dog-canvas" width="96" height="96" data-dex-dog="idle" data-stage="${stage}" style="transform: scale(${scale});"></canvas>
-      </div>
-      <span class="dex-stage-label">${growthLabel(stage)}</span>
-    </div>
-  `;
-  }
   const file = idleSpriteForSpeciesStage(species, stage);
-  const alt = species === "crystal" ? " pet-sprite--alt" : "";
   return `
     <div class="dex-stage-card${senior}">
       <div class="dex-sprite-wrap">
-        <img class="dex-sprite${alt}" alt="" width="96" height="96" decoding="async" src="${petAssetUrl(file)}" style="transform: scale(${scale});" />
+        <img class="dex-sprite" alt="" width="96" height="96" decoding="async" src="${petAssetUrl(file)}" style="transform: scale(${scale});" />
       </div>
       <span class="dex-stage-label">${growthLabel(stage)}</span>
     </div>
@@ -759,84 +711,14 @@ function dexCatAquaPoseCardHtml(pose: CarePose): string {
   `;
 }
 
-function dexDogElementStageCardHtml(
-  element: DogCanvasElementKey,
-  stage: 0 | 1 | 2 | 3 | 4,
-): string {
-  const scale = growthSpriteScale(stage);
-  const senior = stage === 4 ? " dex-stage-card--senior" : "";
-  return `
-    <div class="dex-stage-card${senior}">
-      <div class="dex-sprite-wrap">
-        <canvas class="dex-sprite dex-dog-canvas" width="96" height="96" data-dex-dog="idle" data-dex-dog-element="${element}" data-stage="${stage}" style="transform: scale(${scale});"></canvas>
-      </div>
-      <span class="dex-stage-label">${growthLabel(stage)}</span>
-    </div>
-  `;
-}
-
-function dexDogElementPoseCardHtml(
-  element: DogCanvasElementKey,
-  pose: CarePose,
-): string {
-  const scale = growthSpriteScale(DEX_POSE_STAGE);
-  const label = dexPoseLabel(pose);
-  return `
-    <div class="dex-pose-card">
-      <div class="dex-sprite-wrap dex-sprite-wrap--pose">
-        <canvas class="dex-sprite dex-dog-canvas" width="96" height="96" data-dex-dog="pose" data-dex-pose="${pose}" data-dex-dog-element="${element}" data-stage="${DEX_POSE_STAGE}" style="transform: scale(${scale}); transform-origin: center 70%;"></canvas>
-      </div>
-      <span class="dex-pose-label">${label}</span>
-    </div>
-  `;
-}
-
-function dexDogMorphSubdexBlockHtml(
-  element: DogCanvasElementKey,
-  section: string,
-  intro: string,
-): string {
-  const inner = `
-        <p class="dex-species-intro dex-morph-details-intro">${escapeHtml(intro)}</p>
-        <h4 class="dex-section-heading">${UI.dexEvolutionSection}</h4>
-        <div class="dex-evolution-track">
-          ${dexJoinWithArrows(
-            ([0, 1, 2, 3, 4] as const).map((st) =>
-              dexDogElementStageCardHtml(element, st),
-            ),
-          )}
-        </div>
-        <h4 class="dex-section-heading">${UI.dexDogMorphPoseSection}</h4>
-        <p class="dex-pose-note">${UI.dexDogMorphPoseNote}</p>
-        <div class="dex-pose-track">
-          ${dexJoinWithArrows(
-            DEX_POSE_ORDER.map((pose) =>
-              dexDogElementPoseCardHtml(element, pose),
-            ),
-          )}
-        </div>`;
-  return dexMorphAccordionHtml(escapeHtml(section), inner);
-}
-
 function dexPoseCardHtml(species: PetSpecies, pose: CarePose): string {
   const scale = growthSpriteScale(DEX_POSE_STAGE);
   const label = dexPoseLabel(pose);
-  if (species === "dog") {
-    return `
-    <div class="dex-pose-card">
-      <div class="dex-sprite-wrap dex-sprite-wrap--pose">
-        <canvas class="dex-sprite dex-dog-canvas" width="96" height="96" data-dex-dog="pose" data-dex-pose="${pose}" data-stage="${DEX_POSE_STAGE}" style="transform: scale(${scale}); transform-origin: center 70%;"></canvas>
-      </div>
-      <span class="dex-pose-label">${label}</span>
-    </div>
-  `;
-  }
   const file = carePoseFile(species, pose);
-  const alt = species === "crystal" ? " pet-sprite--alt" : "";
   return `
     <div class="dex-pose-card">
       <div class="dex-sprite-wrap dex-sprite-wrap--pose">
-        <img class="dex-sprite${alt}" alt="" width="96" height="96" decoding="async" src="${petAssetUrl(file)}" style="transform: scale(${scale}); transform-origin: center 70%;" />
+        <img class="dex-sprite" alt="" width="96" height="96" decoding="async" src="${petAssetUrl(file)}" style="transform: scale(${scale}); transform-origin: center 70%;" />
       </div>
       <span class="dex-pose-label">${label}</span>
     </div>
@@ -851,7 +733,7 @@ function dexSpeciesBlockHtml(species: PetSpecies): string {
     dexStageCardHtml(species, st),
   );
   const trackInner =
-    species === "cat" || species === "dog"
+    species === "cat"
       ? dexJoinWithArrows(stages)
       : dexJoinWithArrows([dexEggCardHtml(species), ...stages]);
   const poseParts = DEX_POSE_ORDER.map((pose) => dexPoseCardHtml(species, pose));
@@ -895,16 +777,25 @@ function dexSpeciesBlockHtml(species: PetSpecies): string {
           )}
         </div>`,
       )}
+      ${dexMorphAccordionHtml(
+        escapeHtml(UI.dexCatNeutralSection),
+        `
+        <p class="dex-species-intro dex-morph-details-intro">${escapeHtml(UI.dexCatNeutralIntro)}</p>
+        <h4 class="dex-section-heading">${UI.dexEvolutionSection}</h4>
+        <div class="dex-evolution-track">
+          ${dexJoinWithArrows(
+            ([0, 1, 2, 3, 4] as const).map((st) => dexStageCardHtml("cat", st)),
+          )}
+        </div>
+        <h4 class="dex-section-heading">${UI.dexPoseSection}</h4>
+        <p class="dex-pose-note">${UI.dexPoseNote}</p>
+        <div class="dex-pose-track">
+          ${dexJoinWithArrows(
+            DEX_POSE_ORDER.map((pose) => dexPoseCardHtml("cat", pose)),
+          )}
+        </div>`,
+      )}
     `
-      : "";
-  const dogMorphSubdexes =
-    species === "dog"
-      ? `<div class="dex-morph-accordion-stack">
-      ${dexDogMorphSubdexBlockHtml("volt", UI.dexDogVoltSection, UI.dexDogVoltIntro)}
-      ${dexDogMorphSubdexBlockHtml("aqua", UI.dexDogAquaSection, UI.dexDogAquaIntro)}
-      ${dexDogMorphSubdexBlockHtml("pyro", UI.dexDogPyroSection, UI.dexDogPyroIntro)}
-      ${dexDogMorphSubdexBlockHtml("tox", UI.dexDogToxSection, UI.dexDogToxIntro)}
-    </div>`
       : "";
   return `
     <section class="dex-species-block" aria-label="${escapeHtml(name)}">
@@ -924,7 +815,6 @@ function dexSpeciesBlockHtml(species: PetSpecies): string {
           ? `<div class="dex-morph-accordion-stack">${catMorphSubdexes}</div>`
           : ""
       }
-      ${dogMorphSubdexes}
     </section>
   `;
 }
@@ -944,19 +834,11 @@ function wireDexSpeciesTabs(shell: HTMLElement): void {
       tab.setAttribute("aria-selected", on ? "true" : "false");
       tab.tabIndex = on ? 0 : -1;
     });
-    const active = shell.querySelector<HTMLElement>(`[data-dex-panel="${sp}"]`);
-    if (active) initDexDogCanvases(active);
   };
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => {
       const sp = tab.dataset.dexTab as PetSpecies | undefined;
       if (sp && DEX_SPECIES_ORDER.includes(sp)) show(sp);
-    });
-  });
-  shell.querySelectorAll("details.dex-morph-details").forEach((det) => {
-    det.addEventListener("toggle", () => {
-      if ((det as HTMLDetailsElement).open)
-        initDexDogCanvases(det as HTMLElement);
     });
   });
   show(DEX_SPECIES_ORDER[0]);
@@ -1115,7 +997,7 @@ function renderCare(root: HTMLElement) {
   const careShellEl = root.querySelector(".care-shell");
 
   const syncSpriteSpecies = () => {
-    spriteEl.classList.toggle("pet-sprite--alt", state.species === "crystal");
+    spriteEl.classList.remove("pet-sprite--alt");
   };
 
   const syncCatElementMount = () => {
@@ -1128,7 +1010,6 @@ function renderCare(root: HTMLElement) {
     const st = growthStage(state.virtAge);
     const sc = careSpriteScale(state);
     const poop = careUsesPoopCanvas(state);
-    const dogCanvas = speciesUsesCanvasArt(state.species) && !poop;
 
     if (poop) {
       spriteEl.classList.add("hidden");
@@ -1139,21 +1020,6 @@ function renderCare(root: HTMLElement) {
         hatched: state.hatched,
         stage: st,
         pose: null,
-      });
-      spriteCv.style.transform = `scale(${sc})`;
-      spriteCv.style.transformOrigin = "center 70%";
-      return;
-    }
-    if (dogCanvas) {
-      spriteEl.classList.add("hidden");
-      spriteCv.classList.remove("hidden");
-      syncCatElementMount();
-      renderDogCanvas(spriteCv, {
-        cssSize: 96,
-        hatched: state.hatched,
-        stage: st,
-        pose: null,
-        elementAccent: dogElementKeyFromMorph(state.morphKey),
       });
       spriteCv.style.transform = `scale(${sc})`;
       spriteCv.style.transformOrigin = "center 70%";
@@ -1190,26 +1056,6 @@ function renderCare(root: HTMLElement) {
         stage: st,
         pose,
       });
-      spriteCv.style.transform = `scale(${sc})`;
-      spriteCv.style.transformOrigin = "center 70%";
-      reactionTimer = domSetTimeout(() => {
-        showCareIdleSprite();
-        spriteMountEl.classList.remove("pet-sprite-mount--paused");
-        reactionTimer = null;
-      }, 1700);
-      return;
-    }
-    if (speciesUsesCanvasArt(state.species)) {
-      renderDogCanvas(spriteCv, {
-        cssSize: 96,
-        hatched: true,
-        stage: st,
-        pose,
-        elementAccent: dogElementKeyFromMorph(state.morphKey),
-      });
-      spriteEl.classList.add("hidden");
-      spriteCv.classList.remove("hidden");
-      syncCatElementMount();
       spriteCv.style.transform = `scale(${sc})`;
       spriteCv.style.transformOrigin = "center 70%";
       reactionTimer = domSetTimeout(() => {
@@ -1260,6 +1106,15 @@ function renderCare(root: HTMLElement) {
       morphLineEl.textContent = UI.morphLine(morphLabelZh(state.morphKey));
       morphLineEl.classList.remove("hidden");
       stageEl.setAttribute("data-morph", state.morphKey);
+    } else if (
+      state.hatched &&
+      state.species === "cat" &&
+      state.catChildGateDone &&
+      state.morphTier === 0
+    ) {
+      morphLineEl.textContent = UI.morphLineCatNeutral;
+      morphLineEl.classList.remove("hidden");
+      stageEl.removeAttribute("data-morph");
     } else {
       morphLineEl.textContent = "";
       morphLineEl.classList.add("hidden");
@@ -1916,8 +1771,7 @@ function renderBattle(root: HTMLElement) {
   ) as HTMLElement;
 
   const foePoopSnap =
-    (foeSnap.species === "cat" || foeSnap.species === "dog") &&
-    foeSnap.morphKey === "doodoo";
+    foeSnap.species === "cat" && foeSnap.morphKey === "doodoo";
 
   const syncBattleCatMount = (
     mount: HTMLElement,
@@ -1947,16 +1801,6 @@ function renderBattle(root: HTMLElement) {
       stage: mySt,
       pose: null,
     });
-  } else if (speciesUsesCanvasArt(myPet.species)) {
-    youSp.classList.add("hidden");
-    youCv.classList.remove("hidden");
-    renderDogCanvas(youCv, {
-      cssSize: 72,
-      hatched: true,
-      stage: mySt,
-      pose: null,
-      elementAccent: dogElementKeyFromMorph(myPet.morphKey),
-    });
   } else {
     youSp.classList.remove("hidden");
     youCv.classList.add("hidden");
@@ -1971,23 +1815,13 @@ function renderBattle(root: HTMLElement) {
       stage: foeSt,
       pose: null,
     });
-  } else if (speciesUsesCanvasArt(foeSnap.species)) {
-    foeSp.classList.add("hidden");
-    foeCv.classList.remove("hidden");
-    renderDogCanvas(foeCv, {
-      cssSize: 72,
-      hatched: true,
-      stage: foeSt,
-      pose: null,
-      elementAccent: dogElementKeyFromMorph(foeSnap.morphKey),
-    });
   } else {
     foeSp.classList.remove("hidden");
     foeCv.classList.add("hidden");
     foeSp.src = foeSprite;
   }
-  youSp.classList.toggle("pet-sprite--alt", myPet.species === "crystal");
-  foeSp.classList.toggle("pet-sprite--alt", foeSnap.species === "crystal");
+  youSp.classList.remove("pet-sprite--alt");
+  foeSp.classList.remove("pet-sprite--alt");
   const myMorphLabel =
     myPet.morphTier >= 1 && myPet.morphKey
       ? morphLabelZh(myPet.morphKey)

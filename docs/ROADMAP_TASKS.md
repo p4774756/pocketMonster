@@ -5,7 +5,7 @@
 
 **與倉庫同步**：實作進度以程式為準；**版號**見根目錄 `package.json`（頂欄與後端 `/version` 同源）。本檔勾選由維護者在里程碑完成時更新。
 
-**進度摘要（請隨版本更新此段）**：**v0.3 進化核心**已擴充：貓／狗屬性鍵、`cat_volt`／`cat_aqua` 專用 PNG、圖鑑改版、`doodoo` 大便怪 Canvas、狗 Canvas 四屬、`lightsOn` 與夜間結算（`GAME_RULES.md` §1.7～1.8）；**根目錄 README**（技術棧、啟動、部署、圖片示意）已補；**選用 Firebase 好友 MVP**（養成主畫面、Firestore、**好友一對一聊天**，見 `docs/FIREBASE_FRIENDS.md`）已落地；**架構圖**見 `docs/ARCHITECTURE.md`；**v0.3 其餘**（戰鬥 log、server 模組化、草貓專屬圖等）仍為待辦。
+**進度摘要（請隨版本更新此段）**：**v0.3 進化核心**已擴充：`cat_volt`／`cat_aqua` 專用 PNG、貓兒童期單次屬性門檻與永久無屬性路線、圖鑑改版、`doodoo` 大便怪 Canvas、`lightsOn` 與夜間結算（`GAME_RULES.md` 第 1.7～1.8 節）；物種縮減為雷系蛋獸／雞／貓（已移除狗與晶格獸）；**根目錄 README**（技術棧、啟動、部署、圖片示意）已補；**選用 Firebase 好友 MVP**（養成主畫面、Firestore、**好友一對一聊天**，見 `docs/FIREBASE_FRIENDS.md`）已落地；**架構圖**見 `docs/ARCHITECTURE.md`；**v0.3 其餘**（戰鬥 log、server 模組化、草貓專屬圖等）仍為待辦。
 
 ---
 

@@ -14,15 +14,13 @@
 
 以下使用倉庫內已存在的精靈 PNG 作示意；若要改成真實 UI 截圖，請見 [`docs/readme/IMAGES.md`](docs/readme/IMAGES.md)。
 
-| 雷系奇獸（idle） | 雷貓進化（idle） | 水晶蛋 |
+| 雷系奇獸（idle） | 雷貓進化（idle） | 雷系蛋 |
 |:---:|:---:|:---:|
-| ![pet idle](public/pets/pet-idle-s2.png) | ![cat volt](public/pets/cat-volt-idle-s2.png) | ![crystal egg](public/pets/pet-egg-crystal.png) |
+| ![pet idle](public/pets/pet-idle-s2.png) | ![cat volt](public/pets/cat-volt-idle-s2.png) | ![volt egg](public/pets/pet-egg-volt.png) |
 
 | 水貓進化 | 暖陽雞 | 訓練（雷系） |
 |:---:|:---:|:---:|
 | ![cat aqua](public/pets/cat-aqua-idle-s2.png) | ![chicken](public/pets/chicken-idle-s2.png) | ![train volt](public/pets/pet-train-volt.png) |
-
-> **狗**物種在遊戲內為 **Canvas 像素繪製**，沒有對應 idle PNG；圖鑑與養成畫面會即時畫出。
 
 ---
 
@@ -30,9 +28,9 @@
 
 - **養成**：飢餓、心情、清潔、體力、訓練、虛擬日齡、生病與照護；本機 `localStorage` 存檔。
 - **孵化**：部分物種從蛋開始，破殼後才參與對戰與訓練。
-- **進化分支**：首次形態（含貓／狗屬性分支、大便怪路線等）；規則見 [`docs/GAME_RULES.md`](docs/GAME_RULES.md)。
+- **進化分支**：首次形態（含貓屬性覺醒／無屬性鎖定、大便怪路線等）；規則見 [`docs/GAME_RULES.md`](docs/GAME_RULES.md)。
 - **連線對戰**：三位數字房間碼開房／加入、`strike`／`guard`／`charge` 回合制、投降與斷線處理；對戰中可送**預設快捷語**（非自由打字聊天）。
-- **圖鑑**：物種分頁、成長階段與照護姿勢；貓／狗屬性變體可摺疊檢視。
+- **圖鑑**：物種分頁、成長階段與照護姿勢；貓之雷／水／無屬性示意可摺疊檢視。
 
 ---
 
@@ -84,7 +82,6 @@ npm run start
 |------|------|
 | [`src/main.ts`](src/main.ts) | 主要 UI、Socket 客戶端 |
 | [`src/pet.ts`](src/pet.ts) | 狀態、存檔、進化與照護邏輯 |
-| [`src/canvasDog.ts`](src/canvasDog.ts) | 狗：Canvas 繪製 |
 | [`src/canvasPoop.ts`](src/canvasPoop.ts) | 大便怪 Canvas |
 | [`server/index.js`](server/index.js) | HTTP + Socket 房間與戰鬥 |
 | [`public/pets/`](public/pets/) | 精靈 PNG |

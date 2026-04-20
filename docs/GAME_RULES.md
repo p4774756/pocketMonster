@@ -16,8 +16,8 @@
 ### 1.2 認養與物種
 
 - **重新認養**時會隨機決定物種與是否從蛋開始（邏輯在 `rollAdoptionProfile` / `newAdoptionPetState`）。
-- **貓、狗**：一開始就是已孵化（`hatched: true`），可直接照護與對戰。（**狗**的精靈圖由前端 **Canvas 像素繪製**，不使用 `public/pets` 的 PNG。）
-- **雷系／水晶系／雞**：先為**蛋**（`hatched: false`），需孵化後才會顯示對應精靈；**未孵化前無法連線對戰**、也無法訓練。
+- **貓**：一開始就是已孵化（`hatched: true`），可直接照護與對戰。
+- **雷系／雞**：先為**蛋**（`hatched: false`），需孵化後才會顯示對應精靈；**未孵化前無法連線對戰**、也無法訓練。
 - 孵化條件：虛擬日齡達 **`EGG_HATCH_VIRT`（0.32 虛擬日）** 會自動破殼；餵食／清潔／休息會額外累積孵化進度（見 `feed` / `cleanPet` / `restPet`）。
 
 ### 1.3 時間與虛擬日齡
@@ -52,16 +52,16 @@
 - **僅本機**：形態存在 `localStorage` 的寵物狀態中，**不**改變物種；連線對戰時可選上傳 `morphKey` 供對手頭像旁顯示。
 - **僅一次**：`morphTier` 由 0 升為 1 後不會再改分支。
 - **統計欄位**：`pvpWins`（勝場，平手與**自己投降**不計；對方投降或一般勝利 +1）、`totalIllVirtDays`（累積處於生病狀態的虛擬日）、`careQualityEma`（四維狀態均值的指數移動平均，照護品質指標）。
-- **貓、狗**（`pickMorphKey`／`pickCatDogElementMorph`／`isDoodooMorphCandidate`，實作見 `src/pet.ts`）：
-  - 虛擬日齡達 **12** 起，若長期照護過差（低 `careQualityEma`、高累積生病虛擬日、清潔／飽食／心情偏低等），可進化為 **大便怪**（`morphKey` = `doodoo`）；外觀以 **Canvas** 繪製（非 PNG）。
-  - 虛擬日齡滿 **13** 且未成為大便怪時，依訓練、清潔、心情、體力與整體照護決定屬性分支：**貓**為 **雷**（`cat_volt`）、**水**（`cat_aqua`）、**草**（`cat_flora`）；**狗**為 **雷**（`dog_volt`）、**水**（`dog_aqua`）、**火**（`dog_pyro`）、**毒**（`dog_tox`）。**雷貓**／**水貓**使用專用立繪 **`cat-volt-*`／`cat-aqua-*`**（見 `idleSpriteFromSnap`／`carePoseFile`）；**草貓**仍用一般 `cat-*.png` 並以畫面色光區分。**狗**全程 **Canvas** 繪製，四屬以 **`canvasDog`** 小色點／光點裝飾（`dogElementKeyFromMorph`）。
-- **雷系／水晶系／雞**（非貓狗）：維持下列分支優先序（未達門檻則不進化）：
+- **貓**（`tryEvolve`／`applyCatChildAttributeGate`／`pickMorphKey`／`isDoodooMorphCandidate`，實作見 `src/pet.ts`）：
+  - **寶寶→兒童期門檻（單次）**：虛擬日齡首次達 **5**（進入兒童期）時，依 `careQualityEma` 與隨機門檻決定是否「覺醒屬性」。**若未覺醒**，之後永久維持**無屬性**外觀（仍為物種 `cat`，`morphTier` 維持 0，並標記 `catChildGateDone`）。**若覺醒**，`morphTier` 升為 1，依 `pickCatElementMorph` 決定 **雷**（`cat_volt`）、**水**（`cat_aqua`）或 **草**（`cat_flora`）。**雷貓**／**水貓**使用專用立繪 **`cat-volt-*`／`cat-aqua-*`**；**草貓**與**無屬性貓**仍用一般 **`cat-*.png`**（草貓可疊畫面色光，見 `catElementKeyFromMorph`）。
+  - **大便怪**：虛擬日齡達 **12** 起，若長期照護過差（低 `careQualityEma`、高累積生病虛擬日、清潔／飽食／心情偏低等），可進化為 **大便怪**（`morphKey` = `doodoo`）；外觀以 **Canvas** 繪製（非 PNG）。
+- **雷系／雞**（非貓）：維持下列分支優先序（未達門檻則不進化）：
   1. **鬥魂（striker）**：勝場 ≥ **2**、訓練 `power` ≥ **18**、且 `careQualityEma` ≥ **38**。
   2. **守護（guardian）**：`careQualityEma` ≥ **62**、累積生病虛擬日 ≤ **3.5**、虛擬日齡 ≥ **12**。
   3. **韌性（survivor）**：累積生病虛擬日 ≥ **5**、且 `careQualityEma` ≥ **32**。
   4. **均衡（harmony）**：虛擬日齡 ≥ **13**、且 `careQualityEma` ≥ **44**。
-- **最低虛擬日齡**：貓／狗大便怪路線自 **12** 虛擬日起判斷；貓／狗屬性路線自 **13** 虛擬日起；其他物種仍須達 **12** 虛擬日才可能觸發非均衡分支（均衡仍須 **13** 日）。
-- **美術**：雷系／水晶系**訓練**姿勢分別使用 `public/pets/pet-train-volt.png`、`pet-train-crystal.png`（與各自 idle 外觀一致）；其餘照護檔名見 `carePoseFile`（`src/pet.ts`）。
+- **最低虛擬日齡**：貓大便怪路線自 **12** 虛擬日起判斷；貓屬性覺醒發生在 **5** 虛擬日（單次）；其他物種仍須達 **12** 虛擬日才可能觸發非均衡分支（均衡仍須 **13** 日）。
+- **美術**：雷系**訓練**姿勢使用 `public/pets/pet-train-volt.png`；其餘照護檔名見 `carePoseFile`（`src/pet.ts`）。
 
 ### 1.8 夜間作息與房間燈光
 
@@ -77,7 +77,7 @@
 1. **房主**建立房間取得 **三位數字房間碼**（000～999，系統隨機，用於加入）；可選填 **房間名稱**（僅展示，最多 24 字），大廳公開清單與等待畫面會顯示；亦可用 **骰子** 隨機填入趣味名稱。**訪客**仍須以 **房間碼** 加入（名稱不能代替房碼）。
 2. **可加入房間清單**：大廳會向伺服器拉取 `list_open_rooms`；當有人**開房**、**加入**（房間從等待變對戰）、**房關閉**或**訪客斷線**（房主回到可加入狀態）時，伺服器會廣播 **`open_rooms_changed`**（短防抖合併），客戶端自動再拉清單；仍可手動「刷新清單」。**節流**：同一 Socket **1 秒內超過 10 次** `list_open_rooms` 會失敗（防刷），介面會提示稍後再試。
 3. 雙方連上後開始對戰；斷線、投降、結算規則由伺服器處理（見 `server/index.js`）。
-4. **對戰外觀與結算用快照**：開房與加入時，客戶端會上傳目前寵物的 **`species` / `nickname` / `virtAge` / `power`（訓練值，0～100）**；若已進化可選送 **`morphKey`**（`striker`／`guardian`／`survivor`／`harmony`／`cat_volt`／`cat_aqua`／`cat_flora`／`dog_volt`／`dog_aqua`／`dog_pyro`／`dog_tox`／`doodoo`）。伺服器在 **`linked`** 事件裡把對手的這組資料給另一方，對戰畫面用來顯示**正確精靈**、**對方暱稱**與形態字樣。`power` 會換算戰鬥 **MP 上限**（見第 2.5 節）；舊版客戶端未送 `power` 時伺服器以 **12** 視同；未送 `morphKey` 則視為無形態標記。
+4. **對戰外觀與結算用快照**：開房與加入時，客戶端會上傳目前寵物的 **`species` / `nickname` / `virtAge` / `power`（訓練值，0～100）**；若已進化可選送 **`morphKey`**（`striker`／`guardian`／`survivor`／`harmony`／`cat_volt`／`cat_aqua`／`cat_flora`／`doodoo`）。伺服器在 **`linked`** 事件裡把對手的這組資料給另一方，對戰畫面用來顯示**正確精靈**、**對方暱稱**與形態字樣。`power` 會換算戰鬥 **MP 上限**（見第 2.5 節）；舊版客戶端未送 `power` 時伺服器以 **12** 視同；未送 `morphKey` 則視為無形態標記。
 
 ### 2.2 參戰條件
 
@@ -118,8 +118,8 @@
 
 在共通基礎上小幅調整（仍先套用架盾 **×0.25** 再套用下列倍率；傷害仍**至少 2**）：
 
-- **攻擊方物種**（加在「14 + chargeBonus」這段基礎上，蓄力的 **×1.35** 仍作用在加總後）：**volt +2**、**chicken / cat / dog +1**、**crystal +0**。
-- **受傷方物種**（乘在「已含架盾係數後」的傷害上）：**crystal ×0.92**、**cat ×0.96**、**dog ×0.97**、**chicken ×0.98**、**volt ×1**。
+- **攻擊方物種**（加在「14 + chargeBonus」這段基礎上，蓄力的 **×1.35** 仍作用在加總後）：**volt +2**、**chicken / cat +1**。
+- **受傷方物種**（乘在「已含架盾係數後」的傷害上）：**cat ×0.96**、**chicken ×0.98**、**volt ×1**。
 
 ### 2.7 單回合傷害計算（伺服器 `resolveRound`）
 
@@ -171,7 +171,7 @@
 | 畫面與 Socket 客戶端（含大廳房名、骰子、公開清單列） | `src/main.ts` |
 | 自託管字型子集 | `src/fonts.css`（`@fontsource/dm-sans`、`@fontsource/jetbrains-mono`） |
 | 寵物 PNG 批次壓縮 | `scripts/optimize-pet-pngs.mjs`（`npm run optimize:pets`） |
-| 圖鑑介面 | `src/main.ts` `renderSpeciesDex`：物種**分頁**切換；貓／狗屬性變體為**摺疊** `<details>`；成長／姿勢列可**橫向捲動**（`src/style.css`）。雷／水貓示意檔見 `dexCatVolt*`／`dexCatAqua*`（`src/pet.ts`）；狗四屬 Canvas 見 `data-dex-dog-element`（`src/canvasDog.ts`） |
+| 圖鑑介面 | `src/main.ts` `renderSpeciesDex`：物種**分頁**（雷系蛋獸、雞、貓）；貓之雷／水／無屬性示意為**摺疊** `<details>`；成長／姿勢列可**橫向捲動**（`src/style.css`）。雷／水貓示意檔見 `dexCatVolt*`／`dexCatAqua*`（`src/pet.ts`） |
 | 對戰結算、房間、計時 | `server/index.js` |
 | Firebase 好友（選用 Auth + Firestore） | `src/firebase/`、`src/lobbyFirebaseFriends.ts`（掛載於 `renderFriends`）、`docs/FIREBASE_FRIENDS.md`、`docs/firebase-friends.rules` |
 | 專案架構給 agent | `AGENTS.md` |

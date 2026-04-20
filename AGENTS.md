@@ -25,9 +25,9 @@
 |------|------|
 | `README.md` | 對外說明：專案簡介、技術棧、本機／部署、`docs/readme/` 圖片與 `public/pets` 示意。 |
 | `src/main.ts` | 幾乎全部 UI：養成畫面、紀念頁、對戰大廳與戰鬥 UI；Socket 客戶端事件綁定。 |
-| `src/pet.ts` | 寵物狀態型別、`loadPet`/`save`、成長階段、照護 action、死亡條件、**進化**（`tryEvolve`、`morphKey` 等）。 |
+| `src/pet.ts` | 寵物狀態型別、`loadPet`/`save`、成長階段、照護 action、死亡條件、**進化**（`tryEvolve`、`morphKey`、`catChildGateDone` 等）。 |
+| `src/canvasPoop.ts` | 貓大便怪 **Canvas**（`careUsesPoopCanvas` 時取代 PNG）。 |
 | `docs/ROADMAP_TASKS.md` | 產品路線與任務勾選（v0.3～v0.5）；與 `docs/IMPROVEMENT_BACKLOG.md` 互補。 |
-| `src/canvasDog.ts` | **狗**物種：Canvas 像素格繪製（無 PNG），供養成／對戰／圖鑑。 |
 | `src/style.css` | 全域樣式。 |
 | `src/fonts.css` | 自託管字型（`@fontsource` 拉丁子集）；由 `main.ts` 早於 `style.css` 匯入。 |
 | `scripts/optimize-pet-pngs.mjs` | 縮小 `public/pets/*.png`：`npm run optimize:pets`（換圖後應重跑）。 |
@@ -83,7 +83,7 @@ npm run dev
 
 **Client → Server**
 
-- `create_room({ pet: { species, nickname, virtAge, power, morphKey? }, roomTitle? }, ack)` — `ack({ ok, roomCode, roomTitle })`；`roomCode` 為伺服器產生的 **三位數字字串**（000～999）。`roomTitle` 為伺服器裁切後的展示名（最多 24 字，可空字串）。舊版只傳 `ack` 仍相容。`pet` 供對手顯示與**對戰 MP 上限**（`power` 0～100，缺省伺服器以 12 計）。`morphKey` 選填：`striker`／`guardian`／`survivor`／`harmony`／`cat_volt`／`cat_aqua`／`cat_flora`／`dog_volt`／`dog_aqua`／`dog_pyro`／`dog_tox`／`doodoo`，供對戰頭像旁形態字樣（舊版 `dog_flora` 伺服器會視為 `dog_pyro`）。
+- `create_room({ pet: { species, nickname, virtAge, power, morphKey? }, roomTitle? }, ack)` — `ack({ ok, roomCode, roomTitle })`；`roomCode` 為伺服器產生的 **三位數字字串**（000～999）。`roomTitle` 為伺服器裁切後的展示名（最多 24 字，可空字串）。舊版只傳 `ack` 仍相容。`pet` 供對手顯示與**對戰 MP 上限**（`power` 0～100，缺省伺服器以 12 計）。`species` 為 `volt`／`chicken`／`cat`（舊版 `dog`／`crystal` 伺服器會正規化為 `volt`）。`morphKey` 選填：`striker`／`guardian`／`survivor`／`harmony`／`cat_volt`／`cat_aqua`／`cat_flora`／`doodoo`，供對戰頭像旁形態字樣（舊版狗形態鍵伺服器會忽略）。
 - `join_room({ roomCode, pet: { species, nickname, virtAge, power, morphKey? } }, ack)` — `ack({ ok, error? })`；`roomCode` 為 **恰好三位數字**（不足位數左側補 0，例如 `42` 與 `042` 相同）；格式不符時 `ok: false`（`error` 可為「房間碼格式不對」）。建議一律帶 `pet`。
 - `list_open_rooms({}, ack)` — 成功：`ack({ ok: true, rooms })`；`rooms` 為最多 40 筆 `{ roomCode, roomTitle, hostNickname, hostSpecies, created }`（僅「房主已連線、尚無訪客」且排除呼叫端自己開的房）。**節流**：同一連線 **1 秒內超過 10 次** 回 `ack({ ok: false, error: "too_fast" })`。
 - `choose_move({ move })` — `move`: `"strike" | "guard" | "charge"`
@@ -117,11 +117,11 @@ npm run start:api   # SERVE_STATIC=0：只跑 API（給 Pages + 分離後端）
 
 ## 改功能時該看哪
 
-- **養成數值／壽命／儲存格式／進化**：`src/pet.ts`（含 `STORAGE_KEY`、`idleSpriteForStage`、成長階段閾值、`tryEvolve`／`morphKey`／`lightsOn`、夜間結算）。**狗**外觀見 `src/canvasDog.ts`（`speciesUsesCanvasArt`）；**貓／狗大便怪**見 `src/canvasPoop.ts`（`careUsesPoopCanvas` 時取代 PNG／狗 Canvas）。
+- **養成數值／壽命／儲存格式／進化**：`src/pet.ts`（含 `STORAGE_KEY`、`idleSpriteForStage`、成長階段閾值、`tryEvolve`／`morphKey`／`catChildGateDone`／`lightsOn`、夜間結算）。**貓大便怪**見 `src/canvasPoop.ts`（`careUsesPoopCanvas` 時取代 PNG）。
 - **畫面與對戰流程**：`src/main.ts`（體積大，可用搜尋 `renderCare`、`renderFriends`、`renderBattle`、`ensureSocket`）。
 - **對戰平衡與房間生命週期**：`server/index.js`。
 - **樣式**：`src/style.css`。
-- **新精靈／圖示**：遵守 `.cursor/rules/pocket-pet-assets.mdc`；idle 見 **`idleSpriteForSpeciesStage`**／**`idleSpriteFromSnap`**／**`idleSpriteForPet`**（`src/pet.ts`）；照護姿勢見 **`carePoseFile`**（第三參數可帶 `morphKey`，雷貓 **`cat-volt-*.png`**、水貓 **`cat-aqua-*.png`**）。雷系訓練 **`pet-train-volt.png`**、水晶系 **`pet-train-crystal.png`**（其餘 `pet-*.png`／貓雞各檔）。**圖鑑**（`renderSpeciesDex`）：**物種分頁**（`data-dex-tab`／`data-dex-panel`）；貓／狗屬性變體為 **`<details class="dex-morph-details">`** 預設收合；成長／照護軌可橫向捲動（`src/style.css`）。`DEX_POSE_STAGE`、`initDexDogCanvases`（`data-dex-dog`、`data-dex-pose`、`data-dex-dog-element`）。
+- **新精靈／圖示**：遵守 `.cursor/rules/pocket-pet-assets.mdc`；idle 見 **`idleSpriteForSpeciesStage`**／**`idleSpriteFromSnap`**／**`idleSpriteForPet`**（`src/pet.ts`）；照護姿勢見 **`carePoseFile`**（第三參數可帶 `morphKey`，雷貓 **`cat-volt-*.png`**、水貓 **`cat-aqua-*.png`**）。雷系訓練 **`pet-train-volt.png`**（其餘 `pet-*.png`／貓雞各檔）。**圖鑑**（`renderSpeciesDex`）：**物種分頁**（`data-dex-tab`／`data-dex-panel`）；貓之雷／水／無屬性示意為 **`<details class="dex-morph-details">`** 預設收合；成長／照護軌可橫向捲動（`src/style.css`）。`DEX_POSE_STAGE`。
 
 ## 慣例與注意
 

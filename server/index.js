@@ -29,11 +29,11 @@ const MP_REGEN_PER_ROUND = 5;
 
 /**
  * @typedef {{
- *   species: 'volt'|'crystal'|'chicken'|'cat'|'dog',
+ *   species: 'volt'|'chicken'|'cat',
  *   nickname: string,
  *   virtAge: number,
  *   power: number,
- *   morphKey?: 'striker'|'guardian'|'survivor'|'harmony'|'cat_volt'|'cat_aqua'|'cat_flora'|'dog_volt'|'dog_aqua'|'dog_pyro'|'dog_tox'|'doodoo'|null,
+ *   morphKey?: 'striker'|'guardian'|'survivor'|'harmony'|'cat_volt'|'cat_aqua'|'cat_flora'|'doodoo'|null,
  * }} PetSnap
  */
 
@@ -61,13 +61,7 @@ function parsePetSnap(raw) {
   const o = /** @type {Record<string, unknown>} */ (raw);
   const sp = o.species;
   const species =
-    sp === "volt" ||
-    sp === "crystal" ||
-    sp === "chicken" ||
-    sp === "cat" ||
-    sp === "dog"
-      ? sp
-      : "volt";
+    sp === "volt" || sp === "chicken" || sp === "cat" ? sp : "volt";
   const nick = String(o.nickname ?? "")
     .trim()
     .slice(0, 12);
@@ -80,7 +74,7 @@ function parsePetSnap(raw) {
     ? Math.min(100, Math.max(0, Math.floor(powerNum)))
     : 12;
   const mk = o.morphKey;
-  /** @type {'striker'|'guardian'|'survivor'|'harmony'|'cat_volt'|'cat_aqua'|'cat_flora'|'dog_volt'|'dog_aqua'|'dog_pyro'|'dog_tox'|'doodoo'|null} */
+  /** @type {'striker'|'guardian'|'survivor'|'harmony'|'cat_volt'|'cat_aqua'|'cat_flora'|'doodoo'|null} */
   let morphKey =
     mk === "striker" ||
     mk === "guardian" ||
@@ -89,14 +83,13 @@ function parsePetSnap(raw) {
     mk === "cat_volt" ||
     mk === "cat_aqua" ||
     mk === "cat_flora" ||
-    mk === "dog_volt" ||
-    mk === "dog_aqua" ||
-    mk === "dog_pyro" ||
-    mk === "dog_tox" ||
     mk === "doodoo"
       ? mk
       : null;
-  if (mk === "dog_flora") morphKey = "dog_pyro";
+  if (morphKey && String(morphKey).startsWith("dog_")) morphKey = null;
+  if (species !== "cat" && morphKey && String(morphKey).startsWith("cat_")) {
+    morphKey = null;
+  }
   return {
     species,
     nickname: nick || "\u73a9\u5bb6",
@@ -116,18 +109,14 @@ function mpMaxForPet(p) {
 /** 攻擊方物種：加在斬擊／蓄力的基礎段數上（蓄力仍再乘 1.35）。 */
 function speciesAtkBonus(species) {
   if (species === "volt") return 2;
-  if (species === "crystal") return 0;
   if (species === "chicken") return 1;
   if (species === "cat") return 1;
-  if (species === "dog") return 1;
   return 0;
 }
 
 /** 受傷方物種：乘在「已結算防禦係數後」的傷害上（仍至少 2）。 */
 function speciesDefMul(species) {
-  if (species === "crystal") return 0.92;
   if (species === "cat") return 0.96;
-  if (species === "dog") return 0.97;
   if (species === "chicken") return 0.98;
   return 1;
 }

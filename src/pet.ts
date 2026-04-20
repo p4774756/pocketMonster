@@ -1,10 +1,10 @@
-export type PetSpecies = "volt" | "crystal" | "chicken" | "cat" | "dog";
+export type PetSpecies = "volt" | "chicken" | "cat";
 
 export type DeathCause = "old" | "neglect" | "illness";
 
 /**
  * 首次進化分支（僅本機養成；不影響物種）。
- * 貓：`cat_volt`／`cat_aqua`／`cat_flora`；狗：`dog_volt`／`dog_aqua`／`dog_pyro`／`dog_tox`；`doodoo` 為照護過差的大便怪；其餘物種仍為四種作戰風格鍵。
+ * 貓：`cat_volt`／`cat_aqua`／`cat_flora`（僅於寶寶→兒童期門檻觸發，見 `applyCatChildAttributeGate`）；`doodoo` 為照護過差的大便怪；其餘物種仍為四種作戰風格鍵。
  */
 export type PetMorphKey =
   | "striker"
@@ -19,9 +19,6 @@ export type PetMorphKey =
   | "dog_pyro"
   | "dog_tox"
   | "doodoo";
-
-/** 狗 Canvas 屬性光點（與 `canvasDog` 裝飾層一致）。 */
-export type DogCanvasElementKey = "volt" | "aqua" | "pyro" | "tox";
 
 export interface PetState {
   species: PetSpecies;
@@ -48,6 +45,11 @@ export interface PetState {
   /** 0 = 未進化；1 = 已選定分支（`morphKey`）。 */
   morphTier: 0 | 1;
   morphKey: PetMorphKey | null;
+  /**
+   * 貓專用：是否已跑過「虛擬日齡 ≥5（兒童期）」的單次屬性門檻。
+   * 未觸發屬性者永久維持無屬性外觀（`morphTier` 仍為 0）。
+   */
+  catChildGateDone: boolean;
   /** 養成畫面房間燈（關燈時夜間回體力略強）。 */
   lightsOn: boolean;
   /** Accumulated real hours while critically hungry. */
@@ -91,6 +93,7 @@ const DEFAULT: PetState = {
   pvpWins: 0,
   morphTier: 0,
   morphKey: null,
+  catChildGateDone: false,
   lightsOn: true,
   starveHours: 0,
   alive: true,
@@ -136,14 +139,14 @@ export function isLocalNightHour(d = new Date()): boolean {
   return h >= 22 || h < 7;
 }
 
-/** 貓／狗且已進化為大便怪時，養成／對戰改用 Canvas 大便怪。 */
+/** 貓且已進化為大便怪時，養成／對戰改用 Canvas 大便怪。 */
 export function careUsesPoopCanvas(p: PetState): boolean {
   return (
     p.alive &&
     p.hatched &&
     p.morphTier >= 1 &&
     p.morphKey === "doodoo" &&
-    (p.species === "cat" || p.species === "dog")
+    p.species === "cat"
   );
 }
 
@@ -158,17 +161,6 @@ export function catElementKeyFromMorph(
   if (species !== "cat") return null;
   if (k === "cat_volt" || k === "cat_aqua") return null;
   if (k === "cat_flora") return "flora";
-  return null;
-}
-
-/** 狗 Canvas 屬性裝飾鍵。 */
-export function dogElementKeyFromMorph(
-  k: PetMorphKey | null,
-): DogCanvasElementKey | null {
-  if (k === "dog_volt") return "volt";
-  if (k === "dog_aqua") return "aqua";
-  if (k === "dog_pyro") return "pyro";
-  if (k === "dog_tox") return "tox";
   return null;
 }
 
@@ -215,42 +207,41 @@ function pickCatElementMorph(p: PetState): PetMorphKey {
   return "cat_flora";
 }
 
-/** 狗：Canvas 雷／水／火／毒四屬光點。 */
-function pickDogElementMorph(p: PetState): PetMorphKey {
-  const ema = p.careQualityEma;
-  const illLife = p.totalIllVirtDays;
-  if (p.power >= 21 && ema >= 34) return "dog_volt";
-  if (p.clean >= 58 && illLife <= 4.5 && ema >= 35) return "dog_aqua";
-  if (p.happy >= 58 && p.energy >= 50 && ema >= 36) return "dog_pyro";
-  if (illLife >= 6.5 && ema >= 30 && ema <= 50 && p.clean <= 54)
-    return "dog_tox";
-  const v = p.power * 1.15 + p.pvpWins * 2.8;
-  const a = p.clean * 1.08 + (100 - illLife) * 0.12;
-  const py = p.happy * 1.05 + p.energy * 0.22;
-  const tx = illLife * 1.35 + (100 - p.clean) * 0.3 + Math.min(p.power, 24) * 0.25;
-  const max = Math.max(v, a, py, tx);
-  if (max === v) return "dog_volt";
-  if (max === a) return "dog_aqua";
-  if (max === py) return "dog_pyro";
-  return "dog_tox";
-}
+/** 貓進入兒童期（第 5 虛擬日）時單次判定：有機會獲得屬性，否則永久無屬性。 */
+const CAT_CHILD_GATE_VIRT_AGE = 5;
 
-function pickCatDogElementMorph(p: PetState): PetMorphKey {
-  return p.species === "cat" ? pickCatElementMorph(p) : pickDogElementMorph(p);
+function applyCatChildAttributeGate(p: PetState): PetState {
+  const ema = p.careQualityEma;
+  const awaken =
+    ema >= 44 ||
+    (ema >= 38 && Math.random() < 0.62) ||
+    (ema >= 34 && ema < 38 && Math.random() < 0.28);
+  if (!awaken) {
+    pendingMorphToast =
+      "\u9032\u5165\u5152\u7ae5\u671f\uff01\u5c0f\u8c93\u4fdd\u6301\u7121\u5c6c\u6027\u3002";
+    return { ...p, catChildGateDone: true };
+  }
+  const key = pickCatElementMorph(p);
+  pendingMorphToast = `\u9032\u5316\uff01${morphLabelZh(key)}`;
+  return {
+    ...p,
+    catChildGateDone: true,
+    morphTier: 1,
+    morphKey: key,
+  };
 }
 
 /**
- * 貓／狗：12 虛擬日起可變大便怪；滿 13 虛擬日且非大便怪則屬性進化。
+ * 貓：12 虛擬日起可變大便怪。屬性分支改由 `applyCatChildAttributeGate`（滿 5 虛擬日單次）處理。
  * 其他物種：鬥魂 → 守護 → 韌性 → 均衡（舊版）。
  */
 function pickMorphKey(p: PetState): PetMorphKey | null {
   if (p.morphTier >= 1 || !p.alive || !p.hatched) return null;
   if (p.virtAge < EVOLVE_MIN_VIRT_AGE) return null;
 
-  if (p.species === "cat" || p.species === "dog") {
+  if (p.species === "cat") {
     if (isDoodooMorphCandidate(p)) return "doodoo";
-    if (p.virtAge < 13) return null;
-    return pickCatDogElementMorph(p);
+    return null;
   }
 
   const ema = p.careQualityEma;
@@ -266,7 +257,18 @@ function pickMorphKey(p: PetState): PetMorphKey | null {
 }
 
 export function tryEvolve(p: PetState): PetState {
-  if (p.morphTier >= 1 || !p.alive || !p.hatched) return p;
+  if (!p.alive || !p.hatched) return p;
+
+  if (
+    p.species === "cat" &&
+    p.morphTier === 0 &&
+    !p.catChildGateDone &&
+    p.virtAge >= CAT_CHILD_GATE_VIRT_AGE
+  ) {
+    return applyCatChildAttributeGate(p);
+  }
+
+  if (p.morphTier >= 1) return p;
   const key = pickMorphKey(p);
   if (!key) return p;
   if (key === "doodoo") {
@@ -288,22 +290,11 @@ function clamp(n: number, lo: number, hi: number) {
   return Math.min(hi, Math.max(lo, n));
 }
 
-function parseSpecies(raw: unknown): PetSpecies {
-  if (
-    raw === "volt" ||
-    raw === "crystal" ||
-    raw === "chicken" ||
-    raw === "cat" ||
-    raw === "dog"
-  ) {
-    return raw;
-  }
+/** 載入存檔／舊版連線：已移除之物種映射為雷系蛋獸。 */
+export function parseSpecies(raw: unknown): PetSpecies {
+  if (raw === "volt" || raw === "chicken" || raw === "cat") return raw;
+  if (raw === "crystal" || raw === "dog") return "volt";
   return "volt";
-}
-
-/** 狗物種以 Canvas 繪製，不使用 `public/pets` PNG。 */
-export function speciesUsesCanvasArt(species: PetSpecies): boolean {
-  return species === "dog";
 }
 
 export type CarePose = "eat" | "train" | "rest" | "clean";
@@ -328,7 +319,6 @@ export function carePoseFile(
   if (species === "cat") return `cat-${suf}.png`;
   if (species === "chicken") return `chicken-${suf}.png`;
   if (species === "volt" && pose === "train") return "pet-train-volt.png";
-  if (species === "crystal" && pose === "train") return "pet-train-crystal.png";
   return `pet-${suf}.png`;
 }
 
@@ -386,14 +376,18 @@ function mergeDefaults(raw: Partial<PetState>): PetState {
   const species = parseSpecies(raw.species);
   let morphKey: PetMorphKey | null =
     morphTier === 1 ? parseMorphKey(raw.morphKey) : null;
+  if (morphKey && morphKey.startsWith("dog_")) morphKey = null;
+  if (species !== "cat" && morphKey && morphKey.startsWith("cat_"))
+    morphKey = null;
   if (morphTier === 1 && !morphKey) {
-    morphKey =
-      species === "cat"
-        ? "cat_flora"
-        : species === "dog"
-          ? "dog_aqua"
-          : "harmony";
+    morphKey = species === "cat" ? "cat_flora" : "harmony";
   }
+  let catChildGateDone: boolean;
+  if (raw.catChildGateDone === true) catChildGateDone = true;
+  else if (raw.catChildGateDone === false) catChildGateDone = false;
+  else if (species === "cat" && virtAge >= CAT_CHILD_GATE_VIRT_AGE)
+    catChildGateDone = true;
+  else catChildGateDone = false;
   const lightsOn = raw.lightsOn === false ? false : true;
   return {
     species,
@@ -416,6 +410,7 @@ function mergeDefaults(raw: Partial<PetState>): PetState {
     pvpWins,
     morphTier,
     morphKey,
+    catChildGateDone,
     lightsOn,
     starveHours: Math.max(0, Number(raw.starveHours) || 0),
     alive,
@@ -508,7 +503,6 @@ export function idleSpriteForStage(stage: 0 | 1 | 2 | 3 | 4): string {
 }
 
 export function eggSpriteForSpecies(species: PetSpecies): string {
-  if (species === "crystal") return "pet-egg-crystal.png";
   if (species === "chicken") return "pet-egg-chicken.png";
   return "pet-egg-volt.png";
 }
@@ -711,29 +705,23 @@ export function recordPvpWin(): PetState {
 }
 
 export function petEmoji(species: PetSpecies): string {
-  if (species === "crystal") return "\ud83d\udc8e";
   if (species === "chicken") return "\ud83d\udc24";
   if (species === "cat") return "\ud83d\udc31";
-  if (species === "dog") return "\ud83d\udc15";
   return "\u26a1";
 }
 
 export function petDefaultName(species: PetSpecies): string {
-  if (species === "crystal") return "\u6676\u683c\u7378";
   if (species === "chicken") return "\u5c0f\u96de";
   if (species === "cat") return "\u5c0f\u8c93";
-  if (species === "dog") return "\u5c0f\u72d7";
   return "\u96f7\u866b\u7378";
 }
 
-/** 新認養抽選：貓、狗＝已孵化；其餘先孵蛋，破殼後為該物種。 */
+/** 新認養抽選：貓＝已孵化；雞／雷為蛋，破殼後為該物種。 */
 export function rollAdoptionProfile(): { species: PetSpecies; hatched: boolean } {
   const u = Math.random();
-  if (u < 0.2) return { species: "cat", hatched: true };
-  if (u < 0.4) return { species: "chicken", hatched: false };
-  if (u < 0.58) return { species: "dog", hatched: true };
-  if (u < 0.78) return { species: "volt", hatched: false };
-  return { species: "crystal", hatched: false };
+  if (u < 0.28) return { species: "cat", hatched: true };
+  if (u < 0.56) return { species: "chicken", hatched: false };
+  return { species: "volt", hatched: false };
 }
 
 export function newAdoptionPetState(): PetState {
@@ -761,6 +749,7 @@ export function newAdoptionPetState(): PetState {
     pvpWins: 0,
     morphTier: 0,
     morphKey: null,
+    catChildGateDone: false,
     lightsOn: true,
     starveHours: 0,
     alive: true,
@@ -854,44 +843,23 @@ export function moodLine(p: PetState): string {
 
   if (p.morphTier >= 1 && p.morphKey && p.morphKey !== "doodoo") {
     const mk = p.morphKey;
-    if (
-      mk === "cat_volt" ||
-      mk === "dog_volt" ||
-      mk === "cat_aqua" ||
-      mk === "dog_aqua" ||
-      mk === "cat_flora" ||
-      mk === "dog_pyro" ||
-      mk === "dog_tox"
-    ) {
+    if (mk === "cat_volt" || mk === "cat_aqua" || mk === "cat_flora") {
       const eLines =
-        mk.endsWith("volt")
+        mk === "cat_volt"
           ? [
               "\u8eab\u9ad4\u88e1\u6709\u5c0f\u5c0f\u96fb\u6d41\u5728\u8dd1\uff01",
               "\u96f7\u96f2\u5473\u7684\u4e00\u5929\u958b\u59cb\u56c9\u3002",
             ]
-          : mk.endsWith("aqua")
+          : mk === "cat_aqua"
             ? [
                 "\u6e05\u723d\u7684\u611f\u89ba\uff0c\u60f3\u53bb\u73a9\u6c34\u3002",
                 "\u6ce1\u6ce1\u5fc3\u60c5\uff0c\u6d17\u500b\u6fa1\u66f4\u8212\u670d\u3002",
               ]
-            : mk === "cat_flora"
-              ? [
-                  "\u8349\u539f\u7684\u98a8\u5439\u904e\u8033\u908a\u3002",
-                  "\u5fc3\u60c5\u8edf\u8edf\u7684\uff0c\u60f3\u66ec\u66ec\u592a\u967d\u3002",
-                ]
-              : mk.endsWith("pyro")
-                ? [
-                    "\u9ad4\u6eab\u6162\u6162\u5347\u8d77\u4f86\u4e86\uff0c\u60f3\u5954\u8dd1\u4e00\u5708\uff01",
-                    "\u5fc3\u88e1\u6709\u4e00\u5c0f\u5718\u706b\u5728\u8df3\u3002",
-                  ]
-                : mk.endsWith("tox")
-                  ? [
-                      "\u5634\u88e1\u6709\u9ede\u82e6\u82e6\u7684\u2026\u4f46\u9084\u633a\u9177\u7684\u3002",
-                      "\u8eab\u908a\u7a7a\u6c23\u597d\u6c89\uff0c\u537b\u53c8\u5f88\u5b89\u5fc3\u3002",
-                    ]
-                  : [];
-      if (eLines.length)
-        return pickMoodLine(seedBase + mk.charCodeAt(2), eLines);
+            : [
+                "\u8349\u539f\u7684\u98a8\u5439\u904e\u8033\u908a\u3002",
+                "\u5fc3\u60c5\u8edf\u8edf\u7684\uff0c\u60f3\u66ec\u66ec\u592a\u967d\u3002",
+              ];
+      return pickMoodLine(seedBase + mk.charCodeAt(2), eLines);
     }
   }
 

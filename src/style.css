@@ -278,28 +278,6 @@ body {
   background: linear-gradient(165deg, #f1f5f9 0%, #e2e8f0 48%, #dbeafe 100%);
 }
 
-.care-shell--lights-off .care-bezel {
-  box-shadow:
-    var(--shadow-inset),
-    inset 0 -1px 0 rgba(15, 23, 42, 0.12),
-    0 1px 3px rgba(15, 23, 42, 0.12);
-}
-
-.care-shell--lights-off .care-bezel::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: rgba(15, 23, 42, 0.38);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.care-shell--lights-off .care-bezel > * {
-  position: relative;
-  z-index: 1;
-}
-
 .care-lights-row {
   display: flex;
   flex-wrap: wrap;
@@ -1879,22 +1857,22 @@ footer.note {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
-/* 養成關燈：#pet-stage 整塊暗房（須同時 .care-shell--lights-off） */
+/* 養成關燈：僅 #pet-stage 全黑；精靈與暱稱隱藏（紅框外不受影響） */
 .care-shell--lights-off .pet-stage.pet-stage--lights-off {
-  background: #050508;
-  border-color: rgba(0, 0, 0, 0.55);
-  box-shadow:
-    inset 0 0 48px rgba(0, 0, 0, 0.94),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  background: #000;
+  border-color: #000;
+  box-shadow: inset 0 0 32px rgba(0, 0, 0, 1);
 }
 
 .care-shell--lights-off .pet-stage.pet-stage--lights-off .pet-sprite-mount .pet-sprite,
 .care-shell--lights-off .pet-stage.pet-stage--lights-off .pet-sprite-mount .pet-sprite-canvas {
-  filter: brightness(0.3);
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .care-shell--lights-off .pet-stage.pet-stage--lights-off .pet-nick {
-  opacity: 0.72;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 html[data-theme="retro"] .care-shell--lights-off .pet-stage.pet-stage--lights-off {
@@ -1910,10 +1888,7 @@ html[data-theme="minimal"] .care-shell--lights-off .pet-stage.pet-stage--lights-
 }
 
 .care-shell--lights-off .pet-stage.pet-stage--lights-off.pet-stage--senior {
-  box-shadow:
-    inset 0 0 48px rgba(0, 0, 0, 0.94),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    inset 0 0 0 1px rgba(180, 160, 130, 0.12);
+  box-shadow: inset 0 0 32px rgba(0, 0, 0, 1);
 }
 
 .pet-stage--senior {

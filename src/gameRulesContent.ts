@@ -1,5 +1,5 @@
 import gameRulesMd from "../docs/GAME_RULES.md?raw";
-import { marked } from "marked";
+import { marked, type Tokens } from "marked";
 
 export const GAME_RULES_MARKDOWN: string = gameRulesMd;
 
@@ -7,10 +7,7 @@ marked.setOptions({ gfm: true });
 /** 彈窗已有 h2 標題，內文標題整體降一階（h2→h3、h3→h4）以利閱讀與無障礙。 */
 marked.use({
   renderer: {
-    heading(
-      this: { parser: { parseInline: (tok: unknown) => string } },
-      { tokens, depth }: { tokens: unknown; depth: number },
-    ) {
+    heading(this, { tokens, depth }: Tokens.Heading) {
       const d = Math.min(6, depth + 1);
       return `<h${d}>${this.parser.parseInline(tokens)}</h${d}>\n`;
     },

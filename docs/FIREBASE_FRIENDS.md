@@ -8,7 +8,7 @@
 1. 建立專案 → 啟用 **Authentication** → 登入方式勾選 **電子郵件／密碼**。  
 2. 啟用 **Cloud Firestore**（建議先以「測試模式」建立資料庫，再立刻改為正式規則）。  
 3. **規則**：將本倉 `docs/firebase-friends.rules` 內容貼到 Firestore「規則」並發布。  
-4. **索引**：若即時監聽或查詢報錯，主控台會提供建立連結；本倉已於**專案根目錄**提供 **`firestore.indexes.json`**（含 `friend_requests` 與 **`messages`／`createdAt` 降冪**），以 Firebase CLI 執行 `firebase deploy --only firestore:indexes` 即可部署（須已 `firebase use` 綁定專案）。  
+4. **索引**：若即時監聽或查詢報錯，主控台會提供建立連結；本倉根目錄 **`firestore.indexes.json`** 含 `friend_requests` 複合索引，以及 **`messages`／`createdAt` 的 `fieldOverrides`**（單一欄位須由此設定，不可放進 `indexes` 單欄複合，否則 CLI 會回 400）。以 `firebase deploy --only firestore:indexes` 部署（須已 `firebase use` 綁定專案）。  
    **好友聊天**使用 `orderBy("createdAt", "desc")` + `limit` 取最近訊息；讀取規則以父層 **`friends.members`** 授權（見 `docs/firebase-friends.rules`）。若單一對話超過載入上限，可再改分頁。  
 5. **專案設定 → 一般 → 您的應用程式** 新增 **Web** 應用，取得設定物件中的六個欄位，對應下方 `VITE_*` 變數。
 

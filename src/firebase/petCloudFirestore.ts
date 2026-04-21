@@ -9,6 +9,34 @@ import {
 /** 與 `docs/firebase-friends.rules` 內 `cloud_pet_saves` 一致。 */
 export const CLOUD_PET_SAVES = "cloud_pet_saves";
 
+function readUpdatedAtFromDoc(data: Record<string, unknown>): Date | null {
+  const rawTs = data.updatedAt;
+  if (
+    rawTs &&
+    typeof rawTs === "object" &&
+    "toDate" in rawTs &&
+    typeof (rawTs as { toDate: () => Date }).toDate === "function"
+  ) {
+    try {
+      return (rawTs as { toDate: () => Date }).toDate();
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/** 僅讀取備份時間（不載入 payload），供確認視窗顯示。文件不存在則 `null`。 */
+export async function fetchCloudPetSaveMeta(
+  db: Firestore,
+  uid: string,
+): Promise<{ updatedAt: Date | null } | null> {
+  const snap = await getDoc(doc(db, CLOUD_PET_SAVES, uid));
+  if (!snap.exists()) return null;
+  const d = snap.data() as Record<string, unknown>;
+  return { updatedAt: readUpdatedAtFromDoc(d) };
+}
+
 export async function uploadCloudPetSave(
   db: Firestore,
   uid: string,
@@ -32,22 +60,8 @@ export async function downloadCloudPetSave(
 ): Promise<CloudPetSaveMeta | null> {
   const snap = await getDoc(doc(db, CLOUD_PET_SAVES, uid));
   if (!snap.exists()) return null;
-  const d = snap.data();
+  const d = snap.data() as Record<string, unknown>;
   const payload = typeof d.payload === "string" ? d.payload : "";
   if (!payload.trim()) return null;
-  const rawTs = d.updatedAt;
-  let updatedAt: Date | null = null;
-  if (
-    rawTs &&
-    typeof rawTs === "object" &&
-    "toDate" in rawTs &&
-    typeof (rawTs as { toDate: () => Date }).toDate === "function"
-  ) {
-    try {
-      updatedAt = (rawTs as { toDate: () => Date }).toDate();
-    } catch {
-      updatedAt = null;
-    }
-  }
-  return { payload, updatedAt };
+  return { payload, updatedAt: readUpdatedAtFromDoc(d) };
 }

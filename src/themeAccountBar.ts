@@ -13,6 +13,7 @@ import {
 } from "./firebase/config";
 import {
   downloadCloudPetSave,
+  fetchCloudPetSaveMeta,
   uploadCloudPetSave,
 } from "./firebase/petCloudFirestore";
 import { importPetFromCloudJson, loadPet } from "./pet";
@@ -45,10 +46,19 @@ const S = {
   modalTitle: "\u767b\u5165\u5e33\u865f",
   modalHint:
     "\u767b\u5165\u5f8c\u53ef\u4e0a\u50b3\uff0f\u4e0b\u8f09\u990a\u6210\u9032\u5ea6\uff0c\u4e26\u53ef\u9032\u5165\u300c\u597d\u53cb\u300d\u9801\u52a0\u597d\u53cb\u3002",
-  confirmUpload:
-    "\u78ba\u5b9a\u5c07\u672c\u6a5f\u5925\u4f34\u9032\u5ea6\u4e0a\u50b3\u5230\u96f2\u7aef\uff1f\uff08\u6703\u8986\u84cb\u540c\u5e33\u865f\u65e7\u5099\u4efd\uff09",
-  confirmDownload:
-    "\u5f9e\u96f2\u7aef\u4e0b\u8f09\u6703\u53d6\u4ee3\u672c\u6a5f\u76ee\u524d\u9032\u5ea6\uff0c\u78ba\u5b9a\u7e7c\u7e8c\uff1f",
+  cancel: "\u53d6\u6d88",
+  confirmDo: "\u78ba\u5b9a",
+  confirmOk: "\u597d",
+  confirmUploadTitle: "\u4e0a\u50b3\u5230\u96f2\u7aef",
+  confirmUploadBody:
+    "\u78ba\u5b9a\u5c07\u672c\u6a5f\u5925\u4f34\u9032\u5ea6\u4e0a\u50b3\uff1f\u6703\u8986\u84cb\u540c\u5e33\u865f\u5728\u96f2\u7aef\u7684\u820a\u5099\u4efd\u3002",
+  confirmDownloadTitle: "\u5f9e\u96f2\u7aef\u4e0b\u8f09",
+  confirmDownloadBody:
+    "\u4e0b\u8f09\u6703\u7528\u96f2\u7aef\u5099\u4efd\u53d6\u4ee3\u672c\u6a5f\u76ee\u524d\u9032\u5ea6\uff0c\u78ba\u5b9a\u7e7c\u7e8c\uff1f",
+  cloudTimeLabel: "\u96f2\u7aef\u5099\u4efd\u6642\u9593",
+  cloudTimeNone: "\u76ee\u524d\u96f2\u7aef\u5c1a\u7121\u5099\u4efd",
+  cloudTimeUnknown: "\uff08\u7121\u6cd5\u8b80\u53d6\u6642\u9593\uff09",
+  infoNoBackupTitle: "\u96f2\u7aef\u5099\u4efd",
 };
 
 function errCode(e: unknown): string {
@@ -92,6 +102,110 @@ function flashToast(el: HTMLElement, msg: string, ok: boolean) {
 
 function dispatchPetChanged() {
   document.dispatchEvent(new CustomEvent("pocketpet:pet-storage-changed"));
+}
+
+function formatCloudBackupTime(d: Date | null): string {
+  if (!d) return S.cloudTimeUnknown;
+  try {
+    return new Intl.DateTimeFormat("zh-TW", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(d);
+  } catch {
+    return S.cloudTimeUnknown;
+  }
+}
+
+/**
+ * \u540c\u6b65\u78ba\u8a8d\uff1a\u986f\u793a\u591a\u6bb5\u8aaa\u660e\u8207\u96f2\u7aef\u5099\u4efd\u6642\u9593\u3002
+ * @param showCancel \u70ba false \u6642\u50c5\u986f\u793a\u78ba\u5b9a\uff08\u8cc7\u8a0a\uff09\u3002
+ */
+function openSyncConfirmDialog(options: {
+  title: string;
+  paragraphs: string[];
+  showCancel: boolean;
+  confirmText: string;
+  cancelText?: string;
+}): Promise<boolean> {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "account-auth-overlay sync-confirm-overlay";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+
+    const panel = document.createElement("div");
+    panel.className = "account-auth-panel sync-confirm-panel";
+
+    const h = document.createElement("h2");
+    h.className = "account-auth-heading";
+    const titleId = `sync-confirm-title-${Date.now()}`;
+    h.id = titleId;
+    overlay.setAttribute("aria-labelledby", titleId);
+    h.textContent = options.title;
+    panel.append(h);
+
+    for (const text of options.paragraphs) {
+      const p = document.createElement("p");
+      p.className = "sync-confirm-body";
+      p.textContent = text;
+      panel.append(p);
+    }
+
+    const foot = document.createElement("div");
+    foot.className = "account-auth-buttons";
+
+    const cleanup = () => {
+      document.removeEventListener("keydown", onKey);
+      overlay.remove();
+    };
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        cleanup();
+        resolve(false);
+      }
+    };
+
+    if (options.showCancel) {
+      const cancel = document.createElement("button");
+      cancel.type = "button";
+      cancel.className = "btn btn-secondary";
+      cancel.textContent = options.cancelText ?? S.cancel;
+      cancel.addEventListener("click", () => {
+        cleanup();
+        resolve(false);
+      });
+      foot.append(cancel);
+    }
+
+    const ok = document.createElement("button");
+    ok.type = "button";
+    ok.className = "btn btn-primary";
+    ok.textContent = options.confirmText;
+    ok.addEventListener("click", () => {
+      cleanup();
+      resolve(true);
+    });
+    foot.append(ok);
+
+    panel.append(foot);
+    overlay.append(panel);
+
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) {
+        cleanup();
+        resolve(false);
+      }
+    });
+
+    document.addEventListener("keydown", onKey);
+    document.body.append(overlay);
+    ok.focus();
+  });
 }
 
 /**
@@ -230,11 +344,24 @@ export function mountThemeAccountBar(): void {
     up.className = "theme-rules-btn theme-account-sync-btn";
     up.textContent = S.upload;
     up.addEventListener("click", async () => {
-      if (!window.confirm(S.confirmUpload)) return;
       const u = auth.currentUser;
       if (!u) return;
       up.disabled = true;
       try {
+        const peek = await fetchCloudPetSaveMeta(db, u.uid);
+        const timeLine = `${S.cloudTimeLabel}\uff1a${
+          peek
+            ? formatCloudBackupTime(peek.updatedAt)
+            : S.cloudTimeNone
+        }`;
+        const ok = await openSyncConfirmDialog({
+          title: S.confirmUploadTitle,
+          paragraphs: [S.confirmUploadBody, timeLine],
+          showCancel: true,
+          confirmText: S.confirmDo,
+          cancelText: S.cancel,
+        });
+        if (!ok) return;
         const json = JSON.stringify(loadPet());
         await uploadCloudPetSave(db, u.uid, json);
         flashToast(toast, S.okUpload, true);
@@ -250,11 +377,29 @@ export function mountThemeAccountBar(): void {
     down.className = "theme-rules-btn theme-account-sync-btn";
     down.textContent = S.download;
     down.addEventListener("click", async () => {
-      if (!window.confirm(S.confirmDownload)) return;
       const u = auth.currentUser;
       if (!u) return;
       down.disabled = true;
       try {
+        const peek = await fetchCloudPetSaveMeta(db, u.uid);
+        if (!peek) {
+          await openSyncConfirmDialog({
+            title: S.infoNoBackupTitle,
+            paragraphs: [S.errNoCloudSave, `${S.cloudTimeLabel}\uff1a${S.cloudTimeNone}`],
+            showCancel: false,
+            confirmText: S.confirmOk,
+          });
+          return;
+        }
+        const timeLine = `${S.cloudTimeLabel}\uff1a${formatCloudBackupTime(peek.updatedAt)}`;
+        const ok = await openSyncConfirmDialog({
+          title: S.confirmDownloadTitle,
+          paragraphs: [S.confirmDownloadBody, timeLine],
+          showCancel: true,
+          confirmText: S.confirmDo,
+          cancelText: S.cancel,
+        });
+        if (!ok) return;
         const meta = await downloadCloudPetSave(db, u.uid);
         if (!meta) {
           flashToast(toast, S.errNoCloudSave, false);

@@ -221,6 +221,18 @@ body {
   min-width: 5rem;
 }
 
+.sync-confirm-body {
+  margin: 0 0 10px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text);
+  text-align: left;
+}
+
+.sync-confirm-body:last-of-type {
+  margin-bottom: 0;
+}
+
 .theme-settings-open-btn {
   min-width: 5.5rem;
 }

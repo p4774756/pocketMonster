@@ -132,14 +132,43 @@ export async function ensureUserProfile(
   throw new Error("friend_code_exhausted");
 }
 
+/**
+ * 將本人在所有好友對文件中的 `nicknames.{uid}` 設為與 `profiles` 一致（供對方列表即時顯示）。
+ * 以多個 batch 處理，每批最多 500 筆。
+ */
+async function syncMyNicknameOnAllFriendships(
+  db: Firestore,
+  uid: string,
+  displayName: string,
+): Promise<void> {
+  const q = query(
+    collection(db, "friends"),
+    where("members", "array-contains", uid),
+  );
+  const snap = await getDocs(q);
+  const refs = snap.docs.map((d) => d.ref);
+  const chunk = 500;
+  for (let i = 0; i < refs.length; i += chunk) {
+    const batch = writeBatch(db);
+    for (const ref of refs.slice(i, i + chunk)) {
+      batch.update(ref, {
+        [`nicknames.${uid}`]: displayName,
+      });
+    }
+    await batch.commit();
+  }
+}
+
 export async function updateProfileDisplayName(
   db: Firestore,
   uid: string,
   name: string,
 ): Promise<void> {
+  const displayName = name.trim().slice(0, 32);
+  await syncMyNicknameOnAllFriendships(db, uid, displayName);
   const pref = doc(db, "profiles", uid);
   await updateDoc(pref, {
-    displayName: name.trim().slice(0, 32),
+    displayName,
     updatedAt: serverTimestamp(),
   });
 }

@@ -49,7 +49,29 @@ service cloud.firestore {
         && request.resource.data.members.size() == 2;
       allow delete: if request.auth != null
         && request.auth.uid in resource.data.members;
-      allow update: if false;
+      /* 僅允許更新自己的暱稱：不可改 members／since，不可改對方 nicknames 欄位。 */
+      allow update: if request.auth != null
+        && request.auth.uid in resource.data.members
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nicknames'])
+        && request.resource.data.members == resource.data.members
+        && request.resource.data.since == resource.data.since
+        && request.resource.data.nicknames is map
+        && (
+          (
+            request.auth.uid == resource.data.members[0]
+            && request.resource.data.nicknames[resource.data.members[1]]
+              == resource.data.nicknames[resource.data.members[1]]
+            && request.resource.data.nicknames[resource.data.members[0]] is string
+            && request.resource.data.nicknames[resource.data.members[0]].size() <= 32
+          )
+          || (
+            request.auth.uid == resource.data.members[1]
+            && request.resource.data.nicknames[resource.data.members[0]]
+              == resource.data.nicknames[resource.data.members[0]]
+            && request.resource.data.nicknames[resource.data.members[1]] is string
+            && request.resource.data.nicknames[resource.data.members[1]].size() <= 32
+          )
+        );
 
       match /messages/{msgId} {
         /* 讀取：僅限父層好友對之成員（見 friends/{pairId}.members）。不依賴每則 memberUids，

@@ -7,6 +7,7 @@ import {
 import {
   acceptFriendRequest,
   cancelOutgoingRequest,
+  enrichFriendListRowsFromProfiles,
   ensureUserProfile,
   fetchFriendListRows,
   fetchIncomingRequestRows,
@@ -78,6 +79,8 @@ const S = {
   errSelf: "\u7121\u6cd5\u52a0\u81ea\u5df1",
   errAlready: "\u5df2\u662f\u597d\u53cb",
   errDup: "\u5df2\u6709\u5f85\u56de\u8986\u7684\u9080\u8acb",
+  errInviteStale:
+    "\u9080\u8acb\u5df2\u904e\u671f\u6216\u8cc7\u6599\u4e0d\u5b8c\u6574\uff1b\u8acb\u8acb\u5c0d\u65b9\u64a4\u56de\u5f8c\u91cd\u65b0\u767c\u9001\uff0c\u6216\u7531\u6536\u4ef6\u65b9\u62d2\u7d55\u5f8c\u518d\u9080\u3002",
   errReverse:
     "\u5c0d\u65b9\u5df2\u5411\u4f60\u767c\u8d77\u9080\u8acb\uff0c\u8acb\u5230\u300c\u6536\u5230\u7684\u9080\u8acb\u300d\u56de\u8986",
   errCode: "\u67e5\u7121\u6b64\u4ee3\u78bc",
@@ -154,6 +157,7 @@ function mapFriendErr(e: unknown): string {
   if (m === "dup_pending") return S.errDup;
   if (m === "reverse_pending") return S.errReverse;
   if (m === "code_unknown" || m === "code_short") return S.errCode;
+  if (m === "missing_token" || m === "token_mismatch") return S.errInviteStale;
   if (m === "empty") return S.errChatEmpty;
   if (m === "pair_missing" || m === "pair_invalid" || m === "not_member")
     return S.errFriendFirestore;
@@ -472,7 +476,9 @@ export function mountFirebaseFriends(root: HTMLElement): void {
     }
   };
 
-  const paintFriendsRows = (uid: string, rows: FriendListRow[]) => {
+  let friendsPaintGen = 0;
+  const paintFriendsRows = async (uid: string, rows: FriendListRow[]) => {
+    const gen = ++friendsPaintGen;
     friendsList.replaceChildren();
     if (rows.length === 0) {
       const p = document.createElement("p");
@@ -481,7 +487,16 @@ export function mountFirebaseFriends(root: HTMLElement): void {
       friendsList.append(p);
       return;
     }
-    for (const r of rows) {
+    let toPaint = rows;
+    try {
+      toPaint = await enrichFriendListRowsFromProfiles(db, rows);
+    } catch (e) {
+      if (import.meta.env.DEV) {
+        console.error("[firebase friends] enrich friend profile names", e);
+      }
+    }
+    if (gen !== friendsPaintGen) return;
+    for (const r of toPaint) {
       const row = document.createElement("div");
       row.className = "lobby-friends-item";
       const lab = document.createElement("span");
@@ -524,7 +539,7 @@ export function mountFirebaseFriends(root: HTMLElement): void {
       ]);
       paintIncomingRows(forUid, inc);
       paintOutgoingRows(forUid, outg);
-      paintFriendsRows(forUid, fr);
+      await paintFriendsRows(forUid, fr);
     } catch (e) {
       if (import.meta.env.DEV) console.error("[firebase friends] refresh lists", e);
     }
@@ -539,7 +554,9 @@ export function mountFirebaseFriends(root: HTMLElement): void {
       subscribeOutgoingRequests(db, uid, (rows) => paintOutgoingRows(uid, rows)),
     );
     dataUnsubs.push(
-      subscribeFriends(db, uid, (rows) => paintFriendsRows(uid, rows)),
+      subscribeFriends(db, uid, (rows) => {
+        void paintFriendsRows(uid, rows);
+      }),
     );
   };
 

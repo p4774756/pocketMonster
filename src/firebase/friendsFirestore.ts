@@ -11,9 +11,11 @@ import {
   query,
   runTransaction,
   serverTimestamp,
+  setDoc,
   updateDoc,
   where,
   writeBatch,
+  type DocumentReference,
   type Firestore,
   type QuerySnapshot,
   type Unsubscribe,
@@ -21,6 +23,9 @@ import {
 
 /** \u8207\u597d\u53cb\u804a\u5929\u55ae\u5247\u5b57\u6578\u4e0a\u9650\uff08\u8207\u898f\u5247\u4e00\u81f4\uff09\u3002 */
 export const FRIEND_CHAT_MAX_LEN = 500;
+
+/** \u8207 `docs/firebase-friends.rules` \u540c\u6b65\uff1a\u63a5\u53d7\u524d\u5b58\u8b49\u660e\uff08\u50c5\u767c\u8d77\u9080\u8acb\u53ef\u5beb\uff09\u3002 */
+export const FRIEND_ACCEPT_TOKENS = "friend_accept_tokens";
 
 export type IncomingRequestRow = {
   id: string;
@@ -140,6 +145,7 @@ async function syncMyNicknameOnAllFriendships(
   db: Firestore,
   uid: string,
   displayName: string,
+  rollbackTo: string,
 ): Promise<void> {
   const q = query(
     collection(db, "friends"),
@@ -148,14 +154,36 @@ async function syncMyNicknameOnAllFriendships(
   const snap = await getDocs(q);
   const refs = snap.docs.map((d) => d.ref);
   const chunk = 500;
-  for (let i = 0; i < refs.length; i += chunk) {
-    const batch = writeBatch(db);
-    for (const ref of refs.slice(i, i + chunk)) {
-      batch.update(ref, {
-        [`nicknames.${uid}`]: displayName,
-      });
+  const committedSlices: DocumentReference[][] = [];
+  try {
+    for (let i = 0; i < refs.length; i += chunk) {
+      const slice = refs.slice(i, i + chunk);
+      const batch = writeBatch(db);
+      for (const ref of slice) {
+        batch.update(ref, {
+          [`nicknames.${uid}`]: displayName,
+        });
+      }
+      await batch.commit();
+      committedSlices.push(slice);
     }
-    await batch.commit();
+  } catch (e) {
+    if (rollbackTo !== displayName && committedSlices.length > 0) {
+      for (const slice of committedSlices.slice().reverse()) {
+        const rb = writeBatch(db);
+        for (const ref of slice) {
+          rb.update(ref, {
+            [`nicknames.${uid}`]: rollbackTo,
+          });
+        }
+        try {
+          await rb.commit();
+        } catch {
+          /* best-effort rollback */
+        }
+      }
+    }
+    throw e;
   }
 }
 
@@ -164,13 +192,36 @@ export async function updateProfileDisplayName(
   uid: string,
   name: string,
 ): Promise<void> {
-  const displayName = name.trim().slice(0, 32);
-  await syncMyNicknameOnAllFriendships(db, uid, displayName);
   const pref = doc(db, "profiles", uid);
-  await updateDoc(pref, {
-    displayName,
-    updatedAt: serverTimestamp(),
-  });
+  const prevSnap = await getDoc(pref);
+  const previousDisplayName = prevSnap.exists()
+    ? String(prevSnap.data()?.displayName ?? "").trim()
+    : "";
+  const displayName = name.trim().slice(0, 32);
+  try {
+    await syncMyNicknameOnAllFriendships(
+      db,
+      uid,
+      displayName,
+      previousDisplayName,
+    );
+    await updateDoc(pref, {
+      displayName,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (e) {
+    try {
+      await syncMyNicknameOnAllFriendships(
+        db,
+        uid,
+        previousDisplayName,
+        previousDisplayName,
+      );
+    } catch {
+      /* ignore */
+    }
+    throw e;
+  }
 }
 
 export async function resolveUidFromFriendCode(
@@ -203,21 +254,49 @@ export async function sendFriendRequest(
     where("toUid", "==", toUid),
     where("status", "==", "pending"),
   );
-  if (!(await getDocs(dupA)).empty) throw new Error("dup_pending");
   const dupB = query(
     collection(db, "friend_requests"),
     where("fromUid", "==", toUid),
     where("toUid", "==", fromUid),
     where("status", "==", "pending"),
   );
-  if (!(await getDocs(dupB)).empty) throw new Error("reverse_pending");
-  await addDoc(collection(db, "friend_requests"), {
-    fromUid,
-    toUid,
-    fromDisplayName: fromDisplayName.trim().slice(0, 32),
-    status: "pending",
-    createdAt: serverTimestamp(),
-  });
+  const [snapA, snapB] = await Promise.all([getDocs(dupA), getDocs(dupB)]);
+  if (!snapA.empty) throw new Error("dup_pending");
+  if (!snapB.empty) throw new Error("reverse_pending");
+  const tokenRef = doc(db, FRIEND_ACCEPT_TOKENS, pair);
+  const orphanTok = await getDoc(tokenRef);
+  if (orphanTok.exists()) {
+    await deleteDoc(tokenRef);
+  }
+  const trimmed = fromDisplayName.trim().slice(0, 32);
+  const reqRef = doc(collection(db, "friend_requests"));
+  try {
+    await setDoc(reqRef, {
+      fromUid,
+      toUid,
+      fromDisplayName: trimmed,
+      status: "pending",
+      createdAt: serverTimestamp(),
+    });
+    await setDoc(tokenRef, {
+      fromUid,
+      toUid,
+      fromDisplayName: trimmed,
+      requestId: reqRef.id,
+    });
+  } catch (e) {
+    try {
+      await deleteDoc(reqRef);
+    } catch {
+      /* ignore */
+    }
+    try {
+      await deleteDoc(tokenRef);
+    } catch {
+      /* ignore */
+    }
+    throw e;
+  }
 }
 
 export async function acceptFriendRequest(
@@ -234,10 +313,15 @@ export async function acceptFriendRequest(
   if (d.status !== "pending") throw new Error("not_pending");
   const fromUid = String(d.fromUid);
   const pair = pairFriendDocId(fromUid, toUid);
+  const tokenRef = doc(db, FRIEND_ACCEPT_TOKENS, pair);
+  const tokenSnap = await getDoc(tokenRef);
+  if (!tokenSnap.exists()) throw new Error("missing_token");
+  if (String(tokenSnap.data()?.requestId || "") !== requestId) {
+    throw new Error("token_mismatch");
+  }
   const fromName = String(d.fromDisplayName || "");
-  const batch = writeBatch(db);
-  batch.delete(reqRef);
   const sorted = [fromUid, toUid].sort();
+  const batch = writeBatch(db);
   batch.set(doc(db, "friends", pair), {
     members: sorted,
     nicknames: {
@@ -246,6 +330,8 @@ export async function acceptFriendRequest(
     },
     since: serverTimestamp(),
   });
+  batch.delete(reqRef);
+  batch.delete(tokenRef);
   await batch.commit();
 }
 
@@ -259,7 +345,13 @@ export async function rejectFriendRequest(
   if (!reqSnap.exists()) return;
   const d = reqSnap.data();
   if (d.toUid !== uid) throw new Error("forbidden");
-  await deleteDoc(reqRef);
+  const fromUid = String(d.fromUid);
+  const toUid = String(d.toUid);
+  const pair = pairFriendDocId(fromUid, toUid);
+  const batch = writeBatch(db);
+  batch.delete(reqRef);
+  batch.delete(doc(db, FRIEND_ACCEPT_TOKENS, pair));
+  await batch.commit();
 }
 
 export async function cancelOutgoingRequest(
@@ -272,7 +364,29 @@ export async function cancelOutgoingRequest(
   if (!reqSnap.exists()) return;
   const d = reqSnap.data();
   if (d.fromUid !== fromUid) throw new Error("forbidden");
-  await deleteDoc(reqRef);
+  const fUid = String(d.fromUid);
+  const tUid = String(d.toUid);
+  const pair = pairFriendDocId(fUid, tUid);
+  const batch = writeBatch(db);
+  batch.delete(reqRef);
+  batch.delete(doc(db, FRIEND_ACCEPT_TOKENS, pair));
+  await batch.commit();
+}
+
+async function deleteAllFriendChatMessages(
+  db: Firestore,
+  pairId: string,
+): Promise<void> {
+  const cref = collection(db, "friends", pairId, "messages");
+  for (;;) {
+    const page = await getDocs(query(cref, limit(500)));
+    if (page.empty) break;
+    const batch = writeBatch(db);
+    for (const d of page.docs) {
+      batch.delete(d.ref);
+    }
+    await batch.commit();
+  }
 }
 
 export async function removeFriendship(
@@ -287,6 +401,7 @@ export async function removeFriendship(
   if (!Array.isArray(members) || !members.includes(myUid)) {
     throw new Error("forbidden");
   }
+  await deleteAllFriendChatMessages(db, pairId);
   await deleteDoc(fref);
 }
 
@@ -326,6 +441,34 @@ export async function fetchFriendListRows(
   );
   const snap = await getDocs(q);
   return mapFriendsSnap(snap, uid);
+}
+
+/**
+ * 以 `profiles/{otherUid}.displayName` 覆蓋列表顯示（主控台或舊版資料只改 profiles 時仍正確）。
+ * 若對方無個檔或 displayName 為空，保留 `friends.nicknames` 推得的 {@link FriendListRow.label}。
+ */
+export async function enrichFriendListRowsFromProfiles(
+  db: Firestore,
+  rows: FriendListRow[],
+): Promise<FriendListRow[]> {
+  if (rows.length === 0) return rows;
+  const uniqueOthers = [...new Set(rows.map((r) => r.otherUid))];
+  const displayByUid = new Map<string, string>();
+  await Promise.all(
+    uniqueOthers.map(async (otherUid) => {
+      const snap = await getDoc(doc(db, "profiles", otherUid));
+      const raw =
+        snap.exists() ? String(snap.data()?.displayName ?? "").trim() : "";
+      displayByUid.set(otherUid, raw);
+    }),
+  );
+  return rows.map((r) => {
+    const fromProfile = displayByUid.get(r.otherUid) || "";
+    return {
+      ...r,
+      label: fromProfile || r.label,
+    };
+  });
 }
 
 export function subscribeIncomingRequests(

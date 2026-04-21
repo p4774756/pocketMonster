@@ -35,12 +35,18 @@
 | `profiles/{uid}` | `displayName`、`friendCode`（新帳為 **4** 碼大寫英數；舊資料可仍為 8 碼）、`updatedAt` |
 | `friend_codes/{code}` | `uid`，供以代碼查使用者 |
 | `friend_requests/{autoId}` | `fromUid`、`toUid`、`fromDisplayName`、`status`（僅 `pending`）、`createdAt` |
+| `friend_accept_tokens/{uidA_uidB}` | `fromUid`、`toUid`、`fromDisplayName`、`requestId`（對應 `friend_requests` 文件 id）；發送邀請時寫入，接受／拒絕／撤回時刪除；**規則用以保證僅受邀者可建立 `friends`** |
 | `friends/{uidA_uidB}` | `members`（兩個 uid 排序）、`nicknames`（對照 uid→顯示名）、`since` |
-| `friends/{pairId}/messages/{autoId}` | `fromUid`、`text`（1～500 字）、`memberUids`（長度 2，與父層 `friends.members` 一致）、`createdAt`（`serverTimestamp`）；僅雙方可讀寫建立，見 `docs/firebase-friends.rules` |
+| `friends/{pairId}/messages/{autoId}` | `fromUid`、`text`（1～500 字）、`memberUids`（長度 2，與父層 `friends.members` 一致）、`createdAt`（`serverTimestamp`）；僅雙方可讀寫建立；**移除好友時**客戶端會分批刪除子集合訊息後再刪父層，見 `docs/firebase-friends.rules` |
 | `cloud_pet_saves/{uid}` | 選用：`v`、`payload`（本機夥伴 JSON 字串）、`updatedAt`；**僅該 uid 本人**可讀寫，見 `docs/firebase-friends.rules` |
 
-接受邀請時以 **batch** 刪除邀請文件並建立 `friends` 文件；**不**使用 Cloud Functions。  
+接受邀請時以 **batch** 建立 `friends`、刪除對應之 `friend_requests` 與 `friend_accept_tokens`；**不**使用 Cloud Functions。  
+`profiles` 的 **read**：僅本人，或與讀取者之間**已存在** `friends/{pairKey}` 時可讀對方個檔（供顯示名與加友流程一致）。  
 客戶端以 **`onSnapshot`** 訂閱邀請／名單；若畫面未即時更新，**展開「好友（Firebase）」摺疊區**或**切回此分頁**時會再向伺服器拉取一次（`getDocs` 備援）。
+
+### 3.1 升級規則／前端後之「待處理邀請」
+
+若使用者在**尚未有 `friend_accept_tokens`** 的舊版前端送出過邀請，資料庫裡可能僅有 `friend_requests` 而無對應 token。此時**接受**會失敗（介面提示邀請已過期／不完整）。請由**發送方撤回**或**收信方拒絕**該筆邀請後，再以新版重新發送即可。
 
 ## 4. 註冊後顯示「無法寫入好友資料」或泛用失敗
 

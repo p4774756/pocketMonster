@@ -9,7 +9,7 @@
 2. 啟用 **Cloud Firestore**（建議先以「測試模式」建立資料庫，再立刻改為正式規則）。  
 3. **規則**：將本倉 `docs/firebase-friends.rules` 內容貼到 Firestore「規則」並發布。  
 4. **索引**：若即時監聽或查詢報錯，主控台會提供建立連結；亦可將 `docs/firebase-friends.indexes.json` 併入專案的 `firestore.indexes.json` 後以 Firebase CLI 部署。  
-   **好友聊天**僅使用 `where("memberUids", "array-contains", 目前使用者)` + `limit`（**不**使用 `orderBy`），一般可由單一欄位索引自動涵蓋，**不必**再建 `memberUids + createdAt` 複合索引；時間順序由前端依 `createdAt` 排序。若單一對話訊息超過載入上限，可再改分頁或另行設計查詢。  
+   **好友聊天**使用 `orderBy("createdAt", "desc")` + `limit` 取最近訊息；讀取規則以父層 **`friends.members`** 授權（見 `docs/firebase-friends.rules`）。請併入 **`docs/firebase-friends.indexes.json`** 內 **`messages` + `createdAt`** 索引並部署，或依主控台錯誤連結建立。若單一對話超過載入上限，可再改分頁。  
 5. **專案設定 → 一般 → 您的應用程式** 新增 **Web** 應用，取得設定物件中的六個欄位，對應下方 `VITE_*` 變數。
 
 ## 2. 前端建置變數（Vite）
@@ -49,7 +49,7 @@
 - 修正規則後：若該 Email 已在 Auth 裡註冊過，請改按 **登入**（勿再註冊）；若仍無個人檔，登入後會再次執行建立個人檔與好友代碼。  
 - **發送邀請**會查詢 `friend_requests` 複合條件；若主控台或瀏覽器 Console 出現需建立**索引**的提示，請依連結建立，或將 **`docs/firebase-friends.indexes.json`** 併入專案後以 Firebase CLI 部署索引。  
 - 若已登入且規則已發布，仍無法發送邀請並出現 **permission-denied**：舊版 `friends` 讀取規則在**文件尚不存在**時會誤擋 `get`；請將本倉 **`docs/firebase-friends.rules`** 更新後**再次發布**（`friends` 的 `read` 須含「文件不存在則允許已登入讀取」的條件，見檔內註解）。
-- **好友聊天**若**監聽**即 **permission-denied**：請確認 **`docs/firebase-friends.rules`** 已發布，且每則訊息含 **`memberUids`**（與同層 `friends` 之 **`members`** 一致）。前端查詢為 **`array-contains` + `limit`**（見 `subscribeFriendChatMessages`），舊訊息若無 `memberUids` 請在主控台補欄位或刪除。  
+- **好友聊天**若**監聽**即 **permission-denied**：請將本倉 **`docs/firebase-friends.rules`** 更新後**再次發布**（訊息 `read` 改為依父層 `friends.members`）；並確認已建立 **`messages`／`createdAt` 降冪**索引（見 **`docs/firebase-friends.indexes.json`**）。**新寫入**訊息仍應含 **`memberUids`**（建立規則仍檢查）。  
 - 若出現 **failed-precondition**（缺索引）：依主控台連結建立索引，或部署 `docs/firebase-friends.indexes.json`。
 
 ## 5. 維護注意

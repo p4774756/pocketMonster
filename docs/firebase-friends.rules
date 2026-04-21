@@ -52,14 +52,14 @@ service cloud.firestore {
       allow update: if false;
 
       match /messages/{msgId} {
-        /* 讀取規則不可依賴 get(friends/...)：集合查詢 + orderBy 時，規則須能僅由「每筆 resource」判斷，
-           否則 onSnapshot 會整體 permission-denied。訊息文件須含 memberUids（與父層 friends.members 一致，由客戶端寫入時複製）。
-           createdAt 使用 serverTimestamp() 時，keys() 可能不含 createdAt，故 hasOnly 分兩種寫法。
-           text.size() 為 UTF-8 位元組數。 */
-        /* 與查詢 `where memberUids array-contains request.auth.uid` 對齊，僅用 `in` 成員判斷。 */
+        /* 讀取：僅限父層好友對之成員（見 friends/{pairId}.members）。不依賴每則 memberUids，
+           以免舊訊息缺欄位或型別異常時，onSnapshot 整批 permission-denied。
+           建立訊息仍須寫入 memberUids（見 allow create）。 */
         allow read: if request.auth != null
-          && resource.data.memberUids is list
-          && request.auth.uid in resource.data.memberUids;
+          && exists(/databases/$(database)/documents/friends/$(pairId))
+          && request.auth.uid in get(/databases/$(database)/documents/friends/$(pairId)).data.members;
+        /* createdAt 使用 serverTimestamp() 時，keys() 可能不含 createdAt，故 hasOnly 分兩種寫法。
+           text.size() 為 UTF-8 位元組數。 */
         allow create: if request.auth != null
           && request.resource.data.keys().hasAll(['fromUid', 'text', 'memberUids'])
           && (

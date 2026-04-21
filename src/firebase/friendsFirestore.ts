@@ -7,6 +7,7 @@ import {
   getDocs,
   limit,
   onSnapshot,
+  orderBy,
   query,
   runTransaction,
   serverTimestamp,
@@ -395,22 +396,22 @@ export async function sendFriendChatMessage(
 }
 
 /**
- * 僅使用 `memberUids array-contains` + limit，**不**加 `orderBy(createdAt)`：
- * `array-contains` 與 `orderBy` 不同欄位時須複合索引，且規則與查詢的組合在部分專案會誤判為 permission-denied。
- * 時間順序在客戶端依 `createdAtMs` 排序。訊息極多時僅取最近 {@link FRIEND_CHAT_PAGE_SIZE} 筆（可再改成分頁）。
+ * 以 `orderBy(createdAt desc)` + `limit` 取最近 {@link FRIEND_CHAT_PAGE_SIZE} 筆；規則以父層
+ * `friends.members` 授權讀取，**不**依賴每則 `memberUids`（舊訊息相容）。
+ * 時間序仍以客戶端 `createdAtMs` 排序作保險。訊息極多時可改分頁。
  */
 export const FRIEND_CHAT_PAGE_SIZE = 100;
 
 export function subscribeFriendChatMessages(
   db: Firestore,
   pairId: string,
-  viewerUid: string,
+  _viewerUid: string,
   onRows: (rows: FriendChatMessageRow[]) => void,
   onListenError?: (e: Error) => void,
 ): Unsubscribe {
   const q = query(
     collection(db, "friends", pairId, "messages"),
-    where("memberUids", "array-contains", viewerUid),
+    orderBy("createdAt", "desc"),
     limit(FRIEND_CHAT_PAGE_SIZE),
   );
   return onSnapshot(

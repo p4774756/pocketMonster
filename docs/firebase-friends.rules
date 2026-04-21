@@ -9,6 +9,11 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    /* 選用：登入後手動上傳／下載養成 JSON（每 uid 一筆；僅本人讀寫）。 */
+    match /cloud_pet_saves/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
     match /friend_codes/{code} {
       allow read: if request.auth != null;
       allow create: if request.auth != null

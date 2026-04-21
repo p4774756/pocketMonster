@@ -14,7 +14,7 @@
 ### 目前專案狀態（維護者快照）
 
 - **版號**：一律以 **`package.json` 的 `version`** 為單一來源（前端頂欄、`GET /version`）。
-- **已納入主線**：養成進化 MVP（`tryEvolve`、`recordPvpWin`）、對戰寵物快照可選 `morphKey`、`linked` 對手資料可含形態；**選用 Firebase 好友**含一對一文字聊天（見 **`docs/FIREBASE_FRIENDS.md`**）；細節見 **`docs/GAME_RULES.md`** 與 **`docs/ROADMAP_TASKS.md`**（路線勾選與待辦）。
+- **已納入主線**：養成進化 MVP（`tryEvolve`、`recordPvpWin`）、對戰寵物快照可選 `morphKey`、`linked` 對手資料可含形態；**選用 Firebase 好友**含一對一文字聊天，以及頂欄登入後**手動**養成備份上傳／下載（`cloud_pet_saves`，見 **`docs/FIREBASE_FRIENDS.md`**）；細節見 **`docs/GAME_RULES.md`** 與 **`docs/ROADMAP_TASKS.md`**（路線勾選與待辦）。
 - **進行中／下一批**：戰鬥本場 log、`server/index.js` 模組化、形態專屬美術等——以 **`docs/ROADMAP_TASKS.md`** 未勾選項為準。（**`README.md`** 已補：啟動、部署、圖片示意。）
 
 **版本號**：以根目錄 **`package.json` 的 `version`** 為單一來源；前端建置時由 Vite 注入 `__APP_VERSION__`（頂欄顯示），後端啟動日誌與 **`GET /version`** 亦讀取同檔。實質更新 **`GAME_RULES.md`**、**`AGENTS.md`** 或 **`.cursor/rules/*.mdc`** 時，須在同一批變更內遞增該欄位（預設 patch +1）；遞增後應以**中文 commit 訊息**完成 `git commit` 並 **`git push`**（見 **`.cursor/rules/pocket-pet-game-rules-sync.mdc`** 末段）。
@@ -24,7 +24,7 @@
 | 路徑 | 用途 |
 |------|------|
 | `README.md` | 對外說明：專案簡介、技術棧、本機／部署、`docs/readme/` 圖片與 `public/pets` 示意。 |
-| `src/main.ts` | 幾乎全部 UI：養成畫面、紀念頁、對戰大廳與戰鬥 UI；Socket 客戶端事件綁定。 |
+| `src/main.ts` | 幾乎全部 UI：養成畫面、紀念頁、對戰大廳與戰鬥 UI；Socket 客戶端事件綁定；`boot` 掛載 `src/themeAccountBar.ts`（Firebase 齊備時頂欄登入／雲端備份）。 |
 | `src/pet.ts` | 寵物狀態型別、`loadPet`/`save`、成長階段、照護 action、死亡條件、**進化**（`tryEvolve`、`morphKey`、`catChildGateDone` 等）。 |
 | `src/canvasPoop.ts` | 貓大便怪 **Canvas**（`careUsesPoopCanvas` 時取代 PNG）。 |
 | `docs/ROADMAP_TASKS.md` | 產品路線與任務勾選（v0.3～v0.5）；與 `docs/IMPROVEMENT_BACKLOG.md` 互補。 |

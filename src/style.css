@@ -108,9 +108,117 @@ body {
   flex: 0 0 auto;
 }
 
+.theme-bar-cell--account {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
 .theme-bar-cell--trailing {
   flex: 0 0 auto;
   margin-left: auto;
+}
+
+.theme-account {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  max-width: 280px;
+  margin: 0 auto;
+}
+
+.theme-account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.theme-account-toast {
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  color: var(--muted);
+  max-width: 100%;
+}
+
+.theme-account-toast[data-state="ok"] {
+  color: #15803d;
+}
+
+.theme-account-toast[data-state="err"] {
+  color: #b91c1c;
+}
+
+.theme-account-login-btn,
+.theme-account-sync-btn,
+.theme-account-logout-btn {
+  min-width: 3.25rem;
+  padding-inline: 10px;
+}
+
+.account-auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.account-auth-panel {
+  width: min(100%, 360px);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--edge);
+  background: var(--surface, rgba(255, 255, 255, 0.96));
+  box-shadow: var(--shadow-md);
+  padding: 18px 16px 16px;
+}
+
+.account-auth-heading {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  text-align: center;
+}
+
+.account-auth-intro {
+  margin: 0 0 14px;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--muted);
+  text-align: center;
+}
+
+.account-auth-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.account-auth-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 14px;
+}
+
+.account-auth-buttons .btn {
+  flex: 1 1 auto;
+  min-width: 5rem;
 }
 
 .theme-settings-open-btn {
@@ -167,6 +275,10 @@ body {
 @media (max-width: 380px) {
   .theme-bar {
     justify-content: center;
+  }
+
+  .theme-bar-cell--account {
+    flex-basis: 100%;
   }
 
   .theme-bar-cell--trailing {
@@ -2393,6 +2505,16 @@ html[data-theme="retro"] .theme-rules-btn:hover {
   border-color: #34d399;
 }
 
+html[data-theme="retro"] .account-auth-panel {
+  background: rgba(12, 24, 18, 0.97);
+  border-color: rgba(52, 211, 153, 0.3);
+  color: #ecfdf5;
+}
+
+html[data-theme="retro"] .account-auth-intro {
+  color: #6ee7b7;
+}
+
 html[data-theme="retro"] .settings-overlay {
   background: rgba(0, 0, 0, 0.58);
 }
@@ -2748,6 +2870,13 @@ html[data-theme="minimal"] .theme-rules-btn {
 
 html[data-theme="minimal"] .theme-rules-btn:hover {
   background: #f5f5f5;
+}
+
+html[data-theme="minimal"] .account-auth-panel {
+  border: 2px solid #0a0a0a;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 6px 6px 0 #0a0a0a;
 }
 
 html[data-theme="minimal"] .settings-panel {

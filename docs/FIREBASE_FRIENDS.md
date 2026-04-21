@@ -1,7 +1,7 @@
 # Firebase 好友系統（選用）
 
-從 **養成畫面**進入獨立 **「好友（Firebase）」** 頁（非連線大廳）：以 **Firebase Authentication（Email／密碼）** 登入，**Cloud Firestore** 儲存個人檔、好友代碼、邀請、好友關係與**好友一對一文字聊天**（每則最多 **500** 字；對戰仍僅快捷語，見 `docs/GAME_RULES.md` **2.9**）。  
-**養成資料仍僅存 `localStorage`**，與 Firebase 帳號無自動綁定；對戰仍走既有 **Render Socket**（`VITE_SOCKET_URL`），本功能不取代後端對戰。
+從 **養成畫面**進入獨立 **「好友（Firebase）」** 頁（非連線大廳），或於**頂欄**開啟登入彈窗：以 **Firebase Authentication（Email／密碼）** 登入，**Cloud Firestore** 儲存個人檔、好友代碼、邀請、好友關係與**好友一對一文字聊天**（每則最多 **500** 字；對戰仍僅快捷語，見 `docs/GAME_RULES.md` **2.9**）。  
+**養成資料預設仍僅存 `localStorage`**；登入後可於**頂欄**手動**上傳／下載**夥伴備份至 Firestore **`cloud_pet_saves`**（與帳號 uid 一對一），供換裝置還原，**非**即時自動同步。對戰仍走既有 **Render Socket**（`VITE_SOCKET_URL`），本功能不取代後端對戰。
 
 ## 1. Firebase 主控台設定
 
@@ -37,6 +37,7 @@
 | `friend_requests/{autoId}` | `fromUid`、`toUid`、`fromDisplayName`、`status`（僅 `pending`）、`createdAt` |
 | `friends/{uidA_uidB}` | `members`（兩個 uid 排序）、`nicknames`（對照 uid→顯示名）、`since` |
 | `friends/{pairId}/messages/{autoId}` | `fromUid`、`text`（1～500 字）、`memberUids`（長度 2，與父層 `friends.members` 一致）、`createdAt`（`serverTimestamp`）；僅雙方可讀寫建立，見 `docs/firebase-friends.rules` |
+| `cloud_pet_saves/{uid}` | 選用：`v`、`payload`（本機夥伴 JSON 字串）、`updatedAt`；**僅該 uid 本人**可讀寫，見 `docs/firebase-friends.rules` |
 
 接受邀請時以 **batch** 刪除邀請文件並建立 `friends` 文件；**不**使用 Cloud Functions。  
 客戶端以 **`onSnapshot`** 訂閱邀請／名單；若畫面未即時更新，**展開「好友（Firebase）」摺疊區**或**切回此分頁**時會再向伺服器拉取一次（`getDocs` 備援）。
@@ -53,7 +54,7 @@
 
 ## 5. 維護注意
 
-- 修改 Firestore 結構或規則時，請同步更新本檔與 `docs/firebase-friends.rules`。  
+- 修改 Firestore 結構或規則時，請同步更新本檔與 `docs/firebase-friends.rules`（含 **`cloud_pet_saves`** 若啟用養成備份）。  
 - 玩家可讀規則摘要見 `docs/GAME_RULES.md` **2.10**。  
 - 實作程式：`src/firebase/config.ts`、`src/firebase/friendsFirestore.ts`、`src/lobbyFirebaseFriends.ts`，掛載於 `src/main.ts` 的 `renderFriends`（`#firebase-friends-root`）。
 

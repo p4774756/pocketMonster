@@ -677,6 +677,18 @@ export function applyOfflineDecay(p: PetState): PetState {
   return applyLifecycleAndDecay(p);
 }
 
+/**
+ * 從雲端備份 JSON 還原夥伴並寫入本機（含離線時間結算）。
+ * @throws `SyntaxError` 若 JSON 無法解析。
+ */
+export function importPetFromCloudJson(text: string): PetState {
+  const parsed = JSON.parse(text) as Partial<PetState>;
+  let p = mergeDefaults(parsed);
+  if (!p.alive) return savePet(p);
+  p = applyOfflineDecay(p);
+  return savePet(p);
+}
+
 export function loadPet(): PetState {
   try {
     let raw = localStorage.getItem(STORAGE_KEY);

@@ -49,6 +49,7 @@ import { getGameRulesPlayerHtml } from "./gameRulesContent";
 
 const DEFAULT_FEEDBACK_EMAIL = "p4774756@gmail.com";
 import { mountThemeBar } from "./theme";
+import { mountThemeAccountBar } from "./themeAccountBar";
 import {
   clearLobbyFirebaseFriendsCleanup,
   mountFirebaseFriends,
@@ -234,7 +235,7 @@ const UI = {
   openFriends: "\u597d\u53cb",
   friendsTitle: "\u597d\u53cb\uff08Firebase\uff09",
   friendsSubtitle:
-    "\u767b\u5165\u3001\u597d\u53cb\u4ee3\u78bc\u8207\u9080\u8acb\uff1b\u6210\u70ba\u597d\u53cb\u5f8c\u53ef\u958b\u555f\u4e00\u5c0d\u4e00\u6587\u5b57\u804a\u5929\uff08Firestore\uff0c\u6bcf\u5247\u6700\u591a 500 \u5b57\uff09\u3002\u9023\u7dda\u5c0d\u6230\u4ecd\u50c5\u9650\u9810\u8a2d\u5feb\u6377\u8a9e\u3002",
+    "\u9802\u6b04\u53ef\u767b\u5165\u5f8c\u624b\u52d5\u4e0a\u50b3\uff0f\u4e0b\u8f09\u990a\u6210\u9032\u5ea6\uff1b\u6b64\u8655\u70ba\u597d\u53cb\u4ee3\u78bc\u8207\u9080\u8acb\uff0c\u6210\u70ba\u597d\u53cb\u5f8c\u53ef\u4e00\u5c0d\u4e00\u6587\u5b57\u804a\u5929\uff08Firestore\uff0c\u6bcf\u5247\u6700\u591a 500 \u5b57\uff09\u3002\u9023\u7dda\u5c0d\u6230\u4ecd\u50c5\u9650\u9810\u8a2d\u5feb\u6377\u8a9e\u3002",
   dexTitle: "\u5925\u4f34\u5716\u9451",
   dexSubtitle:
     "\u6210\u9577\u968e\u6bb5\u8207\u7167\u8b77\u52d5\u4f5c\u5c55\u793a\uff1b\u7bad\u982d\u70ba\u6642\u9593\u9032\u7a0b\u3002\u6210\u9577\u4ee5\u865b\u64ec\u65e5\u9f61\u5230\u968e\u6bb5\u70ba\u6e96\uff0c\u59ff\u52e2\u5716\u70ba\u9752\u5c11\u5e74\u671f\u9ad4\u578b\u793a\u610f\u3002",
@@ -2385,9 +2386,13 @@ function mountSettingsPanel(viewRoot: HTMLElement): void {
 function boot() {
   mountAppVersionLabel();
   mountThemeBar();
+  mountThemeAccountBar();
   mountGameRulesButton();
   mountFeedbackButton();
   const root = $("#view-root");
+  document.addEventListener("pocketpet:pet-storage-changed", () => {
+    if (phase === "care") renderCare(root);
+  });
   mountSettingsPanel(root);
   const params = new URLSearchParams(location.search);
   const preJoin = normalizeRoomCodeInput(params.get("join") || "");

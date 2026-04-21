@@ -4,6 +4,7 @@ import {
   careIdleSpriteFile,
   carePoseFile,
   careSpriteScale,
+  careBabyCatWalkIdlePair,
   careUsesPoopCanvas,
   catElementKeyFromMorph,
   cleanPet,
@@ -356,11 +357,32 @@ let lobbySocketGuardTimer: number | null = null;
 /** 養成畫面夜間／心情輪詢；離開養成時務必清除。 */
 let careAmbientTimer: number | null = null;
 
+/** 寶寶期小貓：蹲坐 ↔ 走幾步（雙幀）；與 `careAmbientTimer` 一併清除。 */
+let careBabyWalkTimer: number | null = null;
+let careBabyWalkPairSig: string | null = null;
+let careBabyWalkSeq = 0;
+
+/** 蹲坐停留後才進入走路；走路換幀略慢減少閃爍。 */
+const BABY_CAT_SIT_MS = 2800;
+const BABY_CAT_WALK_FRAME_MS = 580;
+/** 走路階段換圖次數（偶數則最後一幀與第一幀同側，接蹲坐較順）。 */
+const BABY_CAT_WALK_FLIPS = 6;
+
+function clearCareBabyWalkTimer(): void {
+  if (careBabyWalkTimer != null) {
+    window.clearTimeout(careBabyWalkTimer);
+    careBabyWalkTimer = null;
+  }
+  careBabyWalkPairSig = null;
+  careBabyWalkSeq++;
+}
+
 function clearCareAmbientTimer() {
   if (careAmbientTimer != null) {
     window.clearInterval(careAmbientTimer);
     careAmbientTimer = null;
   }
+  clearCareBabyWalkTimer();
 }
 
 function clearLobbySocketGuardTimer() {
@@ -884,9 +906,7 @@ function renderCare(root: HTMLElement) {
     <div class="shell care-shell shell--care">
       <div class="row care-top-actions">
         <button type="button" class="btn btn-primary" id="btn-open-battle">${UI.openBattle}</button>
-        <button type="button" class="btn btn-secondary" id="btn-open-dex">${UI.openSpeciesDex}</button>
         <button type="button" class="btn btn-secondary" id="btn-open-friends">${UI.openFriends}</button>
-        <button type="button" class="btn btn-secondary" id="btn-restart-adopt">${UI.restartAdopt}</button>
       </div>
       <p class="care-egg-battle-hint hidden" id="care-egg-battle-hint" role="status">${UI.eggBattleBlocked}</p>
       <div class="screen-bezel care-bezel">
@@ -993,6 +1013,8 @@ function renderCare(root: HTMLElement) {
     const poop = careUsesPoopCanvas(state);
 
     if (poop) {
+      clearCareBabyWalkTimer();
+      spriteMountEl.classList.remove("pet-sprite-mount--baby-sitting");
       spriteEl.classList.add("hidden");
       spriteCv.classList.remove("hidden");
       syncCatElementMount();
@@ -1009,8 +1031,61 @@ function renderCare(root: HTMLElement) {
     spriteEl.classList.remove("hidden");
     spriteCv.classList.add("hidden");
     syncCatElementMount();
-    spriteEl.src = petAssetUrl(careIdleSpriteFile(state));
     syncSpriteSpecies();
+
+    const pair = careBabyCatWalkIdlePair(state);
+    if (pair) {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        clearCareBabyWalkTimer();
+        spriteMountEl.classList.add("pet-sprite-mount--baby-sitting");
+        spriteEl.src = petAssetUrl(idleSpriteForPet(state));
+        spriteEl.style.transform = `scale(${sc})`;
+        return;
+      }
+      const sig = `${pair[0]}|${pair[1]}`;
+      spriteEl.style.transform = `scale(${sc})`;
+      if (careBabyWalkTimer != null && careBabyWalkPairSig === sig) {
+        return;
+      }
+      clearCareBabyWalkTimer();
+      careBabyWalkPairSig = sig;
+      const mySeq = careBabyWalkSeq;
+      const sitUrl = petAssetUrl(idleSpriteForPet(state));
+      const w0 = petAssetUrl(pair[0]);
+      const w1 = petAssetUrl(pair[1]);
+
+      const sitPhase = () => {
+        if (phase !== "care" || mySeq !== careBabyWalkSeq) return;
+        spriteMountEl.classList.add("pet-sprite-mount--baby-sitting");
+        spriteEl.src = sitUrl;
+        careBabyWalkTimer = window.setTimeout(walkPhase, BABY_CAT_SIT_MS);
+      };
+
+      const walkPhase = () => {
+        if (phase !== "care" || mySeq !== careBabyWalkSeq) return;
+        spriteMountEl.classList.remove("pet-sprite-mount--baby-sitting");
+        let flips = 0;
+        spriteEl.src = w0;
+        careBabyWalkTimer = window.setInterval(() => {
+          if (phase !== "care" || mySeq !== careBabyWalkSeq) return;
+          flips++;
+          spriteEl.src = flips % 2 === 0 ? w0 : w1;
+          if (flips >= BABY_CAT_WALK_FLIPS) {
+            window.clearInterval(careBabyWalkTimer!);
+            careBabyWalkTimer = null;
+            sitPhase();
+          }
+        }, BABY_CAT_WALK_FRAME_MS);
+      };
+
+      sitPhase();
+      return;
+    }
+
+    spriteMountEl.classList.remove("pet-sprite-mount--baby-sitting");
+
+    clearCareBabyWalkTimer();
+    spriteEl.src = petAssetUrl(careIdleSpriteFile(state));
     spriteEl.style.transform = `scale(${sc})`;
   };
 
@@ -1019,6 +1094,8 @@ function renderCare(root: HTMLElement) {
       showCareIdleSprite();
       return;
     }
+    clearCareBabyWalkTimer();
+    spriteMountEl.classList.remove("pet-sprite-mount--baby-sitting");
     if (reactionTimer != null) {
       window.clearTimeout(reactionTimer);
       reactionTimer = null;
@@ -1150,21 +1227,6 @@ function renderCare(root: HTMLElement) {
       spriteMountEl.classList.remove("pet-sprite-mount--paused");
     }
     renderLobby(root);
-  });
-
-  $("#btn-restart-adopt", root).addEventListener("click", () => {
-    if (!window.confirm(UI.confirmRestartAdopt)) return;
-    if (reactionTimer != null) {
-      window.clearTimeout(reactionTimer);
-      reactionTimer = null;
-      spriteMountEl.classList.remove("pet-sprite-mount--paused");
-    }
-    resetNewPet();
-    renderCare(root);
-  });
-
-  $("#btn-open-dex", root).addEventListener("click", () => {
-    renderSpeciesDex(root);
   });
 
   $("#btn-open-friends", root).addEventListener("click", () => {
@@ -2243,12 +2305,90 @@ function mountAppVersionLabel(): void {
   if (el) el.textContent = `v${__APP_VERSION__}`;
 }
 
+function mountSettingsPanel(viewRoot: HTMLElement): void {
+  const openBtn = document.getElementById(
+    "btn-open-settings",
+  ) as HTMLButtonElement | null;
+  const overlay = document.getElementById("settings-overlay");
+  const panel = document.getElementById("settings-panel") as HTMLElement | null;
+  const closeBtn = document.getElementById("btn-settings-close");
+  const dexBtn = document.getElementById("btn-settings-dex");
+  const restartBtn = document.getElementById("btn-settings-restart");
+  if (!openBtn || !overlay || !panel || !closeBtn) return;
+
+  if (dexBtn) dexBtn.textContent = UI.openSpeciesDex;
+  if (restartBtn) restartBtn.textContent = UI.restartAdopt;
+
+  const openSettings = () => {
+    overlay.classList.remove("hidden");
+    overlay.setAttribute("aria-hidden", "false");
+    openBtn.setAttribute("aria-expanded", "true");
+    panel.focus();
+  };
+
+  const closeSettings = () => {
+    overlay.classList.add("hidden");
+    overlay.setAttribute("aria-hidden", "true");
+    openBtn.setAttribute("aria-expanded", "false");
+  };
+
+  const onDocKeydown = (e: KeyboardEvent) => {
+    if (e.key !== "Escape") return;
+    if (overlay.classList.contains("hidden")) return;
+    if (
+      document.getElementById("rules-modal-overlay") ||
+      document.getElementById("feedback-modal-overlay")
+    ) {
+      return;
+    }
+    closeSettings();
+    openBtn.focus();
+  };
+
+  document.addEventListener("keydown", onDocKeydown);
+
+  openBtn.addEventListener("click", openSettings);
+
+  closeBtn.addEventListener("click", () => {
+    closeSettings();
+    openBtn.focus();
+  });
+
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) {
+      closeSettings();
+      openBtn.focus();
+    }
+  });
+
+  panel.addEventListener("click", (e) => {
+    e.stopPropagation();
+  });
+
+  if (dexBtn) {
+    dexBtn.addEventListener("click", () => {
+      renderSpeciesDex(viewRoot);
+      closeSettings();
+    });
+  }
+
+  if (restartBtn) {
+    restartBtn.addEventListener("click", () => {
+      if (!window.confirm(UI.confirmRestartAdopt)) return;
+      resetNewPet();
+      renderCare(viewRoot);
+      closeSettings();
+    });
+  }
+}
+
 function boot() {
   mountAppVersionLabel();
   mountThemeBar();
   mountGameRulesButton();
   mountFeedbackButton();
   const root = $("#view-root");
+  mountSettingsPanel(root);
   const params = new URLSearchParams(location.search);
   const preJoin = normalizeRoomCodeInput(params.get("join") || "");
   if (preJoin.length === ROOM_CODE_LEN) {

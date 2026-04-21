@@ -91,11 +91,11 @@ body {
 }
 
 .theme-bar {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  column-gap: 12px;
-  row-gap: 10px;
+  justify-content: space-between;
+  gap: 10px 12px;
   padding: 10px 12px;
   flex-shrink: 0;
   border-radius: var(--radius-lg);
@@ -105,23 +105,16 @@ body {
 }
 
 .theme-bar-cell--version {
-  justify-self: start;
-  align-self: center;
+  flex: 0 0 auto;
 }
 
-.theme-bar-cell--theme {
-  justify-self: center;
-  min-width: 0;
-  width: 100%;
-  max-width: 280px;
+.theme-bar-cell--trailing {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
-.theme-bar-cell--actions {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
+.theme-settings-open-btn {
+  min-width: 5.5rem;
 }
 
 .theme-field {
@@ -173,30 +166,19 @@ body {
 
 @media (max-width: 380px) {
   .theme-bar {
-    grid-template-columns: 1fr;
-    padding: 10px 12px 12px;
-  }
-
-  .theme-bar-cell--version {
-    justify-self: center;
-  }
-
-  .theme-bar-cell--theme {
-    justify-self: stretch;
-    max-width: none;
-  }
-
-  .theme-field {
-    justify-content: space-between;
-  }
-
-  .theme-select {
-    max-width: none;
-  }
-
-  .theme-bar-cell--actions {
     justify-content: center;
-    flex-wrap: wrap;
+  }
+
+  .theme-bar-cell--trailing {
+    margin-left: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .theme-settings-open-btn {
+    width: 100%;
+    max-width: 220px;
   }
 }
 
@@ -235,6 +217,77 @@ body {
   outline: none;
   border-color: rgba(99, 102, 241, 0.45);
   box-shadow: 0 0 0 3px var(--indigo-soft);
+}
+
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(12px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right))
+    max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+  background: rgba(15, 23, 42, 0.42);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+}
+
+.settings-overlay.hidden {
+  display: none !important;
+}
+
+.settings-panel {
+  width: 100%;
+  max-width: 320px;
+  max-height: min(86vh, 520px);
+  overflow: auto;
+  padding: 22px 20px 20px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--edge-strong);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+}
+
+.settings-heading {
+  margin: 0 0 16px;
+  font-size: 1.22rem;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+
+.settings-theme-field {
+  margin: 0 0 18px;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.settings-actions-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.settings-row-btn {
+  flex: none !important;
+  width: 100%;
+  min-width: 0 !important;
+  margin: 0;
+}
+
+.settings-row-btn--danger {
+  color: var(--accent-dim);
+  border-color: rgba(244, 63, 94, 0.35);
+}
+
+.settings-close-btn {
+  flex: none !important;
+  width: 100%;
+  min-width: 0 !important;
+  margin-top: 14px;
 }
 
 /* ----- layout helpers ----- */
@@ -1828,39 +1881,32 @@ footer.note {
   }
 }
 
-/* 養成 idle：在 #pet-stage 可視區內較大範圍踱步（4px 網格） */
+/*
+ * 養成 idle：在 #pet-stage 內踱步。
+ * 勿用「0%–11.99% 同一 translate」這類區段 —— 會變成停在某點再瞬切到下一點（像 1,2,3,4 閃現）。
+ * 只保留節點百分比，讓 transform 在節點之間連續插補；略縮步幅、ease-in-out、拉長週期較柔和。
+ */
 @keyframes pet-idle-walk-care {
-  0%,
-  11.99% {
+  0% {
     transform: translate3d(0, 0, 0);
   }
-  12%,
-  23.99% {
-    transform: translate3d(80px, -4px, 0);
+  14.28% {
+    transform: translate3d(48px, -3px, 0);
   }
-  24%,
-  35.99% {
-    transform: translate3d(80px, -16px, 0);
+  28.57% {
+    transform: translate3d(48px, -11px, 0);
   }
-  36%,
-  47.99% {
-    transform: translate3d(0, -20px, 0);
+  42.86% {
+    transform: translate3d(0, -14px, 0);
   }
-  48%,
-  59.99% {
-    transform: translate3d(-80px, -16px, 0);
+  57.14% {
+    transform: translate3d(-48px, -11px, 0);
   }
-  60%,
-  71.99% {
-    transform: translate3d(-80px, -4px, 0);
+  71.43% {
+    transform: translate3d(-48px, -3px, 0);
   }
-  72%,
-  83.99% {
-    transform: translate3d(0, -12px, 0);
-  }
-  84%,
-  99.99% {
-    transform: translate3d(0, -4px, 0);
+  85.71% {
+    transform: translate3d(0, -7px, 0);
   }
   100% {
     transform: translate3d(0, 0, 0);
@@ -1874,7 +1920,7 @@ footer.note {
   margin: 0 auto 10px;
   width: fit-content;
   max-width: 100%;
-  animation: pet-idle-walk-care 3.5s linear infinite;
+  animation: pet-idle-walk-care 5.25s ease-in-out infinite;
   transform-origin: 50% 100%;
 }
 
@@ -1896,9 +1942,20 @@ footer.note {
   animation-play-state: paused;
 }
 
+/* 寶寶期小貓蹲坐段：暫停踱步位移，避免與換圖疊加成閃跳 */
+.pet-sprite-mount--care.pet-sprite-mount--baby-sitting {
+  animation: none;
+  transform: translate3d(0, -6px, 0);
+  transition: transform 0.42s ease;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .pet-sprite-mount {
     animation: none;
+  }
+
+  .pet-sprite-mount--care.pet-sprite-mount--baby-sitting {
+    transition: none;
   }
 }
 
@@ -2336,6 +2393,23 @@ html[data-theme="retro"] .theme-rules-btn:hover {
   border-color: #34d399;
 }
 
+html[data-theme="retro"] .settings-overlay {
+  background: rgba(0, 0, 0, 0.58);
+}
+
+html[data-theme="retro"] .settings-panel {
+  background: linear-gradient(165deg, #1a2822 0%, #121c18 100%);
+  border-color: #166534;
+  box-shadow:
+    0 0 0 1px rgba(52, 211, 153, 0.12),
+    0 18px 50px rgb(0 0 0 / 0.55),
+    inset 0 1px 0 rgb(255 255 255 / 0.04);
+}
+
+html[data-theme="retro"] .settings-heading {
+  color: #ecfdf5;
+}
+
 html[data-theme="retro"] .rules-modal-scroll {
   background: rgba(0, 0, 0, 0.28);
   border-color: rgba(52, 211, 153, 0.28);
@@ -2674,6 +2748,17 @@ html[data-theme="minimal"] .theme-rules-btn {
 
 html[data-theme="minimal"] .theme-rules-btn:hover {
   background: #f5f5f5;
+}
+
+html[data-theme="minimal"] .settings-panel {
+  border: 2px solid #0a0a0a;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 6px 6px 0 #0a0a0a;
+}
+
+html[data-theme="minimal"] .settings-heading {
+  color: #0a0a0a;
 }
 
 html[data-theme="minimal"] .rules-modal-scroll {

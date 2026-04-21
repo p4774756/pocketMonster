@@ -12,12 +12,38 @@
   </head>
   <body>
     <div id="app" class="app-root">
-      <header class="theme-bar" aria-label="介面風格">
+      <header class="theme-bar" aria-label="頂部列">
         <div class="theme-bar-cell theme-bar-cell--version">
           <span class="app-version" id="app-version" translate="no"></span>
         </div>
-        <div class="theme-bar-cell theme-bar-cell--theme">
-          <label class="theme-field" for="theme-select">
+        <div class="theme-bar-cell theme-bar-cell--trailing">
+          <button
+            type="button"
+            class="theme-rules-btn theme-settings-open-btn"
+            id="btn-open-settings"
+            aria-haspopup="dialog"
+            aria-controls="settings-panel"
+            aria-expanded="false"
+          >
+            設定
+          </button>
+        </div>
+      </header>
+      <div
+        id="settings-overlay"
+        class="settings-overlay hidden"
+        aria-hidden="true"
+      >
+        <div
+          class="settings-panel"
+          id="settings-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="settings-heading"
+          tabindex="-1"
+        >
+          <h2 id="settings-heading" class="settings-heading">設定</h2>
+          <label class="theme-field settings-theme-field" for="theme-select">
             <span class="theme-bar-label">風格</span>
             <select id="theme-select" class="theme-select" aria-label="切換介面風格">
               <option value="soft">柔和漸層</option>
@@ -25,12 +51,25 @@
               <option value="minimal">極簡黑白</option>
             </select>
           </label>
+          <div class="settings-actions-stack">
+            <button type="button" class="btn btn-secondary settings-row-btn" id="btn-game-rules">
+              遊戲說明
+            </button>
+            <button type="button" class="btn btn-secondary settings-row-btn" id="btn-feedback">
+              意見回饋
+            </button>
+            <button type="button" class="btn btn-secondary settings-row-btn" id="btn-settings-dex"></button>
+            <button
+              type="button"
+              class="btn btn-secondary settings-row-btn settings-row-btn--danger"
+              id="btn-settings-restart"
+            ></button>
+          </div>
+          <button type="button" class="btn btn-primary settings-close-btn" id="btn-settings-close">
+            關閉
+          </button>
         </div>
-        <div class="theme-bar-cell theme-bar-cell--actions">
-          <button type="button" class="theme-rules-btn" id="btn-game-rules">遊戲說明</button>
-          <button type="button" class="theme-rules-btn" id="btn-feedback">意見回饋</button>
-        </div>
-      </header>
+      </div>
       <main id="view-root" class="view-root"></main>
     </div>
     <script type="module" src="/src/main.ts"></script>

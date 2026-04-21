@@ -513,6 +513,19 @@ export function careIdleSpriteFile(p: PetState): string {
   return idleSpriteForPet(p);
 }
 
+/**
+ * 寶寶期一般小貓：養成畫面在 `cat-idle-s0-walk-a.png`／`b.png` 與蹲坐 `cat-idle-s0.png` 之間輪替（見 `main.ts` 節奏）。
+ * A：左前抬起、右前著地；B：右前抬起、左前著地。
+ */
+export function careBabyCatWalkIdlePair(p: PetState): [string, string] | null {
+  if (!p.alive || !p.hatched || p.species !== "cat") return null;
+  if (careUsesPoopCanvas(p)) return null;
+  if (growthStage(p.virtAge) !== 0) return null;
+  const idle = idleSpriteForPet(p);
+  if (idle !== "cat-idle-s0.png") return null;
+  return ["cat-idle-s0-walk-a.png", "cat-idle-s0-walk-b.png"];
+}
+
 export function growthLabelForPet(p: PetState): string {
   if (p.alive && !p.hatched) return "\u5b75\u5316\u4e2d";
   return growthLabel(growthStage(p.virtAge));

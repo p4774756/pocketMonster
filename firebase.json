@@ -1,6 +1,6 @@
 {
   "firestore": {
     "rules": "docs/firebase-friends.rules",
-    "indexes": "docs/firebase-friends.indexes.json"
+    "indexes": "firestore.indexes.json"
   }
 }

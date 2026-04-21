@@ -8,8 +8,8 @@
 1. 建立專案 → 啟用 **Authentication** → 登入方式勾選 **電子郵件／密碼**。  
 2. 啟用 **Cloud Firestore**（建議先以「測試模式」建立資料庫，再立刻改為正式規則）。  
 3. **規則**：將本倉 `docs/firebase-friends.rules` 內容貼到 Firestore「規則」並發布。  
-4. **索引**：若即時監聽或查詢報錯，主控台會提供建立連結；亦可將 `docs/firebase-friends.indexes.json` 併入專案的 `firestore.indexes.json` 後以 Firebase CLI 部署。  
-   **好友聊天**使用 `orderBy("createdAt", "desc")` + `limit` 取最近訊息；讀取規則以父層 **`friends.members`** 授權（見 `docs/firebase-friends.rules`）。請併入 **`docs/firebase-friends.indexes.json`** 內 **`messages` + `createdAt`** 索引並部署，或依主控台錯誤連結建立。若單一對話超過載入上限，可再改分頁。  
+4. **索引**：若即時監聽或查詢報錯，主控台會提供建立連結；本倉已於**專案根目錄**提供 **`firestore.indexes.json`**（含 `friend_requests` 與 **`messages`／`createdAt` 降冪**），以 Firebase CLI 執行 `firebase deploy --only firestore:indexes` 即可部署（須已 `firebase use` 綁定專案）。  
+   **好友聊天**使用 `orderBy("createdAt", "desc")` + `limit` 取最近訊息；讀取規則以父層 **`friends.members`** 授權（見 `docs/firebase-friends.rules`）。若單一對話超過載入上限，可再改分頁。  
 5. **專案設定 → 一般 → 您的應用程式** 新增 **Web** 應用，取得設定物件中的六個欄位，對應下方 `VITE_*` 變數。
 
 ## 2. 前端建置變數（Vite）
@@ -47,14 +47,14 @@
 - **Authentication**：主控台須啟用 **電子郵件／密碼**；未啟用時介面會提示無法使用該登入方式。  
 - **Firestore**：須建立資料庫，並將 **`docs/firebase-friends.rules`** 貼到「規則」後**發布**。若 Auth 已成功建立帳號但寫入 `profiles`／`friend_codes` 被拒，介面會改顯示與 Firestore 相關的說明（開發模式下瀏覽器 **Console** 會有 `[firebase friends] profile init` 日誌）。  
 - 修正規則後：若該 Email 已在 Auth 裡註冊過，請改按 **登入**（勿再註冊）；若仍無個人檔，登入後會再次執行建立個人檔與好友代碼。  
-- **發送邀請**會查詢 `friend_requests` 複合條件；若主控台或瀏覽器 Console 出現需建立**索引**的提示，請依連結建立，或將 **`docs/firebase-friends.indexes.json`** 併入專案後以 Firebase CLI 部署索引。  
+- **發送邀請**會查詢 `friend_requests` 複合條件；若主控台或瀏覽器 Console 出現需建立**索引**的提示，請依連結建立，或於倉庫根目錄執行 **`firebase deploy --only firestore:indexes`**（索引定義見 **`firestore.indexes.json`**）。  
 - 若已登入且規則已發布，仍無法發送邀請並出現 **permission-denied**：舊版 `friends` 讀取規則在**文件尚不存在**時會誤擋 `get`；請將本倉 **`docs/firebase-friends.rules`** 更新後**再次發布**（`friends` 的 `read` 須含「文件不存在則允許已登入讀取」的條件，見檔內註解）。
-- **好友聊天**若**監聽**即 **permission-denied**：請將本倉 **`docs/firebase-friends.rules`** 更新後**再次發布**（訊息 `read` 改為依父層 `friends.members`）；並確認已建立 **`messages`／`createdAt` 降冪**索引（見 **`docs/firebase-friends.indexes.json`**）。**新寫入**訊息仍應含 **`memberUids`**（建立規則仍檢查）。  
-- 若出現 **failed-precondition**（缺索引）：依主控台連結建立索引，或部署 `docs/firebase-friends.indexes.json`。
+- **好友聊天**若**監聽**即 **permission-denied**：請將本倉 **`docs/firebase-friends.rules`** 更新後**再次發布**（訊息 `read` 改為依父層 `friends.members`）；並確認已部署 **`messages`／`createdAt` 降冪**索引（見根目錄 **`firestore.indexes.json`**）。**新寫入**訊息仍應含 **`memberUids`**（建立規則仍檢查）。  
+- 若出現 **failed-precondition**（缺索引）：依主控台連結建立索引，或部署根目錄 **`firestore.indexes.json`**。  
 
 ## 5. 維護注意
 
-- 修改 Firestore 結構或規則時，請同步更新本檔與 `docs/firebase-friends.rules`（含 **`cloud_pet_saves`** 若啟用養成備份）。  
+- 修改 Firestore 結構或規則時，請同步更新本檔、`docs/firebase-friends.rules`（含 **`cloud_pet_saves`** 若啟用養成備份）與根目錄 **`firestore.indexes.json`**。  
 - 玩家可讀規則摘要見 `docs/GAME_RULES.md` **2.10**。  
 - 實作程式：`src/firebase/config.ts`、`src/firebase/friendsFirestore.ts`、`src/lobbyFirebaseFriends.ts`，掛載於 `src/main.ts` 的 `renderFriends`（`#firebase-friends-root`）。
 

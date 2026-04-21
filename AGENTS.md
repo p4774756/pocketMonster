@@ -35,7 +35,7 @@
 | `public/pets/` | 精靈圖等靜態資源（idle 依成長階段命名）。 |
 | `docs/GAME_RULES.md` | **遊戲規則**：養成、孵化、對戰出招與傷害、勝負條件（給玩家／維護者）。 |
 | `docs/ARCHITECTURE.md` | **系統架構圖**（Mermaid）：前後端分層、主要模組、Socket 流程；協定細節仍以本檔 Socket 節為準。 |
-| `docs/FIREBASE_FRIENDS.md` | **選用**：Firebase Auth + Firestore 好友代碼／邀請／名單／**一對一聊天**（`friends/{pairId}/messages`）；規則範例 `docs/firebase-friends.rules`。 |
+| `docs/FIREBASE_FRIENDS.md` | **選用**：Firebase Auth + Firestore 好友代碼／邀請／名單／**一對一聊天**（`friends/{pairId}/messages`）；規則 `docs/firebase-friends.rules`；索引 **`firestore.indexes.json`**（根目錄）。 |
 | `vite.config.ts` | 開發時把 `/socket.io` **proxy** 到 `localhost:3000`。 |
 | `render.yaml` | Render.com Web Service 範例（僅 API、不掛靜態）。 |
 | `.github/workflows/deploy-pages.yml` | GitHub Pages 靜態部署；建置需 `SOCKET_SERVER_URL`；選填六個 `VITE_FIREBASE_*` secrets 以啟用好友頁。 |

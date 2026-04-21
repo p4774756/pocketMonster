@@ -41,7 +41,6 @@ const S = {
   login: "\u767b\u5165",
   register: "\u8a3b\u518a",
   authWorking: "\u8655\u7406\u4e2d\u2026",
-  logout: "\u767b\u51fa",
   friendCode: "\u6211\u7684\u597d\u53cb\u4ee3\u78bc",
   copyCode: "\u8907\u88fd\u4ee3\u78bc",
   copied: "\u5df2\u8907\u88fd",
@@ -240,9 +239,6 @@ export function mountFirebaseFriends(root: HTMLElement): void {
           <input type="text" class="field" id="fb-chat-input" maxlength="${String(FRIEND_CHAT_MAX_LEN)}" autocomplete="off" placeholder="${S.chatPlaceholder}" />
           <button type="button" class="btn btn-primary btn--compact" id="fb-chat-send">${S.chatSend}</button>
         </div>
-      </div>
-      <div class="lobby-friends-row mt-gap-sm">
-        <button type="button" class="btn btn-secondary" id="fb-logout">${S.logout}</button>
       </div>
     </div>
     <p class="toast lobby-friends-toast hidden" id="fb-toast"></p>
@@ -609,14 +605,6 @@ export function mountFirebaseFriends(root: HTMLElement): void {
     } catch (e) {
       setGuestAuthBusy(false);
       setToast(fbToast, mapAuthErr(e), true);
-    }
-  });
-
-  qs("#fb-logout").addEventListener("click", async () => {
-    try {
-      await signOut(auth);
-    } catch {
-      setToast(fbToast, S.errGeneric, true);
     }
   });
 
